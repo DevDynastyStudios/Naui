@@ -191,10 +191,6 @@ void naui_platform_initialize(const NauiWindowProps &props)
     }
 
     set_window_titlebar_dark_mode(platform->hwnd, true);
-    ShowWindow(platform->hwnd, SW_SHOWDEFAULT);
-    UpdateWindow(platform->hwnd);
-    SendMessageA(platform->hwnd, WM_SETICON, ICON_BIG, (LPARAM)NULL);
-    SendMessageA(platform->hwnd, WM_SETICON, ICON_SMALL, (LPARAM)NULL);
 
     DragAcceptFiles(platform->hwnd, TRUE);
 
@@ -210,6 +206,9 @@ void naui_platform_initialize(const NauiWindowProps &props)
     wc.hInstance = platform->h_instance;
     wc.lpszClassName = "naui_child_window_class";
     RegisterClassA(&wc);
+
+    ShowWindow(platform->hwnd, SW_SHOWDEFAULT);
+    UpdateWindow(platform->hwnd);
 }
 
 void naui_platform_shutdown(void)
