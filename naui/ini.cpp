@@ -1,8 +1,6 @@
 #include "ini.h"
 #include <fstream>
 
-typedef std::unordered_map<std::string, std::unordered_map<std::string, std::string>> IniData;
-
 static std::string naui_trim_string(const std::string &s)
 {
     size_t start = s.find_first_not_of(" \t\r\n");
@@ -11,7 +9,7 @@ static std::string naui_trim_string(const std::string &s)
     return s.substr(start, end - start + 1);
 }
 
-bool naui_read_ini(const std::string &filename, IniData &data)
+bool naui_read_ini(const std::string &filename, NauiIniData &data)
 {
     std::ifstream file(filename);
     if (!file.is_open()) return false;
@@ -40,7 +38,7 @@ bool naui_read_ini(const std::string &filename, IniData &data)
     return true;
 }
 
-bool naui_write_ini(const std::string &filename, const IniData &data)
+bool naui_write_ini(const std::string &filename, const NauiIniData &data)
 {
     std::ofstream file(filename);
     if (!file.is_open()) return false;
