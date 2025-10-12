@@ -28,15 +28,10 @@ void naui_app_run(void (*on_initialize)(void), void (*on_shutdown)(void), int32_
     io.IniFilename = nullptr;
 
     ImGuiStyle &style = ImGui::GetStyle();
-    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-    {
-        style.WindowRounding = 0.0f;
-        style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-    }
-
     style.FramePadding = ImVec2(8.0f, 8.0f);
-    style.FrameRounding = 6.0f;
     style.WindowTitleAlign = ImVec2(0.5f, 0.5f);
+    style.FrameRounding = 6.0f;
+    style.GrabRounding = 2.0f;
 
     naui_load_theme_from_json("Themes/Default.json");
     naui_platform_initialize();

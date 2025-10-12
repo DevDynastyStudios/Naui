@@ -1,4 +1,4 @@
-#include "layout_manager.h"
+/*#include "layout_manager.h"
 #include "panel_manager.h"
 #include <imgui.h>
 #include <fstream>
@@ -152,4 +152,4 @@ void naui_layout_process_requests() {
                 break;
         }
     }
-}
+}*/

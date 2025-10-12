@@ -111,4 +111,12 @@ void naui_load_theme_from_json(const char* path)
         if (it != imgui_color_map.end() && value.is_string())
             colors[it->second] = naui_color_from_hex(value.get<std::string>());
     }
+
+    ImGuiIO& io = ImGui::GetIO();
+    ImGuiStyle& style = ImGui::GetStyle();
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+    {
+        style.WindowRounding = 0.0f;
+        style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+    }
 }

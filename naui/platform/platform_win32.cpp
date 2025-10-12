@@ -103,17 +103,17 @@ static void cleanup_device_d3d()
     if (platform->device) { platform->device->Release(); platform->device = nullptr; }
 }
 
-static void naui_apply_window_style(uint32_t *style, uint32_t *ex_style, NauiPlatformWindowFlags flags)
+static void naui_apply_window_style(uint32_t &style, uint32_t &ex_style, NauiPlatformWindowFlags flags)
 {
-    *style = WS_OVERLAPPEDWINDOW | WS_SYSMENU | WS_CAPTION;
-    *ex_style = WS_EX_APPWINDOW;
+    style = WS_OVERLAPPEDWINDOW | WS_SYSMENU | WS_CAPTION;
+    ex_style = WS_EX_APPWINDOW;
 
     if (flags & NauiPlatformWindowFlags_Resizeable)
-        *style |= WS_THICKFRAME | WS_MAXIMIZEBOX;
+        style |= WS_THICKFRAME | WS_MAXIMIZEBOX;
     if (flags & NauiPlatformWindowFlags_Minimizable)
-        *style |= WS_MINIMIZEBOX;
+        style |= WS_MINIMIZEBOX;
     if (flags & NauiPlatformWindowFlags_Closable)
-        *ex_style |= WS_EX_OVERLAPPEDWINDOW;
+        ex_style |= WS_EX_OVERLAPPEDWINDOW;
 }
 
 static bool set_window_titlebar_dark_mode(HWND hwnd, bool enabled)
@@ -153,7 +153,10 @@ void naui_platform_initialize(const NauiWindowProps &props)
     ImGui_ImplWin32_EnableDpiAwareness();
     float main_scale = ImGui_ImplWin32_GetDpiScaleForMonitor(::MonitorFromPoint(POINT{ 0, 0 }, MONITOR_DEFAULTTOPRIMARY));
 
-    HICON icon = LoadIcon(platform->h_instance, IDI_APPLICATION);
+    HICON icon = (HICON)LoadImageA(platform->h_instance, "icon.ico", IMAGE_ICON, 0, 0, LR_LOADFROMFILE | LR_DEFAULTSIZE);
+    if (!icon)
+        icon = LoadIcon(platform->h_instance, IDI_APPLICATION);
+
     WNDCLASSA wc;
     memset(&wc, 0, sizeof(wc));
     wc.style = CS_CLASSDC;
@@ -169,7 +172,7 @@ void naui_platform_initialize(const NauiWindowProps &props)
     RegisterClassA(&wc);
 
     uint32_t window_style, window_ex_style;
-    naui_apply_window_style(&window_style, &window_ex_style, props.flags);
+    naui_apply_window_style(window_style, window_ex_style, props.flags);
 
     WCHAR wide_title[128];
     create_wide_string_from_utf8(props.title, wide_title);
@@ -190,6 +193,8 @@ void naui_platform_initialize(const NauiWindowProps &props)
     set_window_titlebar_dark_mode(platform->hwnd, true);
     ShowWindow(platform->hwnd, SW_SHOWDEFAULT);
     UpdateWindow(platform->hwnd);
+    SendMessageA(platform->hwnd, WM_SETICON, ICON_BIG, (LPARAM)NULL);
+    SendMessageA(platform->hwnd, WM_SETICON, ICON_SMALL, (LPARAM)NULL);
 
     DragAcceptFiles(platform->hwnd, TRUE);
 
@@ -252,7 +257,7 @@ NauiChildWindow naui_create_child_window(const NauiWindowProps &props)
     create_wide_string_from_utf8(props.title, wide_title);
 
     uint32_t window_style, window_ex_style;
-    naui_apply_window_style(&window_style, &window_ex_style, props.flags);
+    naui_apply_window_style(window_style, window_ex_style, props.flags);
 
     HWND hwndPlugin = CreateWindowExA(
         window_ex_style,

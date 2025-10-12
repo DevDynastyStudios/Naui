@@ -19,20 +19,42 @@ static std::unordered_map<std::string, NauiPanelLayerRegistry> panel_layers;
 static NauiPanelInstance panels[NAUI_MAX_PANELS];
 static uint32_t panel_count = 0;
 
-static NauiArena arena;
+static NauiArena scratch_buffer;
 
 void naui_panel_manager_initialize(void)
 {
-    naui_create_arena(arena, NAUI_MAX_PANEL_SCRATCH_SIZE);
+    naui_create_arena(scratch_buffer, NAUI_MAX_PANEL_SCRATCH_SIZE);
 }
 
 void naui_panel_manager_shutdown(void)
 {
-    naui_destroy_arena(arena);
+    naui_destroy_arena(scratch_buffer);
+}
+
+static void naui_render_menu_bar(void)
+{
+    if (ImGui::BeginMainMenuBar())
+    {
+        if (ImGui::BeginMenu("Files"))
+        {
+            if (ImGui::MenuItem("New")) { }
+            if (ImGui::MenuItem("Open")) { }
+            if (ImGui::MenuItem("Save")) { }
+            if (ImGui::MenuItem("Save As")) { }
+            ImGui::EndMenu();
+        }
+        for (uint32_t i = 0; i < panel_count; ++i)
+        {
+            NauiPanelInstance &panel = panels[i];
+
+        }
+    }
+    ImGui::EndMainMenuBar();
 }
 
 void naui_panel_manager_render(void)
 {
+    naui_render_menu_bar();
     for (uint32_t i = 0; i < panel_count; ++i)
     {
         NauiPanelInstance &panel = panels[i];
@@ -68,14 +90,15 @@ NauiPanelInstance &naui_create_panel(const char *layer, const char *title)
     };
     if (panel_layer.size != 0)
     {
-        panel.data = (void*)naui_arena_alloc(arena, panel_layer.size);
+        panel.data = (void*)naui_arena_alloc(scratch_buffer, panel_layer.size);
         memset(panel.data, 0, panel_layer.size);
     }
 
     if (panel_layer.create)
         panel_layer.create(panel);
 
-    panel.is_open = (panel.panel_flags & NauiWindowFlags_ClosedByDefault) == 0;
+    panel.is_open = (panel.panel_flags & NauiPanelFlags_ClosedByDefault) == 0;
+
     NauiPanelInstance &result = panels[panel_count++] = panel;
     return result;
 }

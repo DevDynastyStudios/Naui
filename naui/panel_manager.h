@@ -19,7 +19,7 @@ typedef uint32_t NauiPanelFlags;
 enum
 {
     NauiPanelFlags_None = 0,
-    NauiWindowFlags_ClosedByDefault = 1 << 0
+    NauiPanelFlags_ClosedByDefault = 1 << 0,
 };
 
 typedef void (*NauiPanelFn)(struct NauiPanelInstance &panel);
