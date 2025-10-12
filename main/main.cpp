@@ -15,14 +15,6 @@ static void complex_panel_render(NauiPanelInstance &panel)
     if (ImGui::Button("Add")) data->counter++;
     ImGui::PopStyleVar();
     if (ImGui::Button("Add2")) data->counter++;
-    
-    float buttonWidth = 120.0f;
-    ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - buttonWidth) * 0.5f + ImGui::GetStyle().WindowPadding.x);
-    ImGui::SetCursorPosY((ImGui::GetWindowSize().y - buttonWidth) * 0.5f + ImGui::GetStyle().WindowPadding.y);
-    if (ImGui::Button("Centered Button", ImVec2(buttonWidth, buttonWidth)))
-    {
-
-    }
 }
 
 void naui_app_initialize(void)
