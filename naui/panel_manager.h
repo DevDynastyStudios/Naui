@@ -11,6 +11,10 @@
     #define NAUI_MAX_PANEL_SCRATCH_SIZE (1 << 16)
 #endif
 
+#ifndef NAUI_MAX_PANELS
+    #define NAUI_MAX_PANELS (1 << 10)
+#endif
+
 typedef uint32_t NauiPanelFlags;
 enum
 {

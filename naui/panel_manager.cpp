@@ -15,7 +15,9 @@ struct NauiPanelLayerRegistry
 };
 
 static std::unordered_map<std::string, NauiPanelLayerRegistry> panel_layers;
-static std::vector<NauiPanelInstance> panels;
+
+static NauiPanelInstance panels[NAUI_MAX_PANELS];
+static uint32_t panel_count = 0;
 
 static NauiArena arena;
 
@@ -31,8 +33,9 @@ void naui_panel_manager_shutdown(void)
 
 void naui_panel_manager_render(void)
 {
-    for (NauiPanelInstance &panel : panels)
+    for (uint32_t i = 0; i < panel_count; ++i)
     {
+        NauiPanelInstance &panel = panels[i];
         if (!panel.is_open)
             continue;
         ImGui::PushID(panel.layer);
@@ -73,8 +76,7 @@ NauiPanelInstance &naui_create_panel(const char *layer, const char *title)
         panel_layer.create(panel);
 
     panel.is_open = (panel.panel_flags & NauiWindowFlags_ClosedByDefault) == 0;
-
-    panels.push_back(panel);
+    panels[panel_count++] = panel;
     return panel;
 }
 
