@@ -14,7 +14,6 @@ static void complex_panel_render(NauiPanelInstance &panel)
     if (ImGui::Button("Add")) data->counter++;
     ImGui::PopStyleVar();
     if (ImGui::Button("Add2")) data->counter++;
-
 }
 
 void naui_app_initialize(void)
@@ -41,7 +40,7 @@ void naui_app_initialize(void)
     [](NauiPanelInstance &panel)
     {
         TestPanelData *data = (TestPanelData*)panel.data;
-        panel.panel_flags = NauiPanelFlags_ClosedByDefault;
+        panel.panel_flags = NauiPanelFlags_ClosedByDefault | NauiPanelFlags_NoClose;
     }, complex_panel_render);
 
     naui_create_panel("basic", "Test");

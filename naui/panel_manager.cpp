@@ -84,7 +84,8 @@ void naui_panel_manager_render(void)
         ImGui::PushID(panel.layer);
         ImGui::SetNextWindowSize(panel.default_size, ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSizeConstraints(panel.min_size, panel.max_size);
-        if (ImGui::Begin(panel.title, &panel.is_open, panel.window_flags) && panel.render)
+        bool *is_open = (panel.panel_flags & NauiPanelFlags_NoClose) ? nullptr : &panel.is_open;
+        if (ImGui::Begin(panel.title, is_open, panel.window_flags) && panel.render)
             panel.render(panel);
         ImGui::End();
         ImGui::PopID();
@@ -119,7 +120,7 @@ NauiPanelInstance &naui_create_panel(const char *layer, const char *title)
     if (panel_layer.create)
         panel_layer.create(panel);
 
-    panel.is_open = (panel.panel_flags & NauiPanelFlags_ClosedByDefault) == 0;
+    panel.is_open = !(panel.panel_flags & NauiPanelFlags_ClosedByDefault);
 
     NauiPanelInstance &result = panels[panel_count++] = panel;
     return result;

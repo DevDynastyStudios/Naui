@@ -20,6 +20,7 @@ enum
 {
     NauiPanelFlags_None = 0,
     NauiPanelFlags_ClosedByDefault = 1 << 0,
+    NauiPanelFlags_NoClose = 1 << 1
 };
 
 typedef void (*NauiPanelFn)(struct NauiPanelInstance &panel);
