@@ -7,8 +7,8 @@
 #include <cstdint>
 #include <vector>
 
-#ifndef NAUI_MAX_PANEL_SCRATCH_SIZE
-    #define NAUI_MAX_PANEL_SCRATCH_SIZE (1 << 16)
+#ifndef NAUI_MAX_PANEL_HEAP_SIZE
+    #define NAUI_MAX_PANEL_HEAP_SIZE (1 << 16)
 #endif
 
 #ifndef NAUI_MAX_PANELS
@@ -55,5 +55,7 @@ void naui_register_panel_layer(const char *layer, NauiPanelFn create = nullptr, 
 }
 
 NAUI_API NauiPanelInstance &naui_create_panel(const char *layer, const char *title);
+NAUI_API void naui_destroy_panel(NauiPanelInstance &panel);
+
 NAUI_API NauiPanelInstance &naui_get_first_panel_of_layer(const char *layer);
 NAUI_API std::vector<NauiPanelInstance*> &naui_get_all_panels_of_layer(const char *layer);

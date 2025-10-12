@@ -1,6 +1,6 @@
 #include "panel_manager.h"
 
-#include <ds/arena.h>
+#include <ds/heap.h>
 
 #include <unordered_map>
 #include <vector>
@@ -17,18 +17,21 @@ struct NauiPanelLayerRegistry
 static std::unordered_map<std::string, NauiPanelLayerRegistry> panel_layers;
 
 static NauiPanelInstance panels[NAUI_MAX_PANELS];
-static uint32_t panel_count = 0;
+static uint32_t destroyed_panels[NAUI_MAX_PANELS];
 
-static NauiArena scratch_buffer;
+static uint32_t panel_count = 0;
+static uint32_t destroyed_panel_count = 0;
+
+static NauiHeap heap;
 
 void naui_panel_manager_initialize(void)
 {
-    naui_create_arena(scratch_buffer, NAUI_MAX_PANEL_SCRATCH_SIZE);
+    naui_create_heap(heap, NAUI_MAX_PANEL_HEAP_SIZE);
 }
 
 void naui_panel_manager_shutdown(void)
 {
-    naui_destroy_arena(scratch_buffer);
+    naui_destroy_heap(heap);
 }
 
 static void naui_render_menu_bar(void)
@@ -52,6 +55,24 @@ static void naui_render_menu_bar(void)
     ImGui::EndMainMenuBar();
 }
 
+static void naui_manage_destroyed_panels(void)
+{
+    if (destroyed_panel_count > 0)
+    {
+        for (uint32_t i = 0; i < destroyed_panel_count; ++i)
+        {
+            uint32_t panel_index = destroyed_panels[i];
+            NauiPanelInstance &panel = panels[panel_index];
+            if (panel.data)
+                naui_heap_free(heap, panel.data, panel_layers[panel.layer].size);
+            for (uint32_t i = panel_index; i < panel_count - 1; ++i)
+                panels[i] = panels[i + 1];
+            --panel_count;
+        }
+        destroyed_panel_count = 0;
+    }
+}
+
 void naui_panel_manager_render(void)
 {
     naui_render_menu_bar();
@@ -68,6 +89,7 @@ void naui_panel_manager_render(void)
         ImGui::End();
         ImGui::PopID();
     }
+    naui_manage_destroyed_panels();
 }
 
 void naui_register_panel_layer(const char *layer, NauiPanelFn create, NauiPanelFn render, size_t data_size)
@@ -90,7 +112,7 @@ NauiPanelInstance &naui_create_panel(const char *layer, const char *title)
     };
     if (panel_layer.size != 0)
     {
-        panel.data = (void*)naui_arena_alloc(scratch_buffer, panel_layer.size);
+        panel.data = (void*)naui_heap_alloc(heap, panel_layer.size);
         memset(panel.data, 0, panel_layer.size);
     }
 
@@ -119,4 +141,10 @@ std::vector<NauiPanelInstance*> &naui_get_all_panels_of_layer(const char *layer)
         if (strcmp(panel.layer, layer) == 0)
             result.push_back(&panel);
     return result;
+}
+
+void naui_destroy_panel(NauiPanelInstance &panel)
+{
+    const uint32_t panel_index = &panel - panels;
+    destroyed_panels[destroyed_panel_count++] = panel_index;
 }

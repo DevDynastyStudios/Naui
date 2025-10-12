@@ -32,6 +32,9 @@ void naui_app_initialize(void)
             }
             ImGui::EndPopup();
         }
+
+        if (panel.is_open == false)
+            naui_destroy_panel(panel);
     });
 
     naui_register_panel_layer<TestPanelData>("complex",
