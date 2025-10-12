@@ -41,7 +41,7 @@ void naui_app_initialize(void)
     [](NauiPanelInstance &panel)
     {
         TestPanelData *data = (TestPanelData*)panel.data;
-        panel.panel_flags = NauiPanelFlags_ClosedByDefault | NauiPanelFlags_NoClose;
+        panel.panel_flags = NauiPanelFlags_NoClose;
         panel.window_flags = ImGuiWindowFlags_NoCollapse;
     }, complex_panel_render);
 
