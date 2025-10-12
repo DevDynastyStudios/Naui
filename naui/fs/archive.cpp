@@ -53,7 +53,7 @@ bool naui_archive_add_file(NauiArchive* archive, const std::filesystem::path& so
     if (!archive || archive->mode != NauiArchiveMode::Write) 
 		return false;
 
-    return mz_zip_writer_add_file(&archive->zip, dest_in_archive.string().c_str(), source.string().c_str(), nullptr, 0, MZ_BEST_COMPRESSION) != 0;
+    return mz_zip_writer_add_file(&archive->zip, dest_in_archive.string().c_str(), source.string().c_str(), nullptr, 0, MZ_BEST_SPEED) != 0;
 }
 
 bool naui_archive_extract_file(NauiArchive* archive, const std::filesystem::path& entry, const std::filesystem::path& dest)
@@ -67,7 +67,8 @@ bool naui_archive_extract_file(NauiArchive* archive, const std::filesystem::path
 std::vector<NauiArchiveEntry> naui_archive_list(NauiArchive* archive)
 {
     std::vector<NauiArchiveEntry> entries;
-    if (!archive || archive->mode != NauiArchiveMode::Read) return entries;
+    if (!archive || archive->mode != NauiArchiveMode::Read) 
+		return entries;
 
     int count = (int)mz_zip_reader_get_num_files(&archive->zip);
     for (int i = 0; i < count; ++i)
