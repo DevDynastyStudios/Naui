@@ -1,5 +1,6 @@
 #include <naui/application.h>
 #include <naui/panel_manager.h>
+#include <cstdio>
 
 struct TestPanelData
 {
@@ -14,6 +15,14 @@ static void complex_panel_render(NauiPanelInstance &panel)
     if (ImGui::Button("Add")) data->counter++;
     ImGui::PopStyleVar();
     if (ImGui::Button("Add2")) data->counter++;
+    
+    float buttonWidth = 120.0f;
+    ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - buttonWidth) * 0.5f + ImGui::GetStyle().WindowPadding.x);
+    ImGui::SetCursorPosY((ImGui::GetWindowSize().y - buttonWidth) * 0.5f + ImGui::GetStyle().WindowPadding.y);
+    if (ImGui::Button("Centered Button", ImVec2(buttonWidth, buttonWidth)))
+    {
+
+    }
 }
 
 void naui_app_initialize(void)
@@ -22,7 +31,7 @@ void naui_app_initialize(void)
         if (ImGui::Button("Hello World!"))
             ImGui::OpenPopup("Test4");
         
-        if (ImGui::BeginPopupModal("Test4", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove))
+        if (ImGui::BeginPopupModal("Test4", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse))
         {
             if (ImGui::Button("Hello World!"))
             {
@@ -41,6 +50,7 @@ void naui_app_initialize(void)
     {
         TestPanelData *data = (TestPanelData*)panel.data;
         panel.panel_flags = NauiPanelFlags_ClosedByDefault | NauiPanelFlags_NoClose;
+        panel.window_flags = ImGuiWindowFlags_NoCollapse;
     }, complex_panel_render);
 
     naui_create_panel("basic", "Test");

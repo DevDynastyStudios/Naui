@@ -141,11 +141,11 @@ std::vector<NauiPanelInstance*> &naui_get_all_panels_of_layer(const char *layer)
     for (NauiPanelInstance &panel : panels)
         if (strcmp(panel.layer, layer) == 0)
             result.push_back(&panel);
-    return result;
+    return result; 
 }
 
 void naui_destroy_panel(NauiPanelInstance &panel)
 {
-    const uint32_t panel_index = &panel - panels;
+    const uint32_t panel_index = (uint32_t)(&panel - panels);
     destroyed_panels[destroyed_panel_count++] = panel_index;
 }
