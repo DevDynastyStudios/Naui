@@ -1,5 +1,5 @@
-#include <application.h>
-#include <panel_manager.h>
+#include <naui/application.h>
+#include <naui/panel_manager.h>
 
 struct TestPanelData
 {

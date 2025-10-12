@@ -1,9 +1,5 @@
 #pragma once
 
-#define NAUI_PLATFORM_WINDOWS 0
-#define NAUI_PLATFORM_LINUX 0
-#define NAUI_PLATFORM_MAC 0
-
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__)
     #define NAUI_PLATFORM_WINDOWS 1
 #elif defined(__linux__) || defined(__gnu_linux__)
@@ -25,11 +21,6 @@
         #define NAUI_API
     #endif
 #endif
-
-#define NAUI_COMPILER_MSVC   0
-#define NAUI_COMPILER_CLANG  0
-#define NAUI_COMPILER_GCC    0
-#define NAUI_COMPILER_UNKNOWN 0
 
 #if defined(_MSC_VER)
     #define NAUI_COMPILER_MSVC 1

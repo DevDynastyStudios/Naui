@@ -59,7 +59,7 @@ void naui_register_panel_layer(const char *layer, NauiPanelFn create, NauiPanelF
 
 NauiPanelInstance &naui_create_panel(const char *layer, const char *title)
 {
-    const NauiPanelLayerRegistry &const panel_layer = panel_layers[layer];
+    const NauiPanelLayerRegistry &panel_layer = panel_layers[layer];
     NauiPanelInstance panel = {
         .title = title,
         .layer = layer,
@@ -76,8 +76,8 @@ NauiPanelInstance &naui_create_panel(const char *layer, const char *title)
         panel_layer.create(panel);
 
     panel.is_open = (panel.panel_flags & NauiWindowFlags_ClosedByDefault) == 0;
-    panels[panel_count++] = panel;
-    return panel;
+    NauiPanelInstance &result = panels[panel_count++] = panel;
+    return result;
 }
 
 NauiPanelInstance &naui_get_first_panel_of_layer(const char *layer)
@@ -85,6 +85,7 @@ NauiPanelInstance &naui_get_first_panel_of_layer(const char *layer)
     for (NauiPanelInstance &panel : panels)
         if (strcmp(panel.layer, layer) == 0)
             return panel;
+    return panels[0];
 }
 
 std::vector<NauiPanelInstance*> &naui_get_all_panels_of_layer(const char *layer)

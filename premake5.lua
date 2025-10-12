@@ -48,11 +48,13 @@ project "Application"
         "main/**.h",
         "main/**.cpp"
     }
+
     includedirs {
+        ".",
+        "main",
         "naui",
         "naui/vendor",
-        "naui/vendor/imgui",
-        "naui/vendor/nlohmann"
+        "naui/vendor/imgui"
     }
 
     links { "Naui" }
