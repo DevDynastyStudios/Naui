@@ -27,7 +27,6 @@ project "Naui"
         "naui/vendor",
         "naui/vendor/stb",
         "naui/vendor/imgui",
-        "naui/vendor/mINI",
         "naui/vendor/nlohmann",
 		"naui/vendor/miniz"
     }
