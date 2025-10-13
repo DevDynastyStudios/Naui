@@ -1,0 +1,101 @@
+=================================================================================
+Writing and Reading Text Files
+=================================================================================
+#include "fs.h"
+#include <iostream>
+
+int main() {
+    // Write text to a file
+    if (!naui_fs_write_text("hello.txt", "Hello from Naui FS!\nLine two.")) {
+        std::cerr << "Failed to write file\n";
+        return 1;
+    }
+
+    // Read text back
+    std::string contents = naui_fs_read_text("hello.txt");
+    std::cout << "File contents:\n" << contents << "\n";
+
+    return 0;
+}
+
+=================================================================================
+Binary File Write/Read
+=================================================================================
+#include "fs.h"
+#include <iostream>
+#include <vector>
+
+int main() {
+    // Open file for writing
+    NauiFile file = naui_fs_open("data.bin", NauiFileMode::Write);
+    if (!file.handle) return 1;
+
+    int numbers[3] = {1, 2, 3};
+    naui_fs_write(file, numbers, sizeof(numbers));
+    naui_fs_close(file);
+
+    // Open file for reading
+    file = naui_fs_open("data.bin", NauiFileMode::Read);
+    if (!file.handle) return 1;
+
+    std::vector<int> buffer(3);
+    naui_fs_read(file, buffer.data(), buffer.size() * sizeof(int));
+    naui_fs_close(file);
+
+    for (int n : buffer)
+        std::cout << n << " ";
+    std::cout << "\n";
+
+    return 0;
+}
+
+=================================================================================
+Directory Operations
+=================================================================================
+#include "fs.h"
+#include <iostream>
+
+int main() {
+    std::filesystem::path dir = "example_dir";
+
+    // Create directory if it doesn't exist
+    if (!naui_fs_exists(dir)) {
+        naui_fs_create_directory(dir);
+    }
+
+    // List directory contents
+    auto entries = naui_fs_list(".");
+    for (const auto& entry : entries) {
+        std::cout << (entry.is_directory ? "[DIR] " : "[FILE] ")
+                  << entry.path.filename().string()
+                  << " (" << entry.size << " bytes)\n";
+    }
+
+    return 0;
+}
+
+=================================================================================
+Appending to a File
+=================================================================================
+#include "fs.h"
+#include <iostream>
+#include <string>
+
+int main() {
+    // Open file in append mode
+    NauiFile file = naui_fs_open("log.txt", NauiFileMode::Append);
+    if (!file.handle) {
+        std::cerr << "Failed to open file for append\n";
+        return 1;
+    }
+
+    std::string line = "Appended line\n";
+    naui_fs_write(file, line.data(), line.size());
+    naui_fs_close(file);
+
+    // Read back entire file
+    std::string contents = naui_fs_read_text("log.txt");
+    std::cout << "File contents:\n" << contents << "\n";
+
+    return 0;
+}

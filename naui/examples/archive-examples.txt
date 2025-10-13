@@ -1,0 +1,96 @@
+=================================================================================
+Create an Archive from a Folder
+=================================================================================
+#include "archive.h"
+#include <iostream>
+
+int main() {
+    std::filesystem::path folder = "assets";
+    std::filesystem::path archivePath = "assets.nauipak";
+
+    if (naui_archive_create(folder, archivePath)) {
+        std::cout << "Archive created: " << archivePath << "\n";
+    } else {
+        std::cerr << "Failed to create archive\n";
+    }
+
+    return 0;
+}
+
+=================================================================================
+Extract an Archive to a Folder
+=================================================================================
+#include "archive.h"
+#include <iostream>
+
+int main() {
+    std::filesystem::path archivePath = "assets.nauipak";
+    std::filesystem::path outputFolder = "unpacked_assets";
+
+    if (naui_archive_extract(archivePath, outputFolder)) {
+        std::cout << "Archive extracted to: " << outputFolder << "\n";
+    } else {
+        std::cerr << "Failed to extract archive\n";
+    }
+
+    return 0;
+}
+
+=================================================================================
+Add and Extract Individual Files
+=================================================================================
+#include "archive.h"
+#include <iostream>
+
+int main() {
+    // Open archive in write mode
+    NauiArchive* archive = naui_archive_open("data.nauipak", NauiArchiveMode::Write);
+    if (!archive) {
+        std::cerr << "Failed to open archive for writing\n";
+        return 1;
+    }
+
+    // Add a file into the archive
+    if (naui_archive_add_file(archive, "readme.txt", "docs/readme.txt")) {
+        std::cout << "Added readme.txt to archive\n";
+    }
+
+    naui_archive_close(archive);
+
+    // Open archive in read mode
+    archive = naui_archive_open("data.nauipak", NauiArchiveMode::Read);
+    if (!archive) {
+        std::cerr << "Failed to open archive for reading\n";
+        return 1;
+    }
+
+    // Extract a file from the archive
+    if (naui_archive_extract_file(archive, "docs/readme.txt", "extracted_readme.txt")) {
+        std::cout << "Extracted docs/readme.txt to extracted_readme.txt\n";
+    }
+
+    naui_archive_close(archive);
+
+    return 0;
+}
+
+=================================================================================
+Listing Archive Contents
+=================================================================================
+#include "archive.h"
+#include <iostream>
+
+int main() {
+    NauiArchive* archive = naui_archive_open("data.nauipak", NauiArchiveMode::Read);
+    if (!archive) return 1;
+
+    auto entries = naui_archive_list(archive);
+    for (const auto& e : entries) {
+        std::cout << (e.is_directory ? "[DIR] " : "[FILE] ")
+                  << e.path.string()
+                  << " (" << e.size << " bytes)\n";
+    }
+
+    naui_archive_close(archive);
+    return 0;
+}

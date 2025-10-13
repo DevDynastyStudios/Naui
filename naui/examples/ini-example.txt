@@ -1,0 +1,68 @@
+#include "ini.h"
+#include <iostream>
+
+int main() 
+{
+    NauiIniData ini;
+
+    // --- Writing values ---
+    ini[""]["Width"]  = "1280";   // Global section
+    ini[""]["Height"] = "720";
+
+    ini["Window"]["Title"]      = "Naui UI Engine";
+    ini["Window"]["Fullscreen"] = "true";
+    ini["Window"]["VSync"]      = "off";
+
+    ini["Graphics"]["Gamma"]       = "2.2";
+    ini["Graphics"]["Colors"]      = "red, green, blue";
+    ini["Graphics"]["Thresholds"]  = "0.1, 0.5, 0.9";
+    ini["Graphics"]["MatrixInt"]   = "1,2,3;4,5,6;7,8,9";
+    ini["Graphics"]["MatrixFloat"] = "1.1,2.2,3.3;4.4,5.5,6.6";
+
+    naui_write_ini("config.ini", ini);
+
+    // --- Reading values ---
+    NauiIniData loaded;
+    naui_read_ini("config.ini", loaded);
+
+    int width  = naui_ini_get_int(loaded, "", "Width", 800);
+    int height = naui_ini_get_int(loaded, "", "Height", 600);
+
+    std::string title = naui_ini_get_string(loaded, "Window", "Title", "Untitled");
+    bool fullscreen   = naui_ini_get_bool(loaded, "Window", "Fullscreen", false);
+    bool vsync        = naui_ini_get_bool(loaded, "Window", "VSync", true);
+
+    float gamma = naui_ini_get_float(loaded, "Graphics", "Gamma", 1.0f);
+
+    auto colors     = naui_ini_get_string_array(loaded, "Graphics", "Colors");
+    auto thresholds = naui_ini_get_float_array(loaded, "Graphics", "Thresholds");
+    auto matInt     = naui_ini_get_int_matrix(loaded, "Graphics", "MatrixInt");
+    auto matFloat   = naui_ini_get_float_matrix(loaded, "Graphics", "MatrixFloat");
+
+    // --- Print results ---
+    std::cout << "Resolution: " << width << "x" << height << "\n";
+    std::cout << "Title: " << title << "\n";
+    std::cout << "Fullscreen: " << (fullscreen ? "Yes" : "No") << "\n";
+    std::cout << "VSync: " << (vsync ? "On" : "Off") << "\n";
+    std::cout << "Gamma: " << gamma << "\n";
+
+    std::cout << "Colors: ";
+    for (auto& c : colors) std::cout << c << " ";
+    std::cout << "\n";
+
+    std::cout << "Thresholds: ";
+    for (auto t : thresholds) std::cout << t << " ";
+    std::cout << "\n";
+
+    std::cout << "MatrixInt:\n";
+    for (auto& row : matInt) {
+        for (auto v : row) std::cout << v << " ";
+        std::cout << "\n";
+    }
+
+    std::cout << "MatrixFloat:\n";
+    for (auto& row : matFloat) {
+        for (auto v : row) std::cout << v << " ";
+        std::cout << "\n";
+    }
+}

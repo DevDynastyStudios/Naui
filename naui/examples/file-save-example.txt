@@ -1,0 +1,120 @@
+#include "fs.h"
+#include "archive.h"
+#include <iostream>
+#include <string>
+
+static inline std::string naui_make_ini_text()
+{
+    // Hand-crafted INI text using Naui conventions (global + sections + arrays/matrices)
+    std::string ini;
+    ini += "Width = 1280\n";
+    ini += "Height = 720\n";
+    ini += "\n";
+    ini += "[Window]\n";
+    ini += "Title = Naui Engine\n";
+    ini += "Fullscreen = true\n";
+    ini += "VSync = off\n";
+    ini += "\n";
+    ini += "[Graphics]\n";
+    ini += "Gamma = 2.2\n";
+    ini += "Colors = red, green, blue\n";
+    ini += "Thresholds = 0.1, 0.5, 0.9\n";
+    ini += "MatrixInt = 1,2,3;4,5,6;7,8,9\n";
+    ini += "MatrixFloat = 1.1,2.2,3.3;4.4,5.5,6.6\n";
+    ini += "\n";
+    return ini;
+}
+
+int main()
+{
+    // --- Step 1: Create output folder and generate files with Naui FS ---
+    std::filesystem::path outDir = "build_output";
+    if (!naui_fs_exists(outDir)) {
+        if (!naui_fs_create_directory(outDir)) {
+            std::cerr << "Failed to create output directory\n";
+            return 1;
+        }
+    }
+
+    // Write a text log file
+    std::filesystem::path logFile = outDir / "log.txt";
+    if (!naui_fs_write_text(logFile, "Naui FS log start\nCreated by Naui FS\n")) {
+        std::cerr << "Failed to write log file\n";
+        return 1;
+    }
+
+    // Append to the log using Append mode
+    {
+        NauiFile log = naui_fs_open(logFile, NauiFileMode::Append);
+        if (!log.handle) {
+            std::cerr << "Failed to open log file for append\n";
+            return 1;
+        }
+        const std::string extra = "Appended line via Append mode\n";
+        naui_fs_write(log, extra.data(), extra.size());
+        naui_fs_close(log);
+    }
+
+    // Write a binary file
+    std::filesystem::path binFile = outDir / "data.bin";
+    {
+        NauiFile f = naui_fs_open(binFile, NauiFileMode::Write);
+        if (!f.handle) {
+            std::cerr << "Failed to open binary file for write\n";
+            return 1;
+        }
+        int numbers[4] = {42, 1337, 9001, 7};
+        naui_fs_write(f, numbers, sizeof(numbers));
+        naui_fs_close(f);
+    }
+
+    // Write a handcrafted INI file (string content) showcasing Naui’s conventions
+    std::filesystem::path iniFile = outDir / "config.ini";
+    if (!naui_fs_write_text(iniFile, naui_make_ini_text())) {
+        std::cerr << "Failed to write INI file\n";
+        return 1;
+    }
+
+    std::cout << "Created files in " << outDir << "\n";
+
+    // --- Step 2: Package the folder into an archive ---
+    std::filesystem::path archivePath = "bundle.nauipak";
+    if (!naui_archive_create(outDir, archivePath)) {
+        std::cerr << "Failed to create archive\n";
+        return 1;
+    }
+    std::cout << "Archive created: " << archivePath << "\n";
+
+    // --- Step 3: Open archive and list contents ---
+    NauiArchive* ar = naui_archive_open(archivePath, NauiArchiveMode::Read);
+    if (!ar) {
+        std::cerr << "Failed to open archive for listing\n";
+        return 1;
+    }
+
+    auto entries = naui_archive_list(ar);
+    std::cout << "Archive contents:\n";
+    for (const auto& e : entries) {
+        std::cout << (e.is_directory ? "[DIR] " : "[FILE] ")
+                  << e.path.string()
+                  << " (" << e.size << " bytes)\n";
+    }
+    naui_archive_close(ar);
+
+    // --- Step 4: Extract archive to a new folder ---
+    std::filesystem::path extractDir = "extracted_output";
+    if (!naui_archive_extract(archivePath, extractDir)) {
+        std::cerr << "Failed to extract archive\n";
+        return 1;
+    }
+    std::cout << "Archive extracted to " << extractDir << "\n";
+
+    // --- Step 5: Read back the extracted INI and log via Naui FS ---
+    std::string iniText = naui_fs_read_text(extractDir / "config.ini");
+    std::string logText = naui_fs_read_text(extractDir / "log.txt");
+
+    std::cout << "\n--- Extracted config.ini ---\n" << iniText;
+    std::cout << "\n--- Extracted log.txt ---\n" << logText << "\n";
+
+    return 0;
+}
