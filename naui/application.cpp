@@ -4,9 +4,9 @@
 #include "platform/event.h"
 #include "platform/event_types.h"
 
-#include "theme_loader.h"
+#include "io/theme_loader.h"
+#include "io/asset_manager.h"
 #include "panel_manager.h"
-#include "asset_manager.h"
 
 static void naui_render(void)
 {

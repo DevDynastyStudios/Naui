@@ -1,5 +1,6 @@
 #include <naui/application.h>
 #include <naui/panel_manager.h>
+#include <naui/io/asset_manager.h>
 #include <cstdio>
 
 struct TestPanelData
@@ -19,6 +20,16 @@ static void complex_panel_render(NauiPanelInstance &panel)
 
 void naui_app_initialize(void)
 {
+    naui_register_panel_layer("wizard",
+    [](NauiPanelInstance &panel) { panel.window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDecoration; },
+    [](NauiPanelInstance &panel) {
+        NauiImage &logo = naui_get_image("logo-large-white");
+        ImGui::Image(logo, ImVec2(logo.width * 0.3f, logo.height * 0.3f));
+        
+        if (panel.is_open == false)
+            naui_destroy_panel(panel);
+    });
+
     naui_register_panel_layer("basic", nullptr, [](NauiPanelInstance &panel) {
         if (ImGui::Button("Hello World!"))
             ImGui::OpenPopup("Test4");
@@ -27,7 +38,8 @@ void naui_app_initialize(void)
         {
             if (ImGui::Button("Hello World!"))
             {
-                naui_get_first_panel_of_layer("complex").is_open = true;
+                //naui_get_first_panel_of_layer("complex").is_open = true;
+                naui_create_panel("complex", "Complex");
                 ImGui::CloseCurrentPopup();
             }
             ImGui::EndPopup();
@@ -45,6 +57,7 @@ void naui_app_initialize(void)
         panel.window_flags = ImGuiWindowFlags_NoCollapse;
     }, complex_panel_render);
 
+    naui_create_panel("wizard", "Welcome");
     naui_create_panel("basic", "Test");
     naui_create_panel("basic", "Test2");
     naui_create_panel("complex", "Test3");

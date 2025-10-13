@@ -1,6 +1,5 @@
 #include "theme_loader.h"
 
-#include <imgui.h>
 #include <nlohmann/json.hpp>
 
 #include <string>
@@ -69,6 +68,8 @@ static std::unordered_map<std::string, ImGuiCol> imgui_color_map = {
     {"ModalWindowDimBg", ImGuiCol_ModalWindowDimBg}
 };
 
+static std::unordered_map<std::string, ImColor> custom_color_map{};
+
 static ImVec4 naui_color_from_hex(const std::string& hex)
 {
     auto hexval = [](char c) -> int {
@@ -110,6 +111,7 @@ void naui_load_theme_from_json(const char* path)
         auto it = imgui_color_map.find(key);
         if (it != imgui_color_map.end() && value.is_string())
             colors[it->second] = naui_color_from_hex(value.get<std::string>());
+        else custom_color_map[key] = ImColor(naui_color_from_hex(value.get<std::string>()));
     }
 
     ImGuiIO& io = ImGui::GetIO();
@@ -119,4 +121,9 @@ void naui_load_theme_from_json(const char* path)
         style.WindowRounding = 0.0f;
         style.Colors[ImGuiCol_WindowBg].w = 1.0f;
     }
+}
+
+ImColor naui_get_theme_color(const char* name)
+{
+    return custom_color_map[name];
 }
