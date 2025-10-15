@@ -58,5 +58,7 @@ void naui_register_panel_layer(const char *layer, NauiPanelFn create = nullptr, 
 NAUI_API NauiPanelInstance &naui_create_panel(const char *layer, const char *title);
 NAUI_API void naui_destroy_panel(NauiPanelInstance &panel);
 
+NAUI_API uint32_t naui_get_panel_count();
+NAUI_API NauiPanelInstance& naui_get_panel(uint32_t index);
 NAUI_API NauiPanelInstance &naui_get_first_panel_of_layer(const char *layer);
 NAUI_API std::vector<NauiPanelInstance*> &naui_get_all_panels_of_layer(const char *layer);

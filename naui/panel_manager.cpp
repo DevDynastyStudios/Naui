@@ -126,11 +126,22 @@ NauiPanelInstance &naui_create_panel(const char *layer, const char *title)
     return result;
 }
 
+uint32_t naui_get_panel_count() {
+    return panel_count;
+}
+
+NauiPanelInstance& naui_get_panel(uint32_t index) 
+{
+    assert(index < panel_count && "Panel index out of range");
+    return panels[index];
+}
+
 NauiPanelInstance &naui_get_first_panel_of_layer(const char *layer)
 {
     for (NauiPanelInstance &panel : panels)
         if (strcmp(panel.layer, layer) == 0)
             return panel;
+
     return panels[0];
 }
 
@@ -141,6 +152,7 @@ std::vector<NauiPanelInstance*> &naui_get_all_panels_of_layer(const char *layer)
     for (NauiPanelInstance &panel : panels)
         if (strcmp(panel.layer, layer) == 0)
             result.push_back(&panel);
+			
     return result; 
 }
 
