@@ -1,6 +1,6 @@
 #include "panel_manager.h"
 
-#include <ds/heap.h>
+#include <ds/free_list.h>
 
 #include <unordered_map>
 #include <vector>
@@ -22,16 +22,16 @@ static uint32_t destroyed_panels[NAUI_MAX_PANELS];
 static uint32_t panel_count = 0;
 static uint32_t destroyed_panel_count = 0;
 
-static NauiHeap heap;
+static NauiFreeList panel_data_pool;
 
 void naui_panel_manager_initialize(void)
 {
-    naui_create_heap(heap, NAUI_MAX_PANEL_HEAP_SIZE);
+    naui_create_free_list(panel_data_pool, NAUI_MAX_PANEL_HEAP_SIZE);
 }
 
 void naui_panel_manager_shutdown(void)
 {
-    naui_destroy_heap(heap);
+    naui_destroy_free_list(panel_data_pool);
 }
 
 static void naui_render_menu_bar(void)
@@ -64,7 +64,7 @@ static void naui_manage_destroyed_panels(void)
             uint32_t panel_index = destroyed_panels[i];
             NauiPanelInstance &panel = panels[panel_index];
             if (panel.data)
-                naui_heap_free(heap, panel.data, panel_layers[panel.layer].size);
+                naui_free_list_free(panel_data_pool, panel.data, panel_layers[panel.layer].size);
             for (uint32_t i = panel_index; i < panel_count - 1; ++i)
                 panels[i] = panels[i + 1];
             --panel_count;
@@ -113,7 +113,7 @@ NauiPanelInstance &naui_create_panel(const char *layer, const char *title)
     };
     if (panel_layer.size != 0)
     {
-        panel.data = (void*)naui_heap_alloc(heap, panel_layer.size);
+        panel.data = (void*)naui_free_list_alloc(panel_data_pool, panel_layer.size);
         memset(panel.data, 0, panel_layer.size);
     }
 

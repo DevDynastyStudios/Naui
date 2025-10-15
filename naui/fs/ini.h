@@ -1,6 +1,7 @@
 #pragma once
 #include "../base.h"
 #include <string>
+#include <vector>
 #include <unordered_map>
 
 typedef std::unordered_map<std::string, std::unordered_map<std::string, std::string>> NauiIniData;
