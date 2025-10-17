@@ -23,16 +23,7 @@ static uint32_t panel_count = 0;
 static uint32_t destroyed_panel_count = 0;
 
 static NauiFreeList panel_data_pool;
-
-void naui_panel_manager_initialize(void)
-{
-    naui_create_free_list(panel_data_pool, NAUI_MAX_PANEL_HEAP_SIZE);
-}
-
-void naui_panel_manager_shutdown(void)
-{
-    naui_destroy_free_list(panel_data_pool);
-}
+static MenubarFunction menubar_render_func;
 
 static void naui_render_menu_bar(void)
 {
@@ -40,18 +31,35 @@ static void naui_render_menu_bar(void)
     {
         if (ImGui::BeginMenu("Files"))
         {
-            if (ImGui::MenuItem("New")) { }
-            if (ImGui::MenuItem("Open")) { }
-            if (ImGui::MenuItem("Save")) { }
-            if (ImGui::MenuItem("Save As")) { }
+            if (ImGui::MenuItem("Exit"))
+				exit(0);
+
             ImGui::EndMenu();
         }
-        for (uint32_t i = 0; i < panel_count; ++i)
-        {
-            NauiPanelInstance &panel = panels[i];
 
-        }
+		if(ImGui::BeginMenu("View"))
+		{
+			for(uint32_t i = 0; i < panel_count; ++i)
+			{
+				NauiPanelInstance& panel = panels[i];
+
+				if(ImGui::MenuItem(panel.title, nullptr, panel.is_open))
+				{
+					panel.is_open = !panel.is_open;
+				}
+			}
+
+			ImGui::EndMenu();
+		}
+
+		if(ImGui::BeginMenu("Layout"))
+		{
+
+			ImGui::EndMenu();
+		}
+
     }
+
     ImGui::EndMainMenuBar();
 }
 
@@ -73,9 +81,23 @@ static void naui_manage_destroyed_panels(void)
     }
 }
 
+void naui_panel_manager_initialize(void)
+{
+    naui_create_free_list(panel_data_pool, NAUI_MAX_PANEL_HEAP_SIZE);
+	menubar_render_func = naui_render_menu_bar;
+}
+
+void naui_panel_manager_shutdown(void)
+{
+    naui_destroy_free_list(panel_data_pool);
+}
+
 void naui_panel_manager_render(void)
 {
-    naui_render_menu_bar();
+	#if NAUI_DISABLE_DEFAULT_MENUBAR == 0
+    menubar_render_func();
+	#endif
+
     for (uint32_t i = 0; i < panel_count; ++i)
     {
         NauiPanelInstance &panel = panels[i];
@@ -91,6 +113,14 @@ void naui_panel_manager_render(void)
         ImGui::PopID();
     }
     naui_manage_destroyed_panels();
+}
+
+void naui_panel_set_menubar(MenubarFunction func)
+{
+	if(func == nullptr)
+		return;
+
+	menubar_render_func = func;
 }
 
 void naui_register_panel_layer(const char *layer, NauiPanelFn create, NauiPanelFn render, size_t data_size)
