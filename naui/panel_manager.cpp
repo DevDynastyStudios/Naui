@@ -126,7 +126,8 @@ NauiPanelInstance &naui_create_panel(const char *layer, const char *title)
     return result;
 }
 
-uint32_t naui_get_panel_count() {
+uint32_t naui_get_panel_count(void)
+{
     return panel_count;
 }
 
