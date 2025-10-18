@@ -15,6 +15,10 @@
     #define NAUI_MAX_PANELS (1 << 10)
 #endif
 
+#ifndef NAUI_DISABLE_DEFAULT_MENUBAR
+	#define NAUI_DISABLE_DEFAULT_MENUBAR 0
+#endif
+
 typedef uint32_t NauiPanelFlags;
 enum
 {
@@ -22,6 +26,8 @@ enum
     NauiPanelFlags_ClosedByDefault = 1 << 0,
     NauiPanelFlags_NoClose = 1 << 1
 };
+
+typedef void(*MenubarFunction)(void);
 
 typedef void (*NauiPanelFn)(struct NauiPanelInstance &panel);
 struct NauiPanelInstance
@@ -46,6 +52,7 @@ struct NauiPanelInstance
 NAUI_API void naui_panel_manager_initialize(void);
 NAUI_API void naui_panel_manager_shutdown(void);
 NAUI_API void naui_panel_manager_render(void);
+NAUI_API void naui_panel_set_menubar(MenubarFunction func);
 
 NAUI_API void naui_register_panel_layer(const char *layer, NauiPanelFn create = nullptr, NauiPanelFn render = nullptr, size_t data_size = 0);
 
