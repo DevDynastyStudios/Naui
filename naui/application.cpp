@@ -7,6 +7,7 @@
 #include "io/theme_loader.h"
 #include "io/asset_manager.h"
 #include "panel_manager.h"
+#include "util/defer.h"
 
 static void naui_render(void)
 {
@@ -50,7 +51,10 @@ void naui_app_run(void (*on_initialize)(void), void (*on_shutdown)(void), int32_
     on_initialize();
 
     while (is_running)
+	{
         naui_render();
+		naui_process_deferred();
+	}
 
     on_shutdown();
 
