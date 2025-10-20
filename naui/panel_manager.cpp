@@ -7,6 +7,8 @@
 #include <string>
 #include <cstring>
 
+#include "default_panels/menu_bar.h"
+
 struct NauiPanelLayerRegistry
 {
     size_t size;
@@ -24,44 +26,6 @@ static uint32_t destroyed_panel_count = 0;
 
 static NauiFreeList panel_data_pool;
 static MenubarFunction menubar_render_func;
-
-static void naui_render_menu_bar(void)
-{
-    if (ImGui::BeginMainMenuBar())
-    {
-        if (ImGui::BeginMenu("Files"))
-        {
-            if (ImGui::MenuItem("Exit"))
-				exit(0);
-
-            ImGui::EndMenu();
-        }
-
-		if(ImGui::BeginMenu("View"))
-		{
-			for(uint32_t i = 0; i < panel_count; ++i)
-			{
-				NauiPanelInstance& panel = panels[i];
-
-				if(ImGui::MenuItem(panel.title, nullptr, panel.is_open))
-				{
-					panel.is_open = !panel.is_open;
-				}
-			}
-
-			ImGui::EndMenu();
-		}
-
-		if(ImGui::BeginMenu("Layout"))
-		{
-
-			ImGui::EndMenu();
-		}
-
-    }
-
-    ImGui::EndMainMenuBar();
-}
 
 static void naui_manage_destroyed_panels(void)
 {
@@ -84,7 +48,7 @@ static void naui_manage_destroyed_panels(void)
 void naui_panel_manager_initialize(void)
 {
     naui_create_free_list(panel_data_pool, NAUI_MAX_PANEL_HEAP_SIZE);
-	menubar_render_func = naui_render_menu_bar;
+	menubar_render_func = naui_render_menu_bar_default;
 }
 
 void naui_panel_manager_shutdown(void)
@@ -103,15 +67,18 @@ void naui_panel_manager_render(void)
         NauiPanelInstance &panel = panels[i];
         if (!panel.is_open)
             continue;
+
         ImGui::PushID(panel.layer);
         ImGui::SetNextWindowSize(panel.default_size, ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSizeConstraints(panel.min_size, panel.max_size);
         bool *is_open = (panel.panel_flags & NauiPanelFlags_NoClose) ? nullptr : &panel.is_open;
         if (ImGui::Begin(panel.title, is_open, panel.window_flags) && panel.render)
             panel.render(panel);
+
         ImGui::End();
         ImGui::PopID();
     }
+
     naui_manage_destroyed_panels();
 }
 
@@ -125,7 +92,8 @@ void naui_panel_set_menubar(MenubarFunction func)
 
 void naui_register_panel_layer(const char *layer, NauiPanelFn create, NauiPanelFn render, size_t data_size)
 {
-    panel_layers[layer] = {
+    panel_layers[layer] = 
+	{
         .size = data_size,
         .create = create,
         .render = render
@@ -135,12 +103,14 @@ void naui_register_panel_layer(const char *layer, NauiPanelFn create, NauiPanelF
 NauiPanelInstance &naui_create_panel(const char *layer, const char *title)
 {
     const NauiPanelLayerRegistry &panel_layer = panel_layers[layer];
-    NauiPanelInstance panel = {
+    NauiPanelInstance panel = 
+	{
         .title = title,
         .layer = layer,
         .create = panel_layer.create,
         .render = panel_layer.render
     };
+
     if (panel_layer.size != 0)
     {
         panel.data = (void*)naui_free_list_alloc(panel_data_pool, panel_layer.size);
