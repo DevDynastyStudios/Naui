@@ -27,6 +27,7 @@ void naui_process_deferred()
 		callback.func(callback.args);
 	}
 
+	g_deffered_calls.clear();
 }
 
 void naui_flush_defer()

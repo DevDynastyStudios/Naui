@@ -6,6 +6,7 @@
 #include "io/theme_loader.h"
 #include "io/asset_manager.h"
 #include "panel_manager.h"
+#include "util/defer.h"
 
 static void (*app_on_initialize)(ImGuiID main_dock_id);
 
@@ -57,7 +58,10 @@ void naui_app_run(const NauiWindowProps &props, void (*on_initialize)(ImGuiID ma
     app_on_initialize = on_initialize;
 
     while (is_running)
+	{
         naui_render();
+		naui_process_deferred();
+	}
 
     on_shutdown();
 
