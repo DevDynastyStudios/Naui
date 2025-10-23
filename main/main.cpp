@@ -3,6 +3,9 @@
 #include <naui/io/asset_manager.h>
 #include <cstdio>
 
+#include <imgui_internal.h>
+static ImGuiID bottom_dock_id;
+
 struct TestPanelData
 {
     int counter = 0;
@@ -18,10 +21,12 @@ static void complex_panel_render(NauiPanelInstance &panel)
     if (ImGui::Button("Add2")) data->counter++;
 }
 
-void naui_app_initialize(void)
+void naui_app_initialize(ImGuiID main_dock_id)
 {
     naui_register_panel_layer("wizard",
-    [](NauiPanelInstance &panel) { panel.window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDecoration; },
+    [](NauiPanelInstance &panel) {
+        panel.window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDecoration;
+    },
     [](NauiPanelInstance &panel) {
         NauiImage &logo = naui_get_image("logo-large-white");
         ImGui::Image(logo, ImVec2(logo.width * 0.3f, logo.height * 0.3f));
@@ -68,8 +73,10 @@ void naui_app_shutdown(void)
 
 }
 
+static NauiWindowProps window_props{};
 NAUI_APP_DEFINE_ENTRY
 (
+    window_props,
     naui_app_initialize,
     naui_app_shutdown
 );

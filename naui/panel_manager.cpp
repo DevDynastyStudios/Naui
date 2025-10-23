@@ -69,6 +69,7 @@ void naui_panel_manager_render(void)
             continue;
 
         ImGui::PushID(panel.layer);
+        ImGui::SetNextWindowDockID(panel.dock_id, ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(panel.default_size, ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSizeConstraints(panel.min_size, panel.max_size);
         bool *is_open = (panel.panel_flags & NauiPanelFlags_NoClose) ? nullptr : &panel.is_open;

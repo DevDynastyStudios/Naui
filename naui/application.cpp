@@ -1,6 +1,5 @@
 #include "application.h"
 
-#include "platform/platform.h"
 #include "platform/event.h"
 #include "platform/event_types.h"
 
@@ -8,17 +7,25 @@
 #include "io/asset_manager.h"
 #include "panel_manager.h"
 
+static void (*app_on_initialize)(ImGuiID main_dock_id);
+
 static void naui_render(void)
 {
     naui_platform_begin();
     ImGui::NewFrame();
-    ImGui::DockSpaceOverViewport();
+    ImGuiID main_dock_id = ImGui::DockSpaceOverViewport();
+    static bool initialized = false;
+    if (!initialized)
+    {
+        app_on_initialize(main_dock_id);
+        initialized = true;
+    }
     naui_panel_manager_render();
     ImGui::Render();
     naui_platform_end();
 }
 
-void naui_app_run(void (*on_initialize)(void), void (*on_shutdown)(void), int32_t argc, char* const* argv)
+void naui_app_run(const NauiWindowProps &props, void (*on_initialize)(ImGuiID main_dock_id), void (*on_shutdown)(void), int32_t argc, char* const* argv)
 {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -34,7 +41,7 @@ void naui_app_run(void (*on_initialize)(void), void (*on_shutdown)(void), int32_
     style.GrabRounding = 2.0f;
 
     naui_load_theme_from_json("Themes/Default.json");
-    naui_platform_initialize();
+    naui_platform_initialize(props);
 
     ImFontConfig config;
     config.RasterizerMultiply = 2.0f;
@@ -47,7 +54,7 @@ void naui_app_run(void (*on_initialize)(void), void (*on_shutdown)(void), int32_
     naui_asset_manager_initialize();
     naui_panel_manager_initialize();
 
-    on_initialize();
+    app_on_initialize = on_initialize;
 
     while (is_running)
         naui_render();

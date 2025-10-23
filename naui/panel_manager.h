@@ -35,6 +35,8 @@ struct NauiPanelInstance
     NauiPanelFlags panel_flags = NauiPanelFlags_None;
     ImGuiWindowFlags window_flags = ImGuiWindowFlags_None;
 
+    ImGuiID dock_id = 0;
+
     ImVec2 default_size = ImVec2(300, 300);
     ImVec2 min_size = ImVec2(0, 0);
     ImVec2 max_size = ImVec2(FLT_MAX, FLT_MAX);
@@ -49,9 +51,9 @@ struct NauiPanelInstance
     NauiPanelFn render;
 };
 
-NAUI_API void naui_panel_manager_initialize(void);
-NAUI_API void naui_panel_manager_shutdown(void);
-NAUI_API void naui_panel_manager_render(void);
+void naui_panel_manager_initialize(void);
+void naui_panel_manager_shutdown(void);
+void naui_panel_manager_render(void);
 NAUI_API void naui_panel_set_menubar(MenubarFunction func);
 
 NAUI_API void naui_register_panel_layer(const char *layer, NauiPanelFn create = nullptr, NauiPanelFn render = nullptr, size_t data_size = 0);
