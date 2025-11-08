@@ -1,6 +1,7 @@
 #pragma once
 #include "../base.h"
 #include <tuple>
+#include <cstddef>
 
 typedef void (*NauiDeferFunction)(void* args);
 

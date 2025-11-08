@@ -34,6 +34,19 @@ project "Naui"
     defines { "NDEBUG", "NAUI_EXPORT", "IMGUI_BUILD_DLL" }
     optimize "On"
 
+	filter { "system:windows" }
+		removefiles {
+			"naui/vendor/imgui/imgui_impl_sdl2.*",
+			"naui/vendor/imgui/imgui_impl_opengl3.*"
+		}
+	filter { "system:linux" }
+		links { "SDL2", "GL" }
+		removefiles {
+			"naui/vendor/imgui/imgui_impl_win32.*",
+			"naui/vendor/imgui/imgui_impl_dx11.*"
+		}
+		includedirs { "/usr/include/SDL2" }
+
 project "Application"
     kind "ConsoleApp"
     language "C++"

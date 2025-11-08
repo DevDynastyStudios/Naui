@@ -3,6 +3,7 @@
 #include "base.h"
 
 #include <functional>
+#include <cstdint>
 
 typedef std::function<void(void *data)> NauiEvent;
 

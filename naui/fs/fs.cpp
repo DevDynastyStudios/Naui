@@ -90,8 +90,7 @@ NauiFile naui_fs_open(const std::filesystem::path& path, NauiFileMode mode)
         case NauiFileMode::Append: m = "ab"; break;
     }
 
-    FILE* f = nullptr;
-    fopen_s(&f, path.string().c_str(), m);
+    FILE* f = fopen(path.string().c_str(), m);
     return { f };
 }
 

@@ -2,6 +2,7 @@
 
 #include "../base.h"
 #include <filesystem>
+#include <vector>
 #include <cstdint>
 
 struct NauiArchive;

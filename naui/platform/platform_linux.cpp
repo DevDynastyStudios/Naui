@@ -1,6 +1,6 @@
 #include "platform.h"
 
-#if naui_PLATFORM_LINUX
+#if NAUI_PLATFORM_LINUX
 
 // NOTE(smoke): using SDL2 for this since
 // ImGui doesn't have an Xlib (or xcb) backend...
@@ -25,6 +25,8 @@
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_opengl3.h>
 
+#include <stb_image.h>
+
 // NOTE(smoke): no need for GLAD, ImGui comes with
 // it's own opengl loader (imgui_impl_opengl3_loader.h)
 
@@ -39,9 +41,9 @@ NauiSdl2Platform;
 
 static NauiSdl2Platform *platform;
 
-void naui_platform_initialize(const NauiPlatformCreateInfo *create_info)
+void naui_platform_initialize(const NauiWindowProps &props)
 {
-    platform = (NauiSdl2Platform*)malloc(sizeof(*platform));
+	platform = new NauiSdl2Platform;
     
     assert(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) == 0 && "SDL2_Init failed");
     
@@ -59,10 +61,10 @@ void naui_platform_initialize(const NauiPlatformCreateInfo *create_info)
     
     float main_scale = ImGui_ImplSDL2_GetContentScaleForDisplay(0);
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-    platform->window = SDL_CreateWindow(create_info->title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, (int)(create_info->width * main_scale), (int)(create_info->height * main_scale), window_flags);
+    platform->window = SDL_CreateWindow(props.title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, (int)(props.width * main_scale), (int)(props.height * main_scale), window_flags);
     assert(window && "SDL_CreateWindow failed");
-    platform->window_width = create_info->width;
-    platform->window_height = create_info->height;
+    platform->window_width = props.width;
+    platform->window_height = props.height;
     
     platform->gl_context = SDL_GL_CreateContext(platform->window);
     assert(platform->gl_context && "SDL_GL_CreateContext failed");
@@ -75,6 +77,7 @@ void naui_platform_initialize(const NauiPlatformCreateInfo *create_info)
 
 void naui_platform_shutdown(void)
 {
+	ImGui::DestroyPlatformWindows();
     ImGui_ImplSDL2_Shutdown();
     ImGui_ImplOpenGL3_Shutdown();
     
@@ -82,7 +85,7 @@ void naui_platform_shutdown(void)
     SDL_DestroyWindow(platform->window);
     SDL_Quit();
     
-    free(platform);
+	delete platform;
 }
 
 void naui_platform_begin(void)
@@ -132,6 +135,9 @@ void naui_platform_begin(void)
 
 void naui_platform_end(void)
 {
+    ImGui::UpdatePlatformWindows();
+    ImGui::RenderPlatformWindowsDefault();
+
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     
@@ -139,7 +145,7 @@ void naui_platform_end(void)
 }
 
 // TODO(smoke): implement child windows
-NauiChildWindow naui_create_child_window(const NauiChildWindowCreateInfo *create_info)
+NauiChildWindow naui_create_child_window(const NauiWindowProps &props)
 {
 }
 
@@ -155,6 +161,36 @@ NauiLibrary naui_load_library(const char *path)
 NauiProcAddress naui_get_proc_address(NauiLibrary library, const char *name)
 {
     return (NauiProcAddress)dlsym((void*)library, name);
+}
+
+NauiImage naui_create_image(const char *path)
+{
+    int width, height, channels;
+    unsigned char* image_data = stbi_load(path, &width, &height, &channels, 0);
+    if (!image_data)
+    {
+        fprintf(stderr, "[Naui] Failed to load image!\n");
+        return{};
+    }
+
+	uint32_t gl_id;
+	glGenTextures(1, &gl_id);
+	glBindTexture(GL_TEXTURE_2D, gl_id);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_data);
+
+    stbi_image_free(image_data);
+
+    NauiImage image;
+    image.width = width;
+    image.height = height;
+	image.internal.gl_id = gl_id;
+
+    return image;
+}
+
+void naui_destroy_image(const NauiImage *image)
+{
+	glDeleteTextures(1, &image->internal.gl_id);
 }
 
 #endif
