@@ -5,6 +5,8 @@
 *.lib
 *.dll
 *.exp
+*.make
 bin/Release/*.exe
 .vscode/
 obj/
+Makefile

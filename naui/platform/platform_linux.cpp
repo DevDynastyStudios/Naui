@@ -176,6 +176,8 @@ NauiImage naui_create_image(const char *path)
 	uint32_t gl_id;
 	glGenTextures(1, &gl_id);
 	glBindTexture(GL_TEXTURE_2D, gl_id);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_data);
 
     stbi_image_free(image_data);
