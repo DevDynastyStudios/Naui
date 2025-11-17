@@ -71,3 +71,6 @@ NAUI_API std::filesystem::path naui_save_file_dialog(const wchar_t* filter, cons
 
 NAUI_API NauiImage naui_create_image(const char *path);
 NAUI_API void naui_destroy_image(const NauiImage *image);
+
+const char* naui_get_executable_path(void);
+const char* naui_get_working_directory(void);

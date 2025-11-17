@@ -322,4 +322,29 @@ std::filesystem::path naui_save_file_dialog(const wchar_t* /*filter*/, const wch
     }
     return {};
 }
+
+const char* naui_get_executable_path(void)
+{
+    static char path[_MAX_PATH];
+    uint32_t size = sizeof(path);
+
+    if (_NSGetExecutablePath(path, &size) != 0)
+        return "";
+
+    size_t safe_len = strnlen_s(path, sizeof(path));
+    path[safe_len] = '\0';
+    return path;
+}
+
+const char* naui_get_working_directory(void)
+{
+    static char cwd[_MAX_PATH];
+    if (!getcwd(cwd, sizeof(cwd)))
+        return "";
+
+    size_t safe_len = strnlen_s(cwd, sizeof(cwd));
+    cwd[safe_len] = '\0';
+    return cwd;
+}
+
 #endif

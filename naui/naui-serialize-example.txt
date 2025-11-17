@@ -1,0 +1,69 @@
+================================================================================================
+Creating an archive from a folder:
+================================================================================================
+NauiZipOptions zopt = {0};
+zopt.compression_level = 6;
+
+char zip_path[1024];
+naui_fs_set_ext("C:/Projects/Uphonic/MySong", "zip", zip_path, sizeof(zip_path));
+
+NauiResult r = naui_zip_create_from_folder("C:/Projects/Uphonic/MySong", zip_path, &zopt);
+if (r.code != NAUI_OK) { /* handle */ }
+
+char archive_path[1024];
+naui_fs_set_ext(zip_path, "naui", archive_path, sizeof(archive_path));
+r = naui_fs_move(zip_path, archive_path, /*overwrite=*/1);
+================================================================================================
+
+
+================================================================================================
+Save and load panel layout JSON
+================================================================================================
+NauiPanelLayout layout = {};
+layout.panel_count = 2;
+layout.panels = (decltype(layout.panels))malloc(sizeof(*layout.panels) * layout.panel_count);
+layout.panels[0] = {1, 0, 0, 300, 400, 1, 1};
+layout.panels[1] = {2, 300, 0, 300, 400, 2, 1};
+
+NauiResult r = naui_layout_save_json("C:/Config/panel_layout.json", &layout);
+
+NauiPanelLayout loaded = {};
+r = naui_layout_load_json("C:/Config/panel_layout.json", &loaded);
+naui_layout_free(&loaded);
+free(layout.panels);
+================================================================================================
+
+
+================================================================================================
+Persist window state
+================================================================================================
+NauiWindowState ws = {100, 100, 1280, 800, 0, 0, 100, 0};
+NauiResult r = naui_windowstate_save("C:/Config/window.json", &ws);
+
+// Later...
+NauiWindowState ws2 = {};
+r = naui_windowstate_load("C:/Config/window.json", &ws2);
+// Apply via platform layer set-window-rect/maximize/fullscreen
+================================================================================================
+
+
+================================================================================================
+Open OS dialogs via platform layer
+================================================================================================
+NauiOpenFileParams p = {};
+p.title = "Open Project";
+p.filter = "Naui Project (*.naui)|*.naui;*.zip|All Files (*.*)|*.*";
+p.allow_multiple = 0;
+p.default_dir = "C:/Projects";
+
+NauiSelectedPaths sel = {};
+NauiResult r = naui_platform_open_file_dialog(&p, &sel);
+if (r.code == NAUI_OK && sel.count > 0) {
+    // sel.paths[0] is your file
+}
+naui_platform_free_selected_paths(&sel);
+
+NauiOpenFolderParams pf = { "Select Project Folder", "C:/Projects", 1 };
+r = naui_platform_open_folder_dialog(&pf, &sel);
+naui_platform_free_selected_paths(&sel);
+================================================================================================

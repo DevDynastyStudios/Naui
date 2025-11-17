@@ -1,6 +1,10 @@
 #include "fs.h"
+#include "../base.h"
+#include "../platform/platform.h"
 #include <fstream>
 #include <cstdio>
+
+#define MAX_PATH 260
 
 std::string to_lower(std::string_view str)
 {
@@ -39,21 +43,6 @@ bool matches_extension(const std::filesystem::path& path, const std::vector<std:
     return false;
 }
 
-bool naui_fs_exists(const std::filesystem::path& path)
-{
-    return std::filesystem::exists(path);
-}
-
-bool naui_fs_is_directory(const std::filesystem::path& path)
-{
-    return std::filesystem::is_directory(path);
-}
-
-bool naui_fs_create_directory(const std::filesystem::path& path)
-{
-    return std::filesystem::create_directories(path);
-}
-
 std::vector<std::filesystem::directory_entry> naui_fs_filter(const std::filesystem::path& path, std::string_view name_filter, const std::vector<std::string_view>& allowed_extensions)
 {
     std::vector<std::filesystem::directory_entry> results;
@@ -90,7 +79,8 @@ NauiFile naui_fs_open(const std::filesystem::path& path, NauiFileMode mode)
         case NauiFileMode::Append: m = "ab"; break;
     }
 
-    FILE* f = fopen(path.string().c_str(), m);
+    FILE* f = nullptr;
+    fopen_s(&f, path.string().c_str(), m);
     return { f };
 }
 
@@ -168,4 +158,99 @@ bool naui_fs_write_text(const std::filesystem::path& path, const std::string& te
 
     ofs.write(text.data(), text.size());
     return true;
+}
+
+static char g_bin_directory[_MAX_PATH] = {0};
+static char g_workspace_path[_MAX_PATH] = {0};
+
+// Using C code to prevent rewriting in future
+void naui_fs_normalize_path(char* path)
+{
+	if(!path)
+		return;
+
+	for(char* p = path; *p; ++p)
+	{
+		if(*p == '\\')
+			*p = '/';
+	}
+}
+
+const char* naui_path_get_parent(const char* path)
+{
+    static char parent[_MAX_PATH];
+
+    if (!path || !*path)
+        return "";
+
+    strncpy_s(parent, sizeof(parent), path, _TRUNCATE);
+
+    char* last_slash = strrchr(parent, '/');
+#if defined(NAUI_PLATFORM_WINDOWS)
+    char* last_backslash = strrchr(parent, '\\');
+    if (last_backslash && (!last_slash || last_backslash > last_slash))
+        last_slash = last_backslash;
+#endif
+
+    if (last_slash)
+        *last_slash = '\0';
+
+    return parent;
+}
+
+const char* naui_fs_get_executable_path()
+{
+	return naui_get_executable_path();
+}
+
+const char* naui_fs_get_working_path()
+{
+	return naui_get_working_directory();
+}
+
+const char* naui_fs_get_home_directory(void)
+{
+    static char home[MAX_PATH];
+	char* env = NULL;
+    size_t len = 0;
+    if (_dupenv_s(&env, &len, "USERPROFILE") != 0 || !env)
+        _dupenv_s(&env, &len, "HOMEPATH");
+
+    if (!env)
+        return "";
+
+    strncpy_s(home, sizeof(home), env, _TRUNCATE);
+    size_t safe_len = strnlen_s(home, MAX_PATH);
+    home[safe_len] = '\0';
+    return home;
+}
+
+const char* naui_fs_get_bin_directory()
+{
+    const char* exe_path = naui_get_executable_path();
+    return naui_path_get_parent(exe_path);
+}
+
+const char* naui_get_workspace_path()
+{
+	if(g_workspace_path[0] == '\0')
+	{
+		strcpy_s(g_workspace_path, naui_get_working_directory());
+		g_workspace_path[sizeof(g_workspace_path) - 1] = '\0';
+	}
+
+	return g_workspace_path;
+}
+
+void set_workspace_path(const char* path)
+{
+	if(!path || !*path)
+	{
+		g_workspace_path[0] = '\0';
+		return;
+	}
+
+	strcpy_s(g_workspace_path, path);
+	g_workspace_path[sizeof(g_workspace_path) - 1] = '\0';
+	naui_fs_normalize_path(g_workspace_path);
 }

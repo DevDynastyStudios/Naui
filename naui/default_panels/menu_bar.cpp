@@ -30,8 +30,7 @@ static void naui_menu_bar_popup()
 	    ImGui::InputText("Layout Name", new_layout_name, IM_ARRAYSIZE(new_layout_name));
         if (ImGui::IsKeyPressed(ImGuiKey_Enter)) 
 		{
-            std::string filename = std::string(LAYOUT_FOLDER_PATH) + new_layout_name + INI_EXTENSION;
-            naui_save_layout(filename.c_str());
+			naui_save_layout(new_layout_name);
             ImGui::CloseCurrentPopup();
         }
 
@@ -42,8 +41,7 @@ static void naui_menu_bar_popup()
 
 	    if (ImGui::Button("Save")) 
 		{
-	        std::string filename = std::string(LAYOUT_FOLDER_PATH) + new_layout_name + INI_EXTENSION;
-	        naui_save_layout(filename.c_str());
+			naui_save_layout(new_layout_name);
 	        ImGui::CloseCurrentPopup();
 	    }
 	    ImGui::SameLine();
@@ -58,8 +56,7 @@ static void naui_menu_bar_popup()
 
 static void naui_menu_bar_layouts_menu()
 {
-	std::filesystem::path layoutPath = "";
-	std::vector<std::string> layouts = naui_layout_list(layoutPath);
+	std::vector<std::string> layouts = naui_layout_list();
 
     for (auto& layout : layouts)
     {
@@ -67,8 +64,7 @@ static void naui_menu_bar_layouts_menu()
         if (ImGui::MenuItem(layout.c_str(), nullptr, selected))
         {
             current_layout = layout;
-			//Defer layout load here
-            //uph_layout_request_load(("layouts/" + layout).c_str());
+			naui_load_layout_deferred(layout);
         }
     }
 
@@ -85,12 +81,12 @@ static void naui_menu_bar_layouts_menu()
     {
     	if (!initialized)
     	{
-    	    std::vector<std::string> all_layouts = naui_layout_list(LAYOUT_FOLDER_PATH);
+			std::vector<std::string> all_layouts = naui_layout_list();
 
     	    for (const std::string& full_path : all_layouts)
     	    {
-    	        NauiIniData data;
-    	        if (!naui_read_ini(full_path, data))
+    	        NauiIni data;
+    	        if (!naui_ini_read(full_path, data))
     	            continue;
 
     	        if (naui_layout_is_immutable(&data))
@@ -105,11 +101,9 @@ static void naui_menu_bar_layouts_menu()
 
     	for (const std::string& layout : deletable_layouts)
     	{
-    	    std::string full_path = (std::filesystem::path(LAYOUT_FOLDER_PATH) / layout).string();
-
-    	    if (ImGui::MenuItem(layout.c_str()))
+			if (ImGui::MenuItem(layout.c_str()))
     	    {
-    	        naui_delete_layout(full_path.c_str());
+				naui_delete_layout(layout);
 
     	        if (current_layout == layout)
     	            current_layout = "Layout";
@@ -135,6 +129,7 @@ void naui_render_menu_bar_default()
 
 		if(ImGui::BeginMenu("View"))
 		{
+			
 			for(uint32_t i = 0; i < naui_get_panel_count(); ++i)
 			{
 				NauiPanelInstance& panel = naui_get_panel(i);

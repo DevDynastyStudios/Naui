@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <cstring>
+#include <stdexcept>
 
 #include "default_panels/menu_bar.h"
 
@@ -132,9 +133,13 @@ uint32_t naui_get_panel_count(void)
     return panel_count;
 }
 
+static constexpr const char panel_index_error[] = "Panel index out of range";
 NauiPanelInstance& naui_get_panel(uint32_t index) 
 {
-    assert(index < panel_count && "Panel index out of range");
+    assert(index < panel_count && panel_index_error);
+	if(index >= panel_count)
+		throw std::out_of_range(panel_index_error);
+
     return panels[index];
 }
 

@@ -195,4 +195,28 @@ void naui_destroy_image(const NauiImage *image)
 	glDeleteTextures(1, &image->internal.gl_id);
 }
 
+const char* naui_get_executable_path(void)
+{
+    static char path[_MAX_PATH];
+    ssize_t len = readlink("/proc/self/exe", path, sizeof(path) - 1);
+    if (len == -1)
+        return "";
+
+    path[len] = '\0';
+    size_t safe_len = strnlen_s(path, sizeof(path));
+    path[safe_len] = '\0';
+    return path;
+}
+
+const char* naui_get_working_directory(void)
+{
+    static char cwd[_MAX_PATH];
+    if (!getcwd(cwd, sizeof(cwd)))
+        return "";
+
+    size_t safe_len = strnlen_s(cwd, sizeof(cwd));
+    cwd[safe_len] = '\0';
+    return cwd;
+}
+
 #endif
