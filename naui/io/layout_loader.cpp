@@ -11,12 +11,12 @@
 #include <string>
 
 namespace fs = std::filesystem;
-
 static NauiIni current_layout;
+std::vector<NauiLayoutInfo> layout_cache;
 
 fs::path naui_get_layout_path()
 {
-    fs::path bin_dir = naui_fs_get_bin_directory(); // assume returns std::string or fs::path-compatible
+    fs::path bin_dir = naui_fs_get_bin_directory();
     fs::path layouts_dir = bin_dir / LAYOUT_FOLDER_PATH;
 
     if (!fs::exists(layouts_dir)) {
@@ -27,7 +27,7 @@ fs::path naui_get_layout_path()
         }
     }
 
-    return layouts_dir;
+	return layouts_dir;
 }
 
 void naui_save_layout_deferred(std::string filename)
@@ -46,7 +46,7 @@ bool naui_save_layout(std::string filename)
 	if (file_path.extension() != INI_EXTENSION)
     	file_path.replace_extension(INI_EXTENSION);
 
-	std::cout << "Saving layout to: " << file_path << "\n";
+	std::cout << "Saving layout: " << file_path << "\n";
     ImGui::SaveIniSettingsToDisk(file_path.string().c_str());
 	NauiIni data;
     if (!naui_ini_read(file_path.string().c_str(), data))
@@ -64,13 +64,14 @@ bool naui_save_layout(std::string filename)
         // data[section]["MaxSize"]     = std::to_string((int)panel.max_size.x) + "," + std::to_string((int)panel.max_size.y);
     }
 
-    return naui_ini_write(file_path.string().c_str(), data);
+	bool result = naui_ini_write(file_path.string().c_str(), data);
+	naui_layout_refresh_cache();
+    return result;
 }
 
 std::optional<NauiIni> naui_load_layout(std::string filename)
 {
-	std::cout << filename << "\n";
-    fs::path file_path = naui_get_layout_path() / filename;
+    fs::path file_path = naui_get_layout_path() / (filename + INI_EXTENSION);
     NauiIni data;
     if (!naui_ini_read(file_path.string().c_str(), data))
         return std::nullopt;
@@ -94,6 +95,7 @@ std::optional<NauiIni> naui_load_layout(std::string filename)
     //     }
     // }
 
+	std::cout << "Loaded layout: " << file_path << "\n";
     current_layout = data;
     return data;
 }
@@ -101,7 +103,7 @@ std::optional<NauiIni> naui_load_layout(std::string filename)
 bool naui_delete_layout(std::string filename)
 {
 	fs::path dir = naui_get_layout_path();
-    const auto& files = naui_fs_filter(dir.string().c_str(), filename, { INI_EXTENSION });
+    const std::vector<fs::directory_entry>& files = naui_fs_filter(dir.string().c_str(), filename, { INI_EXTENSION });
 
     if (files.empty())
         return false;
@@ -117,6 +119,8 @@ bool naui_delete_layout(std::string filename)
     if (ec)
         return false;
 
+	std::cout << "Deleted layout: " << path << "\n";
+	naui_layout_refresh_cache();
     return removed;
 }
 
@@ -138,12 +142,14 @@ bool naui_layout_is_immutable(const NauiIni* data)
 	return naui_ini_has_section(*src, IMMUTABLE);
 }
 
-std::vector<std::string> naui_layout_list()
+// Returns the path of all files in the layout directory
+std::vector<fs::path> naui_layout_paths()
 {
-	std::vector<std::string> layouts;
-	fs::path layout_dir = naui_get_layout_path();
-	if (!fs::exists(layout_dir))
-    	return layouts;
+    std::vector<fs::path> layouts;
+    fs::path layout_dir = naui_get_layout_path();
+
+    if (!fs::exists(layout_dir))
+        return layouts;
 
     std::vector<fs::directory_entry> entries =
         naui_fs_filter(layout_dir.string().c_str(), "", { INI_EXTENSION });
@@ -153,8 +159,47 @@ std::vector<std::string> naui_layout_list()
         if (!entry.is_regular_file())
             continue;
 
-        layouts.push_back(entry.path().filename().string());
+        layouts.push_back(entry.path());
     }
 
     return layouts;
+}
+
+// Returns the path as a string of all files in the layout directory
+std::vector<std::string> naui_layout_paths_str()
+{
+    std::vector<std::string> result;
+    std::vector<fs::path> paths = naui_layout_paths();
+
+    for (const fs::path& p : paths)
+        result.push_back(p.string());
+
+    return result;
+}
+
+// Takes a path and returns the file name at the end
+std::string naui_layout_filename(const std::string& full_path)
+{
+    return fs::path(full_path).filename().stem().string();
+}
+
+// Refreshes the cached std::vector<LayoutInfo> layout_cache
+void naui_layout_refresh_cache()
+{
+    layout_cache.clear();
+    std::vector<fs::path> paths = naui_layout_paths();
+
+    for (const fs::path& p : paths)
+    {
+        NauiIni data;
+        bool immutable = false;
+        if (naui_ini_read(p, data))
+            immutable = naui_layout_is_immutable(&data);
+
+        layout_cache.push_back({
+            .filename = p.filename().stem().string(),
+            .file_path = p,
+            .immutable = immutable
+        });
+    }
 }

@@ -31,8 +31,14 @@ NauiIniNode naui_ini_get_key_pair(const NauiIniSection& section, std::string key
 
 bool naui_ini_has_section(const NauiIni& data, const std::string& section) 
 {
-	NauiIniSection result = naui_ini_get_section(data, section);
-	return !result.is_comment() || !result.is_empty();
+    NauiIniSection result = naui_ini_get_section(data, section);
+    if (result.name.empty())
+        return false;
+		
+    if (result.is_comment())
+        return false;
+
+    return true;
 }
 
 bool naui_ini_has_key(const NauiIniSection& section, const std::string& key) 
@@ -397,7 +403,7 @@ bool naui_ini_read(const std::filesystem::path& filename, NauiIni& data) {
         NauiIniNode* node;
         std::size_t indent;
     };
-	
+
     std::vector<Frame> stack;
     std::string line;
     while (std::getline(in, line)) {

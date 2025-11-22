@@ -1,5 +1,7 @@
 #include "menu_bar.h"
 #include "../io/layout_loader.h"
+#include "../util/defer.h"
+
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -56,17 +58,16 @@ static void naui_menu_bar_popup()
 
 static void naui_menu_bar_layouts_menu()
 {
-	std::vector<std::string> layouts = naui_layout_list();
-
-    for (auto& layout : layouts)
-    {
-        bool selected = (layout == current_layout);
-        if (ImGui::MenuItem(layout.c_str(), nullptr, selected))
-        {
-            current_layout = layout;
-			naui_load_layout_deferred(layout);
-        }
-    }
+	for(const NauiLayoutInfo& info : layout_cache)
+	{
+		bool selected = (info.filename == current_layout);
+		if(ImGui::MenuItem(info.filename.c_str(), nullptr, selected))
+		{
+			current_layout = info.filename;
+			naui_load_layout_deferred(info.filename);
+		}
+		
+	}
 
     ImGui::Separator();
 
@@ -77,42 +78,23 @@ static void naui_menu_bar_layouts_menu()
         popup_focus_request = true;
     }
 
-    if (ImGui::BeginMenu("Delete Layout", layouts.size() > 0))
-    {
-    	if (!initialized)
-    	{
-			std::vector<std::string> all_layouts = naui_layout_list();
+	if (ImGui::BeginMenu("Delete Layout", !layout_cache.empty()))
+	{
+	    for (const NauiLayoutInfo& info : layout_cache)
+	    {
+			if(info.immutable)
+				continue;
 
-    	    for (const std::string& full_path : all_layouts)
-    	    {
-    	        NauiIni data;
-    	        if (!naui_ini_read(full_path, data))
-    	            continue;
-
-    	        if (naui_layout_is_immutable(&data))
-    	            continue;
-
-    	        // Store just the filename for display
-    	        deletable_layouts.push_back(std::filesystem::path(full_path).filename().string());
-    	    }
-
-    	    initialized = true;
-    	}
-
-    	for (const std::string& layout : deletable_layouts)
-    	{
-			if (ImGui::MenuItem(layout.c_str()))
-    	    {
-				naui_delete_layout(layout);
-
-    	        if (current_layout == layout)
-    	            current_layout = "Layout";
-    	    }
-    	}
-
-    	ImGui::EndMenu();
-    } else
-		initialized = false;
+			if (ImGui::MenuItem(info.filename.c_str()))
+	        {
+	            naui_delete_layout(info.filename);
+	            if (current_layout == info.filename)
+	                current_layout = "Layout";
+	        }
+	    }
+		
+	    ImGui::EndMenu();
+	}
 }
 
 void naui_render_menu_bar_default()

@@ -5,6 +5,7 @@
 
 #include "io/theme_loader.h"
 #include "io/asset_manager.h"
+#include "io/layout_loader.h"
 #include "panel_manager.h"
 #include "util/defer.h"
 
@@ -54,6 +55,9 @@ void naui_app_run(const NauiWindowProps &props, void (*on_initialize)(ImGuiID ma
 
     naui_asset_manager_initialize();
     naui_panel_manager_initialize();
+	
+	naui_load_layout("Default");
+	naui_layout_refresh_cache();
 
     app_on_initialize = on_initialize;
 

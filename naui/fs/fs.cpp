@@ -43,6 +43,13 @@ bool matches_extension(const std::filesystem::path& path, const std::vector<std:
     return false;
 }
 
+void naui_fs_remove_extension(std::string& filename)
+{
+	size_t dotPos = filename.find_last_of('.');
+    if (dotPos != std::string::npos)
+        filename = filename.substr(0, dotPos);
+}
+
 std::vector<std::filesystem::directory_entry> naui_fs_filter(const std::filesystem::path& path, std::string_view name_filter, const std::vector<std::string_view>& allowed_extensions)
 {
     std::vector<std::filesystem::directory_entry> results;
@@ -50,20 +57,26 @@ std::vector<std::filesystem::directory_entry> naui_fs_filter(const std::filesyst
     if (!std::filesystem::exists(path))
         return results;
 
+    // Normalize the name filter: strip right-most extension if present
+    std::string filter_base{name_filter};
+    size_t dotPos = filter_base.find_last_of('.');
+    if (dotPos != std::string::npos)
+        filter_base = filter_base.substr(0, dotPos);
+
     for (const auto& entry : std::filesystem::directory_iterator(path))
     {
         if (!entry.is_regular_file())
             continue;
 
-        const auto& filename = entry.path().stem().string();
-
-        if (!contains_filter(filename, name_filter))
+        std::string filename = entry.path().stem().string();
+        if (!filter_base.empty() && filename != filter_base)
             continue;
 
         if (!matches_extension(entry.path(), allowed_extensions))
             continue;
 
         results.push_back(entry);
+
     }
 
     return results;
@@ -163,7 +176,6 @@ bool naui_fs_write_text(const std::filesystem::path& path, const std::string& te
 static char g_bin_directory[_MAX_PATH] = {0};
 static char g_workspace_path[_MAX_PATH] = {0};
 
-// Using C code to prevent rewriting in future
 void naui_fs_normalize_path(char* path)
 {
 	if(!path)
@@ -174,6 +186,16 @@ void naui_fs_normalize_path(char* path)
 		if(*p == '\\')
 			*p = '/';
 	}
+}
+
+std::string naui_fs_normalize_path(const std::filesystem::path& path)
+{
+    std::string s = path.string();
+    for (char& c : s) {
+        if (c == '\\') c = '/';
+    }
+
+    return s;
 }
 
 const char* naui_path_get_parent(const char* path)
