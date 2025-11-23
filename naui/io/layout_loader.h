@@ -21,11 +21,13 @@ struct NauiLayoutInfo
 NAUI_API extern std::vector<NauiLayoutInfo> layout_cache;
 NAUI_API std::filesystem::path naui_get_layout_path();
 
-NAUI_API void naui_save_layout_deferred(std::string filename);
-NAUI_API void naui_load_layout_deferred(std::string filename);
-NAUI_API bool naui_save_layout(std::string filename);
-NAUI_API std::optional<NauiIni> naui_load_layout(std::string filename);
-NAUI_API bool naui_delete_layout(std::string filename);
+NAUI_API void naui_layout_save_deferred(const std::string& filename);
+NAUI_API void naui_layout_load_deferred(const std::string& filename);
+NAUI_API bool naui_layout_save(const std::string& filename);
+NAUI_API bool naui_layout_save(const std::string& filename, NauiIni& data);
+NAUI_API std::optional<NauiIni> naui_layout_load(const std::string& filename);
+NAUI_API std::optional<NauiIni> naui_layout_load(const std::string& filename, NauiIni& data);
+NAUI_API bool naui_layout_delete(const std::string& filename);
 
 NAUI_API bool naui_layout_has_section(const char* section, const char* key = nullptr, const NauiIni* data = nullptr);
 NAUI_API bool naui_layout_is_immutable(const NauiIni* data = nullptr);

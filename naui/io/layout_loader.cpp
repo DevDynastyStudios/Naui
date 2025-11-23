@@ -30,17 +30,23 @@ fs::path naui_get_layout_path()
 	return layouts_dir;
 }
 
-void naui_save_layout_deferred(std::string filename)
+void naui_layout_save_deferred(const std::string& filename)
 {
-	naui_defer(naui_save_layout, filename);
+    naui_defer([&](const std::string& f){ naui_layout_save(f); }, filename);
 }
 
-void naui_load_layout_deferred(std::string filename)
+void naui_layout_load_deferred(const std::string& filename)
 {
-	naui_defer(naui_load_layout, filename);
+    naui_defer([&](const std::string& f){ naui_layout_load(f); }, filename);
 }
 
-bool naui_save_layout(std::string filename)
+bool naui_layout_save(const std::string& filename)
+{
+	NauiIni data;
+	return naui_layout_save(filename, data);
+}
+
+bool naui_layout_save(const std::string& filename, NauiIni& data)
 {
     fs::path file_path = naui_get_layout_path() / filename;
 	if (file_path.extension() != INI_EXTENSION)
@@ -48,7 +54,7 @@ bool naui_save_layout(std::string filename)
 
 	std::cout << "Saving layout: " << file_path << "\n";
     ImGui::SaveIniSettingsToDisk(file_path.string().c_str());
-	NauiIni data;
+
     if (!naui_ini_read(file_path.string().c_str(), data))
         return false;
 
@@ -57,11 +63,6 @@ bool naui_save_layout(std::string filename)
         NauiPanelInstance& panel = naui_get_panel(i);
         if (!panel.is_open)
             continue;
-
-		// std::string section = std::string("Window][") + panel.title;
-	    // data[section]["DefaultSize"] = std::to_string((int)panel.default_size.x) + "," + std::to_string((int)panel.default_size.y);
-        // data[section]["MinSize"]     = std::to_string((int)panel.min_size.x) + "," + std::to_string((int)panel.min_size.y);
-        // data[section]["MaxSize"]     = std::to_string((int)panel.max_size.x) + "," + std::to_string((int)panel.max_size.y);
     }
 
 	bool result = naui_ini_write(file_path.string().c_str(), data);
@@ -69,38 +70,27 @@ bool naui_save_layout(std::string filename)
     return result;
 }
 
-std::optional<NauiIni> naui_load_layout(std::string filename)
+std::optional<NauiIni> naui_layout_load(const std::string& filename)
+{
+	NauiIni data;
+	return naui_layout_load(filename, data);
+}
+
+std::optional<NauiIni> naui_layout_load(const std::string& filename, NauiIni& data)
 {
     fs::path file_path = naui_get_layout_path() / (filename + INI_EXTENSION);
-    NauiIni data;
+
     if (!naui_ini_read(file_path.string().c_str(), data))
         return std::nullopt;
 
 	ImGui::LoadIniSettingsFromDisk(file_path.string().c_str());
-    // for (auto& [section, kv] : data)
-    // {
-    //     if (section.rfind("Window][", 0) == 0)
-    //     {
-    //         std::string title = section.substr(8);
-    //         NauiPanelInstance& panel = naui_create_panel(title.c_str(), title.c_str());
-    //         auto defSize = naui_ini_get_int_array(data, section, "DefaultSize");
-    //         if (defSize.size() == 2)
-    //             panel.default_size = ImVec2((float)defSize[0], (float)defSize[1]);
-    //         auto minSize = naui_ini_get_int_array(data, section, "MinSize");
-    //         if (minSize.size() == 2)
-    //             panel.min_size = ImVec2((float)minSize[0], (float)minSize[1]);
-    //         auto maxSize = naui_ini_get_int_array(data, section, "MaxSize");
-    //         if (maxSize.size() == 2)
-    //             panel.max_size = ImVec2((float)maxSize[0], (float)maxSize[1]);
-    //     }
-    // }
 
 	std::cout << "Loaded layout: " << file_path << "\n";
     current_layout = data;
     return data;
 }
 
-bool naui_delete_layout(std::string filename)
+bool naui_layout_delete(const std::string& filename)
 {
 	fs::path dir = naui_get_layout_path();
     const std::vector<fs::directory_entry>& files = naui_fs_filter(dir.string().c_str(), filename, { INI_EXTENSION });

@@ -32,7 +32,7 @@ static void naui_menu_bar_popup()
 	    ImGui::InputText("Layout Name", new_layout_name, IM_ARRAYSIZE(new_layout_name));
         if (ImGui::IsKeyPressed(ImGuiKey_Enter)) 
 		{
-			naui_save_layout(new_layout_name);
+			naui_layout_save(new_layout_name);
             ImGui::CloseCurrentPopup();
         }
 
@@ -43,7 +43,7 @@ static void naui_menu_bar_popup()
 
 	    if (ImGui::Button("Save")) 
 		{
-			naui_save_layout(new_layout_name);
+			naui_layout_save(new_layout_name);
 	        ImGui::CloseCurrentPopup();
 	    }
 	    ImGui::SameLine();
@@ -64,7 +64,7 @@ static void naui_menu_bar_layouts_menu()
 		if(ImGui::MenuItem(info.filename.c_str(), nullptr, selected))
 		{
 			current_layout = info.filename;
-			naui_load_layout_deferred(info.filename);
+			naui_layout_load_deferred(info.filename);
 		}
 		
 	}
@@ -87,7 +87,7 @@ static void naui_menu_bar_layouts_menu()
 
 			if (ImGui::MenuItem(info.filename.c_str()))
 	        {
-	            naui_delete_layout(info.filename);
+	            naui_layout_delete(info.filename);
 	            if (current_layout == info.filename)
 	                current_layout = "Layout";
 	        }
