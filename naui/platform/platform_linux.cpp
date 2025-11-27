@@ -17,6 +17,9 @@
 #include <cstdint>
 #include <time.h>
 #include <dlfcn.h>
+#include <unistd.h>
+#include <limits.h>
+#include <string.h> 
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
@@ -183,8 +186,8 @@ NauiImage naui_create_image(const char *path)
     stbi_image_free(image_data);
 
     NauiImage image;
-    image.width = width;
-    image.height = height;
+    image.width = (uint32_t) width;
+    image.height = (uint32_t) height;
 	image.internal.gl_id = gl_id;
 
     return image;
@@ -197,25 +200,21 @@ void naui_destroy_image(const NauiImage *image)
 
 const char* naui_get_executable_path(void)
 {
-    static char path[_MAX_PATH];
+    static char path[PATH_MAX];
     ssize_t len = readlink("/proc/self/exe", path, sizeof(path) - 1);
     if (len == -1)
         return "";
 
     path[len] = '\0';
-    size_t safe_len = strnlen_s(path, sizeof(path));
-    path[safe_len] = '\0';
     return path;
 }
 
 const char* naui_get_working_directory(void)
 {
-    static char cwd[_MAX_PATH];
+    static char cwd[PATH_MAX];
     if (!getcwd(cwd, sizeof(cwd)))
         return "";
 
-    size_t safe_len = strnlen_s(cwd, sizeof(cwd));
-    cwd[safe_len] = '\0';
     return cwd;
 }
 
