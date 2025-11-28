@@ -3,7 +3,18 @@
 #include "base.h"
 
 #include <filesystem>
+#include <string>
 #include <imgui.h>
+
+#if defined(NAUI_PLATFORM_WINDOWS)
+#	define NAUI_PATH_MAX 260
+#	define NAUI_ENV_HOME "HOMEPATH"
+#	define NAUI_ENV_USER "USERPROFILE"
+#else
+#	define NAUI_PATH_MAX 4096
+#	define NAUI_ENV_HOME "HOME"
+#	define NAUI_ENV_USER "HOME"
+#endif
 
 typedef void *NauiLibrary;
 typedef void *NauiProcAddress;
@@ -72,5 +83,5 @@ NAUI_API std::filesystem::path naui_save_file_dialog(const wchar_t* filter, cons
 NAUI_API NauiImage naui_create_image(const char *path);
 NAUI_API void naui_destroy_image(const NauiImage *image);
 
-const char* naui_get_executable_path(void);
-const char* naui_get_working_directory(void);
+NAUI_API std::string naui_get_executable_path(void);
+NAUI_API std::string naui_get_working_directory(void);

@@ -18,8 +18,6 @@
 #include <time.h>
 #include <dlfcn.h>
 #include <unistd.h>
-#include <limits.h>
-#include <string.h> 
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
@@ -65,7 +63,7 @@ void naui_platform_initialize(const NauiWindowProps &props)
     float main_scale = ImGui_ImplSDL2_GetContentScaleForDisplay(0);
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     platform->window = SDL_CreateWindow(props.title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, (int)(props.width * main_scale), (int)(props.height * main_scale), window_flags);
-    assert(window && "SDL_CreateWindow failed");
+    assert(platform->window && "SDL_CreateWindow failed");
     platform->window_width = props.width;
     platform->window_height = props.height;
     
@@ -198,24 +196,24 @@ void naui_destroy_image(const NauiImage *image)
 	glDeleteTextures(1, &image->internal.gl_id);
 }
 
-const char* naui_get_executable_path(void)
+const std::string naui_get_executable_path(void)
 {
-    static char path[PATH_MAX];
+    static char path[NAUI_PATH_MAX];
     ssize_t len = readlink("/proc/self/exe", path, sizeof(path) - 1);
     if (len == -1)
         return "";
 
     path[len] = '\0';
-    return path;
+    return std::string(path);
 }
 
-const char* naui_get_working_directory(void)
+const std::string naui_get_working_directory(void)
 {
-    static char cwd[PATH_MAX];
+    static char cwd[NAUI_PATH_MAX];
     if (!getcwd(cwd, sizeof(cwd)))
         return "";
 
-    return cwd;
+    return std::string(cwd);
 }
 
 #endif

@@ -6,6 +6,8 @@
 #include <string>
 #include <cstdint>
 
+#define NAUI_TRUNCATE ((size_t) - 1)
+
 enum class NauiFileMode
 {
     Read,
@@ -41,9 +43,9 @@ NAUI_API bool naui_fs_write_text(const std::filesystem::path& path, const std::s
 
 NAUI_API void naui_fs_normalize_path(char* path);
 NAUI_API std::string naui_fs_normalize_path(const std::filesystem::path& path);
-NAUI_API const char* naui_path_get_parent(const char* path);
-NAUI_API const char* naui_fs_get_executable_path();
-NAUI_API const char* naui_fs_get_bin_directory();
-NAUI_API const char* naui_fs_get_workspace_path();
-NAUI_API const char* naui_fs_get_working_directory();
+NAUI_API std::string naui_path_get_parent(std::string path);
+NAUI_API std::string naui_fs_get_executable_path();
+NAUI_API std::string naui_fs_get_bin_directory();
+NAUI_API std::string naui_fs_get_workspace_path();
+NAUI_API std::string naui_fs_get_working_directory();
 NAUI_API void        naui_fs_set_workspace_path(const char* path);

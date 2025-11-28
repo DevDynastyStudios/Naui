@@ -494,28 +494,28 @@ void naui_destroy_image(const NauiImage *image)
     ((ID3D11ShaderResourceView*)image->internal.d3d11_texture_view)->Release();
 }
 
-const char* naui_get_executable_path()
+std::string naui_get_executable_path()
 {
-    static char path[MAX_PATH];
-    DWORD len = GetModuleFileNameA(NULL, path, MAX_PATH);
+    static char path[NAUI_PATH_MAX];
+    DWORD len = GetModuleFileNameA(NULL, path, NAUI_PATH_MAX);
     if (len == 0)
         return "";
 
-    size_t safe_len = strnlen_s(path, MAX_PATH);
+    size_t safe_len = strnlen_s(path, NAUI_PATH_MAX);
     path[safe_len] = '\0';
-    return path;
+    return std::string(path);
 }
 
-const char* naui_get_working_directory()
+std::string naui_get_working_directory()
 {
-    static char cwd[MAX_PATH];
+    static char cwd[NAUI_PATH_MAX];
 
-    if (!GetCurrentDirectoryA(MAX_PATH, cwd))
+    if (!GetCurrentDirectoryA(NAUI_PATH_MAX, cwd))
         return "";
 
-    size_t safe_len = strnlen_s(cwd, MAX_PATH);
+    size_t safe_len = strnlen_s(cwd, NAUI_PATH_MAX);
     cwd[safe_len] = '\0';
-    return cwd;
+    return std::string(cwd);
 }
 
 #endif

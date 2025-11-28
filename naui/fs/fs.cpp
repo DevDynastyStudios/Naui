@@ -4,7 +4,55 @@
 #include <fstream>
 #include <cstdio>
 
-#define MAX_PATH 260
+inline int naui_fopen(FILE** f, const char* filename, const char* mode)
+{
+#if defined(NAUI_COMPILER_MSVC)
+	return fopen_s(f, filename, mode);
+#else
+	*f = fopen(filename, mode);
+	return (*f ? 0 : errno);
+#endif
+}
+
+inline int naui_strcpy(char* dest, size_t destsz, const char* src)
+{
+#if defined(NAUI_COMPILER_MSVC)
+	return strcpy_s(dest, destsz, src);
+#else
+	if(!dest || !src)
+		return EINVAL;
+
+	std::strncpy(dest, src, destsz - 1);
+	return 0;
+#endif
+}
+
+inline int naui_strncpy(char* dest, size_t destsz, const char* src, size_t count)
+{
+#if defined(NAUI_COMPILER_MSVC)
+	return strncpy_s(dest, destsz, src, count);
+#else
+	if(!dest || !src)
+		return EINVAL;
+
+	std::strncpy(dest, src, count);
+	return 0;
+#endif
+}
+
+inline char* naui_getenv(const char* name)
+{
+#if defined(NAUI_COMPILER_MSVC)
+	char* buffer = nullptr;
+	size_t len = 0;
+	if(_dupenv_s(&buffer, &len, name) == 0 && buffer)
+		return buffer;
+
+	return nullptr;
+#else
+	return getenv(name);
+#endif
+}
 
 std::string to_lower(std::string_view str)
 {
@@ -173,8 +221,8 @@ bool naui_fs_write_text(const std::filesystem::path& path, const std::string& te
     return true;
 }
 
-static char g_bin_directory[_MAX_PATH] = {0};
-static char g_workspace_path[_MAX_PATH] = {0};
+static char g_bin_directory[NAUI_PATH_MAX] = {0};
+static char g_workspace_path[NAUI_PATH_MAX] = {0};
 
 void naui_fs_normalize_path(char* path)
 {
@@ -198,66 +246,62 @@ std::string naui_fs_normalize_path(const std::filesystem::path& path)
     return s;
 }
 
-const char* naui_path_get_parent(const char* path)
+std::string naui_path_get_parent(const std::string path)
 {
-    static char parent[_MAX_PATH];
+	if(path.empty())
+		return {};
 
-    if (!path || !*path)
-        return "";
+	std::string parent = path;
+	size_t pos = parent.find_last_of('/');
 
-    strncpy_s(parent, sizeof(parent), path, _TRUNCATE);
-
-    char* last_slash = strrchr(parent, '/');
 #if defined(NAUI_PLATFORM_WINDOWS)
-    char* last_backslash = strrchr(parent, '\\');
-    if (last_backslash && (!last_slash || last_backslash > last_slash))
-        last_slash = last_backslash;
+	size_t back = parent.find_last_of('\\');
+	if(back != std::string::npos && (pos == std::string::npos || back > pos))
+		pos = back;
 #endif
 
-    if (last_slash)
-        *last_slash = '\0';
+	if(pos != std::string::npos)
+		parent.erase(pos);
 
-    return parent;
+	return parent;
 }
 
-const char* naui_fs_get_executable_path()
+std::string naui_fs_get_executable_path()
 {
 	return naui_get_executable_path();
 }
 
-const char* naui_fs_get_working_path()
+std::string naui_fs_get_working_path()
 {
 	return naui_get_working_directory();
 }
 
-const char* naui_fs_get_home_directory(void)
+std::string naui_fs_get_home_directory(void)
 {
-    static char home[MAX_PATH];
-	char* env = NULL;
+    static char home[NAUI_PATH_MAX];
     size_t len = 0;
-    if (_dupenv_s(&env, &len, "USERPROFILE") != 0 || !env)
-        _dupenv_s(&env, &len, "HOMEPATH");
+	char* env = naui_getenv(NAUI_ENV_USER);
+	if(!env)
+		env = naui_getenv(NAUI_ENV_HOME);
 
     if (!env)
         return "";
 
-    strncpy_s(home, sizeof(home), env, _TRUNCATE);
-    size_t safe_len = strnlen_s(home, MAX_PATH);
-    home[safe_len] = '\0';
-    return home;
+    naui_strncpy(home, sizeof(home), env, NAUI_TRUNCATE);
+    return std::string(home);
 }
 
-const char* naui_fs_get_bin_directory()
+std::string naui_fs_get_bin_directory()
 {
-    const char* exe_path = naui_get_executable_path();
+    std::string exe_path = naui_get_executable_path();
     return naui_path_get_parent(exe_path);
 }
 
-const char* naui_get_workspace_path()
+std::string naui_get_workspace_path()
 {
 	if(g_workspace_path[0] == '\0')
 	{
-		strcpy_s(g_workspace_path, naui_get_working_directory());
+		naui_strcpy(g_workspace_path, NAUI_PATH_MAX, naui_get_working_directory().c_str());
 		g_workspace_path[sizeof(g_workspace_path) - 1] = '\0';
 	}
 
@@ -272,7 +316,7 @@ void set_workspace_path(const char* path)
 		return;
 	}
 
-	strcpy_s(g_workspace_path, path);
+	naui_strcpy(g_workspace_path, NAUI_PATH_MAX, path);
 	g_workspace_path[sizeof(g_workspace_path) - 1] = '\0';
 	naui_fs_normalize_path(g_workspace_path);
 }
