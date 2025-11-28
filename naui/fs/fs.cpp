@@ -141,13 +141,10 @@ NauiFile naui_fs_open(const std::filesystem::path& path, NauiFileMode mode)
     }
 
     FILE* f = nullptr;
-	// NOTE(smoke): should we use naui_fopen for this?
-#if defined(NAUI_COMPILER_MSVC)
-	fopen_s(f, path.string().c_str(), m);
-#else
-	f = fopen(path.string().c_str(), m);
-#endif
-    //fopen_s(&f, path.string().c_str(), m);
+	if (naui_fopen(&f, path.c_str(), m))
+	{
+		fprintf(stderr, "[Naui] Failed to open file %s!\n", path.c_str());
+	}
     return { f };
 }
 
