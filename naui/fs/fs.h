@@ -47,5 +47,4 @@ NAUI_API std::string naui_path_get_parent(std::string path);
 NAUI_API std::string naui_fs_get_executable_path();
 NAUI_API std::string naui_fs_get_bin_directory();
 NAUI_API std::string naui_fs_get_workspace_path();
-NAUI_API std::string naui_fs_get_working_directory();
 NAUI_API void        naui_fs_set_workspace_path(const char* path);

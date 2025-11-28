@@ -22,7 +22,7 @@ inline int naui_strcpy(char* dest, size_t destsz, const char* src)
 	if(!dest || !src)
 		return EINVAL;
 
-	std::strncpy(dest, src, destsz - 1);
+	strncpy(dest, src, destsz - 1);
 	return 0;
 #endif
 }
@@ -35,7 +35,7 @@ inline int naui_strncpy(char* dest, size_t destsz, const char* src, size_t count
 	if(!dest || !src)
 		return EINVAL;
 
-	std::strncpy(dest, src, count);
+	strncpy(dest, src, count);
 	return 0;
 #endif
 }
@@ -297,7 +297,7 @@ std::string naui_fs_get_bin_directory()
     return naui_path_get_parent(exe_path);
 }
 
-std::string naui_get_workspace_path()
+std::string naui_fs_get_workspace_path()
 {
 	if(g_workspace_path[0] == '\0')
 	{
@@ -308,7 +308,7 @@ std::string naui_get_workspace_path()
 	return g_workspace_path;
 }
 
-void set_workspace_path(const char* path)
+void naui_fs_set_workspace_path(const char* path)
 {
 	if(!path || !*path)
 	{

@@ -196,7 +196,7 @@ void naui_destroy_image(const NauiImage *image)
 	glDeleteTextures(1, &image->internal.gl_id);
 }
 
-const std::string naui_get_executable_path(void)
+std::string naui_get_executable_path(void)
 {
     static char path[NAUI_PATH_MAX];
     ssize_t len = readlink("/proc/self/exe", path, sizeof(path) - 1);
@@ -207,7 +207,7 @@ const std::string naui_get_executable_path(void)
     return std::string(path);
 }
 
-const std::string naui_get_working_directory(void)
+std::string naui_get_working_directory(void)
 {
     static char cwd[NAUI_PATH_MAX];
     if (!getcwd(cwd, sizeof(cwd)))
