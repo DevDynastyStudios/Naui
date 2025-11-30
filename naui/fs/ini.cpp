@@ -2,12 +2,173 @@
 #include <fstream>
 #include <sstream>
 
+namespace Naui {
+
+#pragma region IniSection
+bool IniSection::IsComment() const {
+	return !name.empty() && (name.front() == ';' || name.front() == '#');
+}
+
+bool IniSection::IsEmpty() const {
+	return name.empty() && nodes.empty();
+}
+#pragma endregion
+
 #pragma region Helpers
-NauiIniSection naui_ini_get_section(const NauiIni& data, std::string section)
-{
-	for(const NauiIniSection& sec : data.sections)
-	{
-		if(sec.is_comment() || sec.name != section)
+std::size_t Ini::CountIndent(std::string_view line) {
+	std::size_t count = 0;
+	while (count < line.size() && (line[count] == ' ' || line[count] == '\t'))
+		++count;
+
+	return count;
+}
+
+void Ini::Trim(std::string& s) {
+	if (s.empty()) return;
+	std::size_t start = s.find_first_not_of(" \t");
+	std::size_t end = s.find_last_not_of(" \t");
+	if (start == std::string::npos) {
+		s.clear();
+		return;
+	}
+	
+	s = s.substr(start, end - start + 1);
+}
+
+std::vector<std::string> Ini::SplitComma(std::string_view s) {
+	std::vector<std::string> out;
+	std::size_t start = 0;
+	while (true) {
+		std::size_t pos = s.find(',', start);
+		if (pos == std::string_view::npos) {
+			if (start < s.size())
+				out.emplace_back(std::string(s.substr(start)));
+			else if (!s.empty())
+				out.emplace_back(std::string(s));
+
+			break;
+		}
+
+		out.emplace_back(std::string(s.substr(start, pos - start)));
+		start = pos + 1;
+	}
+
+	return out;
+}
+
+std::string Ini::JoinComma(const std::vector<std::string>& parts) {
+	std::string joined;
+	for (std::size_t i = 0; i < parts.size(); ++i) {
+		if (i > 0) 
+			joined += ",";
+
+		joined += parts[i];
+	}
+
+	return joined;
+}
+
+std::string Ini::JoinCommaInts(const std::vector<int>& vals) {
+	std::string joined;
+	for (std::size_t i = 0; i < vals.size(); ++i) {
+		if (i > 0) 
+			joined += ",";
+
+		joined += std::to_string(vals[i]);
+	}
+
+	return joined;
+}
+
+std::string Ini::JoinCommaFloats(const std::vector<float>& vals) {
+	std::string joined;
+	for (std::size_t i = 0; i < vals.size(); ++i) {
+		if (i > 0) 
+			joined += ",";
+
+		joined += std::to_string(vals[i]);
+	}
+
+	return joined;
+}
+
+std::string Ini::JoinMatrixInts(const std::vector<std::vector<int>>& m) {
+	std::string joined;
+	for (std::size_t r = 0; r < m.size(); ++r) {
+		if (r > 0) 
+			joined += ";";
+
+		for (std::size_t c = 0; c < m[r].size(); ++c) {
+			if (c > 0) 
+				joined += ",";
+
+			joined += std::to_string(m[r][c]);
+		}
+	}
+
+	return joined;
+}
+
+std::string Ini::JoinMatrixFloats(const std::vector<std::vector<float>>& m) {
+	std::string joined;
+	for (std::size_t r = 0; r < m.size(); ++r) {
+		if (r > 0) 
+			joined += ";";
+
+		for (std::size_t c = 0; c < m[r].size(); ++c) {
+			if (c > 0) 
+				joined += ",";
+
+			joined += std::to_string(m[r][c]);
+		}
+	}
+
+	return joined;
+}
+
+void Ini::WriteNode(std::ofstream& out, const IniNode& node, int indentSpace, int depth) {
+	out << std::string(indentSpace * depth, ' ') << node.key << "=" << node.value << "\n";
+	for (const IniNode& child : node.children) {
+		WriteNode(out, child, indentSpace, depth + 1);
+	}
+}
+
+IniSection& Ini::EnsureSection(const std::string& section) {
+	for (auto& sec : sections) {
+		if (!sec.IsComment() && sec.name == section) {
+			return sec;
+		}
+	}
+
+	sections.push_back({section, {}});
+	return sections.back();
+}
+#pragma endregion
+
+#pragma region Queries
+bool Ini::HasSection(const std::string& section) const {
+	IniSection result = GetSection(section);
+	if (result.name.empty()) return false;
+	if (result.IsComment()) return false;
+	return true;
+}
+
+bool Ini::HasKey(const IniSection& section, const std::string& key) const {
+	if (section.IsComment() || section.IsEmpty())
+		return false;
+		
+	IniNode node = GetKeyPair(section, key);
+	return node.key == key;
+}
+
+bool Ini::HasKey(const std::string& section, const std::string& key) const {
+	IniSection sec = GetSection(section);
+	return HasKey(sec, key);
+}
+
+IniSection Ini::GetSection(const std::string& section) const {
+	for (const auto& sec : sections) {
+		if (sec.IsComment() || sec.name != section)
 			continue;
 
 		return sec;
@@ -16,468 +177,339 @@ NauiIniSection naui_ini_get_section(const NauiIni& data, std::string section)
 	return {};
 }
 
-NauiIniNode naui_ini_get_key_pair(const NauiIniSection& section, std::string key)
-{
-	for(const NauiIniNode& node : section.nodes)
-	{
-		if(node.key != key)
-			continue;
-
-		return node;
+IniNode Ini::GetKeyPair(const IniSection& section, const std::string& key) const {
+	for (const auto& node : section.nodes) {
+		if (node.key == key)
+			return node;
 	}
 
 	return {};
 }
-
-bool naui_ini_has_section(const NauiIni& data, const std::string& section) 
-{
-    NauiIniSection result = naui_ini_get_section(data, section);
-    if (result.name.empty())
-        return false;
-		
-    if (result.is_comment())
-        return false;
-
-    return true;
-}
-
-bool naui_ini_has_key(const NauiIniSection& section, const std::string& key) 
-{
-	if(section.is_comment() || section.is_empty())
-		return false;
-
-	NauiIniNode node = naui_ini_get_key_pair(section, key);
-    return node.key == key;
-}
-
-bool naui_ini_has_key(const NauiIni& data, const std::string& section, const std::string& key) 
-{
-	NauiIniSection sec = naui_ini_get_section(data, section);
-	return naui_ini_has_key(sec, key);
-}
-
 #pragma endregion
 
 #pragma region Setters
-void naui_ini_set_string_array(NauiIni& data, const std::string& section, const std::string& key, const std::vector<std::string>& values) 
+void Ini::SetStringArray(const std::string& section, const std::string& key, const std::vector<std::string>& values)
 {
-    std::string joined;
-    for (std::size_t i = 0; i < values.size(); ++i) {
-        if (i > 0) 
-			joined += ",";
-
-        joined += values[i];
-    }
-
-    data[section].nodes.push_back({key, joined, {}});
+	std::string joined = JoinComma(values);
+	EnsureSection(section).nodes.push_back({key, joined, {}});
 }
 
-void naui_ini_set_int_array(NauiIni& data, const std::string& section, const std::string& key, const std::vector<int>& values) 
+void Ini::SetIntArray(const std::string& section, const std::string& key, const std::vector<int>& values)
 {
-    std::string joined;
-    for (std::size_t i = 0; i < values.size(); ++i) {
-        if (i > 0) 
-			joined += ",";
-
-        joined += std::to_string(values[i]);
-    }
-
-    data[section].nodes.push_back({key, joined, {}});
+	std::string joined = JoinCommaInts(values);
+	EnsureSection(section).nodes.push_back({key, joined, {}});
 }
 
-void naui_ini_set_float_array(NauiIni& data, const std::string& section, const std::string& key, const std::vector<float>& values) 
+void Ini::SetFloatArray(const std::string& section, const std::string& key, const std::vector<float>& values)
 {
-    std::string joined;
-    for (std::size_t i = 0; i < values.size(); ++i) {
-        if (i > 0) 
-			joined += ",";
-
-        joined += std::to_string(values[i]);
-    }
-
-    data[section].nodes.push_back({key, joined, {}});
+	std::string joined = JoinCommaFloats(values);
+	EnsureSection(section).nodes.push_back({key, joined, {}});
 }
 
-void naui_ini_set_int_matrix(NauiIni& data, const std::string& section, const std::string& key, const std::vector<std::vector<int>>& matrix) 
+void Ini::SetIntMatrix(const std::string& section, const std::string& key, const std::vector<std::vector<int>>& matrix)
 {
-    std::string joined;
-    for (std::size_t r = 0; r < matrix.size(); ++r) {
-        if (r > 0) 
-			joined += ";";
-
-        for (std::size_t c = 0; c < matrix[r].size(); ++c) {
-            if (c > 0) 
-				joined += ",";
-
-            joined += std::to_string(matrix[r][c]);
-        }
-    }
-	
-    data[section].nodes.push_back({key, joined, {}});
+	std::string joined = JoinMatrixInts(matrix);
+	EnsureSection(section).nodes.push_back({key, joined, {}});
 }
 
-void naui_ini_set_float_matrix(NauiIni& data, const std::string& section, const std::string& key, const std::vector<std::vector<float>>& matrix) 
+void Ini::SetFloatMatrix(const std::string& section, const std::string& key, const std::vector<std::vector<float>>& matrix)
 {
-    std::string joined;
-    for (std::size_t r = 0; r < matrix.size(); ++r) {
-        if (r > 0) 
-			joined += ";";
-
-        for (std::size_t c = 0; c < matrix[r].size(); ++c) {
-            if (c > 0) 
-				joined += ",";
-
-            joined += std::to_string(matrix[r][c]);
-        }
-    }
-
-    data[section].nodes.push_back({key, joined, {}});
+	std::string joined = JoinMatrixFloats(matrix);
+	EnsureSection(section).nodes.push_back({key, joined, {}});
 }
-
 #pragma endregion
 
 #pragma region Getters
-std::string naui_ini_get_string(const NauiIni& data, const std::string& section, const std::string& key, const std::string& def) 
+std::string Ini::GetString(const std::string& section, const std::string& key, const std::string& def) const
 {
-    for (const NauiIniSection& sec : data.sections) {
-		if(sec.is_comment() || sec.name != section)
+	for (const auto& sec : sections) {
+		if (sec.IsComment() || sec.name != section)
 			continue;
+		
+		for (const auto& node : sec.nodes) {
+			if (node.key == key)
+				return node.value;
+		}
+	}
 
-        for (const NauiIniNode& node : sec.nodes) {
-            if (node.key == key)
-                return node.value;
-        }
-    }
-
-    return def;
+	return def;
 }
 
-int naui_ini_get_int(const NauiIni& data, const std::string& section, const std::string& key, int def) 
-{
-    std::string val = naui_ini_get_string(data, section, key, "");
-    if (val.empty()) 
+int Ini::GetInt(const std::string& section, const std::string& key, int def) const {
+	std::string val = GetString(section, key, "");
+	if (val.empty())
 		return def;
-
-    try { 
-		return std::stoi(val); 
-	} catch (...) { 
-		return def; 
+		
+	try {
+		return std::stoi(val);
+	} catch (...) {
+		return def;
 	}
 }
 
-float naui_ini_get_float(const NauiIni& data, const std::string& section, const std::string& key, float def) 
-{
-    std::string val = naui_ini_get_string(data, section, key, "");
-    if (val.empty()) 
+float Ini::GetFloat(const std::string& section, const std::string& key, float def) const {
+	std::string val = GetString(section, key, "");
+	if (val.empty())
 		return def;
 
-    try { 
+	try {
 		return std::stof(val);
-	} catch (...) { 
-		return def; 
+	} catch (...) {
+		return def;
 	}
 }
 
-bool naui_ini_get_bool(const NauiIni& data, const std::string& section, const std::string& key, bool def) 
-{
-    std::string val = naui_ini_get_string(data, section, key, "");
-    if (val.empty()) 
+bool Ini::GetBool(const std::string& section, const std::string& key, bool def) const {
+	std::string val = GetString(section, key, "");
+	if (val.empty()) 
 		return def;
 
-    if (val == "true" || val == "1") 
-		return true;
-
-    if (val == "false" || val == "0") 
-		return false;
-
-    return def;
+	if (val == "true" || val == "1") return true;
+	if (val == "false" || val == "0") return false;
+	return def;
 }
-
 #pragma endregion
 
 #pragma region Array Getters
-
-std::vector<std::string> naui_ini_get_string_array(const NauiIni& data, const std::string& section, const std::string& key, const std::string& def) 
+std::vector<std::string> Ini::GetStringArray(const std::string& section, const std::string& key, const std::string& def) const
 {
-    std::string val = naui_ini_get_string(data, section, key, def);
-    std::vector<std::string> out;
-    std::size_t start = 0;
-    std::size_t pos;
-    while ((pos = val.find(',', start)) != std::string::npos) {
-        out.push_back(val.substr(start, pos - start));
-        start = pos + 1;
-    }
-
-    if (!val.empty())
-        out.push_back(val.substr(start));
-
-    return out;
+	std::string val = GetString(section, key, def);
+	std::vector<std::string> out = SplitComma(val);
+	return out;
 }
 
-std::vector<int> naui_ini_get_int_array(const NauiIni& data, const std::string& section, const std::string& key, const std::string& def) 
+std::vector<int> Ini::GetIntArray(const std::string& section, const std::string& key, const std::string& def) const
 {
-    std::vector<std::string> vals = naui_ini_get_string_array(data, section, key, def);
-    std::vector<int> out;
-    for (const std::string& s : vals) {
-        try { 
-			out.push_back(std::stoi(s)); 
+	std::vector<std::string> vals = GetStringArray(section, key, def);
+	std::vector<int> out;
+	for (const auto& s : vals) {
+		try {
+			out.push_back(std::stoi(s));
 		} catch (...) {}
-    }
+	}
 
-    return out;
+	return out;
 }
 
-std::vector<float> naui_ini_get_float_array(const NauiIni& data, const std::string& section, const std::string& key, const std::string& def) 
+std::vector<float> Ini::GetFloatArray(const std::string& section, const std::string& key, const std::string& def) const
 {
-    std::vector<std::string> vals = naui_ini_get_string_array(data, section, key, def);
-    std::vector<float> out;
-    for (const std::string& s : vals) {
-        try { 
-			out.push_back(std::stof(s)); 
+	std::vector<std::string> vals = GetStringArray(section, key, def);
+	std::vector<float> out;
+	for (const auto& s : vals) {
+		try {
+			out.push_back(std::stof(s));
 		} catch (...) {}
-    }
+	}
 
-    return out;
+	return out;
 }
-
 #pragma endregion
 
 #pragma region Matrix Getters
-
-std::vector<std::vector<int>> naui_ini_get_int_matrix(const NauiIni& data, const std::string& section, const std::string& key) 
+std::vector<std::vector<int>> Ini::GetIntMatrix(const std::string& section, const std::string& key) const
 {
-    std::string val = naui_ini_get_string(data, section, key, "");
-    std::vector<std::vector<int>> out;
+	std::string val = GetString(section, key, "");
+	std::vector<std::vector<int>> out;
 
-    std::size_t rowStart = 0;
-    std::size_t rowPos;
+	std::size_t rowStart = 0;
+	std::size_t rowPos;
+	while ((rowPos = val.find(';', rowStart)) != std::string::npos) {
+		std::string rowStr = val.substr(rowStart, rowPos - rowStart);
+		rowStart = rowPos + 1;
 
-    while ((rowPos = val.find(';', rowStart)) != std::string::npos) {
-        std::string rowStr = val.substr(rowStart, rowPos - rowStart);
-        rowStart = rowPos + 1;
+		std::vector<int> row;
+		std::size_t colStart = 0;
+		std::size_t colPos;
+		while ((colPos = rowStr.find(',', colStart)) != std::string::npos) {
+			row.push_back(std::stoi(rowStr.substr(colStart, colPos - colStart)));
+			colStart = colPos + 1;
+		}
 
-        std::vector<int> row;
-        std::size_t colStart = 0;
-        std::size_t colPos;
+		if (!rowStr.empty())
+			row.push_back(std::stoi(rowStr.substr(colStart)));
 
-        while ((colPos = rowStr.find(',', colStart)) != std::string::npos) {
-            row.push_back(std::stoi(rowStr.substr(colStart, colPos - colStart)));
-            colStart = colPos + 1;
-        }
+		out.push_back(row);
+	}
 
-        if (!rowStr.empty())
-            row.push_back(std::stoi(rowStr.substr(colStart)));
+	if (!val.empty() && rowStart < val.size()) {
+		std::string rowStr = val.substr(rowStart);
+		std::vector<int> row;
+		std::size_t colStart = 0;
+		std::size_t colPos;
+		while ((colPos = rowStr.find(',', colStart)) != std::string::npos) {
+			row.push_back(std::stoi(rowStr.substr(colStart, colPos - colStart)));
+			colStart = colPos + 1;
+		}
 
-        out.push_back(row);
-    }
+		if (colStart < rowStr.size())
+			row.push_back(std::stoi(rowStr.substr(colStart)));
 
-    if (!val.empty() && rowStart < val.size()) {
-        std::string rowStr = val.substr(rowStart);
-        std::vector<int> row;
-        std::size_t colStart = 0;
-        std::size_t colPos;
+		out.push_back(row);
+	}
 
-        while ((colPos = rowStr.find(',', colStart)) != std::string::npos) {
-            row.push_back(std::stoi(rowStr.substr(colStart, colPos - colStart)));
-            colStart = colPos + 1;
-        }
-
-        if (colStart < rowStr.size())
-            row.push_back(std::stoi(rowStr.substr(colStart)));
-
-        out.push_back(row);
-    }
-
-    return out;
+	return out;
 }
 
-std::vector<std::vector<float>> naui_ini_get_float_matrix(const NauiIni& data, const std::string& section, const std::string& key) 
+std::vector<std::vector<float>> Ini::GetFloatMatrix(const std::string& section, const std::string& key) const
 {
-    std::string val = naui_ini_get_string(data, section, key, "");
-    std::vector<std::vector<float>> out;
+	std::string val = GetString(section, key, "");
+	std::vector<std::vector<float>> out;
 
-    std::size_t rowStart = 0;
-    std::size_t rowPos;
+	std::size_t rowStart = 0;
+	std::size_t rowPos;
+	while ((rowPos = val.find(';', rowStart)) != std::string::npos) {
+		std::string rowStr = val.substr(rowStart, rowPos - rowStart);
+		rowStart = rowPos + 1;
 
-    while ((rowPos = val.find(';', rowStart)) != std::string::npos) {
-        std::string rowStr = val.substr(rowStart, rowPos - rowStart);
-        rowStart = rowPos + 1;
+		std::vector<float> row;
+		std::size_t colStart = 0;
+		std::size_t colPos;
+		while ((colPos = rowStr.find(',', colStart)) != std::string::npos) {
+			row.push_back(std::stof(rowStr.substr(colStart, colPos - colStart)));
+			colStart = colPos + 1;
+		}
+		if (!rowStr.empty())
+			row.push_back(std::stof(rowStr.substr(colStart)));
 
-        std::vector<float> row;
-        std::size_t colStart = 0;
-        std::size_t colPos;
+		out.push_back(row);
+	}
 
-        while ((colPos = rowStr.find(',', colStart)) != std::string::npos) {
-            row.push_back(std::stof(rowStr.substr(colStart, colPos - colStart)));
-            colStart = colPos + 1;
-        }
+	if (!val.empty() && rowStart < val.size()) {
+		std::string rowStr = val.substr(rowStart);
+		std::vector<float> row;
+		std::size_t colStart = 0;
+		std::size_t colPos;
+		while ((colPos = rowStr.find(',', colStart)) != std::string::npos) {
+			row.push_back(std::stof(rowStr.substr(colStart, colPos - colStart)));
+			colStart = colPos + 1;
+		}
 
-        if (!rowStr.empty())
-            row.push_back(std::stof(rowStr.substr(colStart)));
+		if (colStart < rowStr.size())
+			row.push_back(std::stof(rowStr.substr(colStart)));
 
-        out.push_back(row);
-    }
+		out.push_back(row);
+	}
 
-    if (!val.empty() && rowStart < val.size()) {
-        std::string rowStr = val.substr(rowStart);
-        std::vector<float> row;
-        std::size_t colStart = 0;
-        std::size_t colPos;
-
-        while ((colPos = rowStr.find(',', colStart)) != std::string::npos) {
-            row.push_back(std::stof(rowStr.substr(colStart, colPos - colStart)));
-            colStart = colPos + 1;
-        }
-
-        if (colStart < rowStr.size())
-            row.push_back(std::stof(rowStr.substr(colStart)));
-
-        out.push_back(row);
-    }
-
-    return out;
+	return out;
 }
-
 #pragma endregion
 
-#pragma region Parser
+#pragma region IO
 
-static void naui_ini_write_node(std::ofstream& out, const NauiIniNode& node, int indent_space, int depth) {
-	out << std::string(indent_space * depth, ' ') << node.key << "=" << node.value << "\n";
-	for(const NauiIniNode& child : node.children) {
-		naui_ini_write_node(out, child, indent_space, depth + 1);
-	}
-}
-
-bool naui_ini_write(const std::filesystem::path& path, NauiIni& ini, int indent_space)
-{
+bool Ini::Write(const std::filesystem::path& path, int indentSpace) const {
 	std::ofstream out(path);
-    if (!out.is_open())
-        return false;
+	if (!out.is_open())
+		return false;
 
-    for (const NauiIniSection& sec : ini.sections) {
-		if(sec.is_empty()) {
+	for (const auto& sec : sections) {
+		if (sec.IsEmpty()) {
 			out << "\n";
 			continue;
 		}
 
-        if (sec.is_comment()) {
-            out << sec.name << "\n";
-            continue;
-        }
+		if (sec.IsComment()) {
+			out << sec.name << "\n";
+			continue;
+		}
 
-		const char* section = NAUI_GLOBAL_SECTION;
-		if(sec.nodes.size() > 0 && sec.name != "") {
+		const char* section = GlobalSectionName;
+		if (!sec.nodes.empty() && !sec.name.empty()) {
 			section = sec.name.c_str();
 		}
 
 		out << "[" << section << "]\n";
-
-        for (const NauiIniNode& node : sec.nodes) {
-            naui_ini_write_node(out, node, indent_space, 0);
-        }
-
+		for (const auto& node : sec.nodes) {
+			WriteNode(out, node, indentSpace, 0);
+		}
 		out << "\n";
-    }
+	}
 
-    return true;
+	return true;
 }
 
-static std::size_t naui_ini_count_indent(const std::string& line) {
-    std::size_t count = 0;
-    while (count < line.size() && (line[count] == ' ' || line[count] == '\t'))
-        ++count;
+bool Ini::Read(const std::filesystem::path& filename) {
+	std::ifstream in(filename);
+	if (!in.is_open())
+		return false;
 
-    return count;
+	sections.clear();
+	IniSection* currentSection = nullptr;
+
+	struct Frame {	//(Chimpchi): Still funny this can be done in a function
+		IniNode* Node;
+		std::size_t Indent;
+	};
+
+	std::vector<Frame> stack;
+	std::string line;
+
+	while (std::getline(in, line)) {
+		// Trim whitespace
+		std::size_t end = line.find_last_not_of(" \t\r\n");
+		if (end == std::string::npos)
+			continue;
+
+		line = line.substr(0, end + 1);
+		if (line.empty())
+			continue;
+
+		// Comment Line
+		if (line[0] == ';' || line[0] == '#') {
+			sections.push_back({line, {}});
+			currentSection = nullptr;
+			stack.clear();
+			continue;
+		}
+
+		// Section header
+		if (line.front() == '[' && line.back() == ']') {
+			std::string sectionname = line.substr(1, line.size() - 2);
+			sections.push_back({sectionname, {}});
+			currentSection = &sections.back();
+			stack.clear();
+			continue;
+		}
+
+		std::size_t eqPos = line.find('=');
+		if (eqPos == std::string::npos) 
+			continue;
+
+		std::size_t indent = CountIndent(line);
+		std::string key = line.substr(indent, eqPos - indent);
+		std::string value = line.substr(eqPos + 1);
+		Trim(key);
+		Trim(value);
+
+		if (currentSection == nullptr) {
+			sections.push_back({GlobalSectionName, {}});
+			currentSection = &sections.back();
+			stack.clear();
+		}
+
+		IniNode newNode{key, value, {}};
+		if (stack.empty()) {
+			currentSection->nodes.push_back(newNode);
+			stack.push_back({&currentSection->nodes.back(), indent});
+		} else if (indent > stack.back().Indent) {
+			stack.back().Node->children.push_back(newNode);
+			stack.push_back({&stack.back().Node->children.back(), indent});
+		} else {
+			while (!stack.empty() && indent <= stack.back().Indent) {
+				stack.pop_back();
+			}
+
+			if (stack.empty()) {
+				currentSection->nodes.push_back(newNode);
+				stack.push_back({&currentSection->nodes.back(), indent});
+			} else {
+				stack.back().Node->children.push_back(newNode);
+				stack.push_back({&stack.back().Node->children.back(), indent});
+			}
+		}
+	}
+
+	return true;
 }
-
-bool naui_ini_read(const std::filesystem::path& filename, NauiIni& data) {
-    std::ifstream in(filename);
-    if (!in.is_open())
-        return false;
-
-    data.sections.clear();
-    NauiIniSection* currentSection = nullptr;
-
-    struct Frame {
-        NauiIniNode* node;
-        std::size_t indent;
-    };
-
-    std::vector<Frame> stack;
-    std::string line;
-    while (std::getline(in, line)) {
-        std::size_t end = line.find_last_not_of(" \t\r\n");
-        if (end == std::string::npos) 
-			continue;
-
-        line = line.substr(0, end + 1);
-        if (line.empty()) 
-			continue;
-
-        if (line[0] == ';' || line[0] == '#') {
-            data.sections.push_back({line, {}});
-            currentSection = nullptr;
-            stack.clear();
-            continue;
-        }
-
-        if (line.front() == '[' && line.back() == ']') {
-            std::string sectionName = line.substr(1, line.size() - 2);
-            data.sections.push_back({sectionName, {}});
-            currentSection = &data.sections.back();
-            stack.clear();
-            continue;
-        }
-
-        std::size_t eqPos = line.find('=');
-        if (eqPos == std::string::npos) 
-			continue;
-
-        std::size_t indent = naui_ini_count_indent(line);
-        std::string key = line.substr(indent, eqPos - indent);
-        std::string value = line.substr(eqPos + 1);
-
-        std::size_t keyStart = key.find_first_not_of(" \t");
-        std::size_t keyEnd   = key.find_last_not_of(" \t");
-        if (keyStart != std::string::npos)
-            key = key.substr(keyStart, keyEnd - keyStart + 1);
-
-        std::size_t valStart = value.find_first_not_of(" \t");
-        std::size_t valEnd   = value.find_last_not_of(" \t");
-        if (valStart != std::string::npos)
-            value = value.substr(valStart, valEnd - valStart + 1);
-
-        if (currentSection == nullptr) {
-            data.sections.push_back({"", {}});
-            currentSection = &data.sections.back();
-            stack.clear();
-        }
-
-        NauiIniNode newNode{key, value, {}};
-
-        if (stack.empty()) {
-            currentSection->nodes.push_back(newNode);
-            stack.push_back({&currentSection->nodes.back(), indent});
-        } else if (indent > stack.back().indent) {
-            stack.back().node->children.push_back(newNode);
-            stack.push_back({&stack.back().node->children.back(), indent});
-        } else {
-            while (!stack.empty() && indent <= stack.back().indent) {
-                stack.pop_back();
-            }
-
-            if (stack.empty()) {
-                currentSection->nodes.push_back(newNode);
-                stack.push_back({&currentSection->nodes.back(), indent});
-            } else {
-                stack.back().node->children.push_back(newNode);
-                stack.push_back({&stack.back().node->children.back(), indent});
-            }
-        }
-    }
-
-    return true;
-}
-
 #pragma endregion
+
+}

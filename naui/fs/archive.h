@@ -1,28 +1,41 @@
 #pragma once
-
-#include "../base.h"
 #include <filesystem>
+#include <string>
 #include <vector>
-#include <cstdint>
+#include <miniz.h>
 
-struct NauiArchive;
-struct NauiArchiveEntry
-{
-    std::filesystem::path path;
-    uint64_t size;
-    bool is_directory;
+namespace Naui {
+
+enum class ArchiveMode { Read, Write };
+
+struct ArchiveEntry {
+	std::string path;
+	uint64_t size;
+	bool isDirectory;
 };
 
-enum class NauiArchiveMode
-{
-    Read,
-    Write
+class Archive {
+public:
+	Archive(const std::filesystem::path& file, ArchiveMode mode);
+	~Archive();
+
+	Archive(const Archive&) = delete;
+	Archive& operator=(const Archive&) = delete;
+	Archive(Archive&& other) noexcept;
+	Archive& operator=(Archive&& other) noexcept;
+
+	bool IsValid() const;
+	bool AddFile(const std::filesystem::path& source, const std::filesystem::path& destInArchive);
+	bool ExtractFile(const std::filesystem::path& entry, const std::filesystem::path& dest);
+
+	std::vector<ArchiveEntry> ListEntries();
+	static bool CreateCustom(const std::filesystem::path& folder, const std::filesystem::path& archivePath);
+	static bool ExtractCustom(const std::filesystem::path& archivePath, const std::filesystem::path& outputFolder);
+
+private:
+	mz_zip_archive zip_;
+	ArchiveMode mode_;
+	bool isValid_;
 };
 
-NAUI_API NauiArchive* naui_archive_open(const std::filesystem::path& file, NauiArchiveMode mode);
-NAUI_API void naui_archive_close(NauiArchive* archive);
-NAUI_API bool naui_archive_add_file(NauiArchive* archive, const std::filesystem::path& source, const std::filesystem::path& dest_in_archive);
-NAUI_API bool naui_archive_extract_file(NauiArchive* archive, const std::filesystem::path& entry, const std::filesystem::path& dest);
-NAUI_API bool naui_archive_create(const std::filesystem::path& folder, const std::filesystem::path& archivePath);
-NAUI_API bool naui_archive_extract(const std::filesystem::path& archivePath, const std::filesystem::path& outputFolder);
-NAUI_API std::vector<NauiArchiveEntry> naui_archive_list(NauiArchive* archive);
+}

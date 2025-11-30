@@ -1,40 +1,33 @@
 #pragma once
 #include "../base.h"
-#include <tuple>
-#include <cstddef>
+#include <functional>
+#include <vector>
 
-typedef void (*NauiDeferFunction)(void* args);
+namespace Naui {
 
-void naui_defer_internal(NauiDeferFunction func, void* args);
-void naui_process_deferred();
+class Defer {
+public:
+    template<typename Fn, typename... Args>
+    static void Add(Fn&& fn, Args&&... args) {
+        callbacks.push_back([=]() {
+            fn(args...);
+        });
+    }
 
-NAUI_API void naui_flush_defer();
+    static void Process() {
+        for (auto& cb : callbacks) {
+            cb();
+        }
 
-template<typename Fn, typename Tuple, size_t... I>
-inline void naui_invoke_tuple(Fn fn, Tuple& t, std::index_sequence<I...>) 
-{
-    (void)fn(std::get<I>(t)...);
-}
+        callbacks.clear();
+    }
 
-template<typename Fn, typename... Args>
-inline void naui_defer(Fn fn, Args... args) 
-{
-    using Tuple = std::tuple<Fn, Args...>;
-    auto* data = new Tuple(fn, args...);
+    static void Flush() {
+        callbacks.clear();
+    }
 
-    auto adapter = [](void* user) {
-        Tuple* t = static_cast<Tuple*>(user);
-        auto& f = std::get<0>(*t);
+private:
+    inline static std::vector<std::function<void()>> callbacks;
+};
 
-        // Extract arguments (skip the function itself)
-        auto args_tuple = std::apply([&](auto&& f_, auto&&... rest) 
-		{
-            return std::make_tuple(rest...);
-        }, *t);
-
-        naui_invoke_tuple(f, args_tuple, std::make_index_sequence<sizeof...(Args)>{});
-        delete t;
-    };
-
-    naui_defer_internal(adapter, data);
 }

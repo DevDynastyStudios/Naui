@@ -1,5 +1,5 @@
 #include "menu_bar.h"
-#include "../io/layout_loader.h"
+#include "../io/layout.h"
 #include "../util/defer.h"
 
 #include <filesystem>
@@ -16,98 +16,95 @@ static std::vector<std::string> deletable_layouts;
 
 static void naui_menu_bar_popup()
 {
+
 	if (open_save_as_popup) 
 	{
-	    ImGui::OpenPopup("Save Layout As");
-	    open_save_as_popup = false; // reset trigger
+		ImGui::OpenPopup("Save Layout As");
+		open_save_as_popup = false; // reset trigger
 	}
 
 	if (ImGui::BeginPopup("Save Layout As", ImGuiWindowFlags_AlwaysAutoResize)) 
 	{
-	    if (popup_focus_request) {
-	        ImGui::SetKeyboardFocusHere();
-	        popup_focus_request = false;
-	    }
+		if (popup_focus_request) {
+			ImGui::SetKeyboardFocusHere();
+			popup_focus_request = false;
+		}
 
-	    ImGui::InputText("Layout Name", new_layout_name, IM_ARRAYSIZE(new_layout_name));
-        if (ImGui::IsKeyPressed(ImGuiKey_Enter)) 
+		ImGui::InputText("Layout Name", new_layout_name, IM_ARRAYSIZE(new_layout_name));
+		if (ImGui::IsKeyPressed(ImGuiKey_Enter)) 
 		{
-			naui_layout_save(new_layout_name);
-            ImGui::CloseCurrentPopup();
-        }
+			Naui::Layout::Save(new_layout_name);
+			current_layout = new_layout_name;
+			ImGui::CloseCurrentPopup();
+		}
 
-        if (ImGui::IsKeyPressed(ImGuiKey_Escape)) 
+		if (ImGui::IsKeyPressed(ImGuiKey_Escape)) 
 		{
-            ImGui::CloseCurrentPopup();
-        }
+			ImGui::CloseCurrentPopup();
+		}
 
-	    if (ImGui::Button("Save")) 
+		if (ImGui::Button("Save")) 
 		{
-			naui_layout_save(new_layout_name);
-	        ImGui::CloseCurrentPopup();
-	    }
-	    ImGui::SameLine();
-	    if (ImGui::Button("Cancel")) 
+			Naui::Layout::Save(new_layout_name);
+			current_layout = new_layout_name;
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Cancel")) 
 		{
-	        ImGui::CloseCurrentPopup();
-	    }
+			ImGui::CloseCurrentPopup();
+		}
 
-	    ImGui::EndPopup();
+		ImGui::EndPopup();
 	}
 }
 
 static void naui_menu_bar_layouts_menu()
 {
-	for(const NauiLayoutInfo& info : layout_cache)
-	{
+	for (const Naui::LayoutInfo& info : Naui::Layout::Cache()) {
 		bool selected = (info.filename == current_layout);
-		if(ImGui::MenuItem(info.filename.c_str(), nullptr, selected))
-		{
+		if (ImGui::MenuItem(info.filename.c_str(), nullptr, selected)) {
 			current_layout = info.filename;
-			naui_layout_load_deferred(info.filename);
+			Naui::Layout::LoadDeferred(info.filename);
 		}
-		
 	}
 
-    ImGui::Separator();
+	ImGui::Separator();
 
-    if (ImGui::MenuItem("Save Layout As..."))
-    {
-        new_layout_name[0] = '\0';
-        open_save_as_popup = true;
-        popup_focus_request = true;
-    }
-
-	if (ImGui::BeginMenu("Delete Layout", !layout_cache.empty()))
+	if (ImGui::MenuItem("Save Layout As..."))
 	{
-	    for (const NauiLayoutInfo& info : layout_cache)
-	    {
-			if(info.immutable)
+		new_layout_name[0] = '\0';
+		open_save_as_popup = true;
+		popup_focus_request = true;
+	}
+
+	if (ImGui::BeginMenu("Delete Layout", !Naui::Layout::Cache().empty())) {
+		for (const Naui::LayoutInfo& info : Naui::Layout::Cache()) {
+			if (info.immutable)
 				continue;
 
-			if (ImGui::MenuItem(info.filename.c_str()))
-	        {
-	            naui_layout_delete(info.filename);
-	            if (current_layout == info.filename)
-	                current_layout = "Layout";
-	        }
-	    }
+			if (ImGui::MenuItem(info.filename.c_str())) {
+				Naui::Layout::Delete(info.filename);
+				if (current_layout == info.filename)
+					current_layout = "Layout";
+			}
+		}
 		
-	    ImGui::EndMenu();
+		ImGui::EndMenu();
 	}
 }
 
 void naui_render_menu_bar_default()
 {
 	if (ImGui::BeginMainMenuBar())
-    {
-        if (ImGui::BeginMenu("Files"))
-        {
-            if (ImGui::MenuItem("Exit"))
+	{
+		if (ImGui::BeginMenu("Files"))
+		{
+			if (ImGui::MenuItem("Exit"))
 				exit(0);
 
-            ImGui::EndMenu();
-        }
+			ImGui::EndMenu();
+		}
 
 		if(ImGui::BeginMenu("View"))
 		{
@@ -131,8 +128,8 @@ void naui_render_menu_bar_default()
 			ImGui::EndMenu();
 		}
 
-    }
+	}
 
-    ImGui::EndMainMenuBar();
+	ImGui::EndMainMenuBar();
 	naui_menu_bar_popup();
 }

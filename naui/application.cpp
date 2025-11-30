@@ -5,7 +5,7 @@
 
 #include "io/theme_loader.h"
 #include "io/asset_manager.h"
-#include "io/layout_loader.h"
+#include "io/layout.h"
 #include "panel_manager.h"
 #include "util/defer.h"
 
@@ -13,65 +13,65 @@ static void (*app_on_initialize)(ImGuiID main_dock_id);
 
 static void naui_render(void)
 {
-    naui_platform_begin();
-    ImGui::NewFrame();
-    ImGuiID main_dock_id = ImGui::DockSpaceOverViewport();
-    static bool initialized = false;
-    if (!initialized)
-    {
-        app_on_initialize(main_dock_id);
-        initialized = true;
-    }
-    naui_panel_manager_render();
-    ImGui::Render();
-    naui_platform_end();
+	naui_platform_begin();
+	ImGui::NewFrame();
+	ImGuiID main_dock_id = ImGui::DockSpaceOverViewport();
+	static bool initialized = false;
+	if (!initialized)
+	{
+		app_on_initialize(main_dock_id);
+		initialized = true;
+	}
+	naui_panel_manager_render();
+	ImGui::Render();
+	naui_platform_end();
 }
 
 void naui_app_run(const NauiWindowProps &props, void (*on_initialize)(ImGuiID main_dock_id), void (*on_shutdown)(void), int32_t argc, char* const* argv)
 {
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO &io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-    io.IniFilename = nullptr;
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO &io = ImGui::GetIO();
+	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+	io.IniFilename = nullptr;
 
-    ImGuiStyle &style = ImGui::GetStyle();
-    style.FramePadding = ImVec2(8.0f, 8.0f);
-    style.WindowTitleAlign = ImVec2(0.5f, 0.5f);
-    style.FrameRounding = 6.0f;
-    style.GrabRounding = 2.0f;
+	ImGuiStyle &style = ImGui::GetStyle();
+	style.FramePadding = ImVec2(8.0f, 8.0f);
+	style.WindowTitleAlign = ImVec2(0.5f, 0.5f);
+	style.FrameRounding = 6.0f;
+	style.GrabRounding = 2.0f;
 
-    naui_load_theme_from_json("Themes/Default.json");
-    naui_platform_initialize(props);
+	naui_load_theme_from_json("Themes/Default.json");
+	naui_platform_initialize(props);
 
-    ImFontConfig config;
-    config.RasterizerMultiply = 2.0f;
-    io.Fonts->AddFontFromFileTTF("Fonts/Nunito.ttf", 18.0f, &config);
+	ImFontConfig config;
+	config.RasterizerMultiply = 2.0f;
+	io.Fonts->AddFontFromFileTTF("Fonts/Nunito.ttf", 18.0f, &config);
 
-    bool is_running = true;
-    naui_event_connect(NauiSystemEventCode_Quit, [&](void *data) { is_running = false; });
-    naui_event_connect(NauiSystemEventCode_Resize, [&](void *data) { naui_render(); });
+	bool is_running = true;
+	naui_event_connect(NauiSystemEventCode_Quit, [&](void *data) { is_running = false; });
+	naui_event_connect(NauiSystemEventCode_Resize, [&](void *data) { naui_render(); });
 
-    naui_asset_manager_initialize();
-    naui_panel_manager_initialize();
+	naui_asset_manager_initialize();
+	naui_panel_manager_initialize();
 
-	naui_layout_load("Default");
-	naui_layout_refresh_cache();
+	Naui::Layout::Load("Default");
+	Naui::Layout::RefreshCache();
 
-    app_on_initialize = on_initialize;
+	app_on_initialize = on_initialize;
 
-    while (is_running)
+	while (is_running)
 	{
-        naui_render();
-		naui_process_deferred();
+		naui_render();
+		Naui::Defer::Process();
 	}
 
-    on_shutdown();
+	on_shutdown();
 
-    naui_panel_manager_shutdown();
-    naui_asset_manager_shutdown();
+	naui_panel_manager_shutdown();
+	naui_asset_manager_shutdown();
 
-    naui_platform_shutdown();
-    ImGui::DestroyContext();
+	naui_platform_shutdown();
+	ImGui::DestroyContext();
 }
