@@ -5,9 +5,11 @@
 #include <functional>
 #include <vector>
 
-namespace Naui {
+namespace Naui
+{
 
-class Defer {
+class Defer
+{
 public:
     template<typename Fn, typename... Args>
     static void Add(Fn&& fn, Args&&... args)

@@ -2,6 +2,7 @@
 #include "Panel.h"
 #include "Theme.h"
 #include "Layout.h"
+#include "AssetManager.h"
 
 namespace Naui
 {
@@ -87,6 +88,7 @@ void App::Run(void)
     m_window = CreatePlatformWindow(1280, 720, "Naui");
     m_renderer = CreateRenderer(*m_window);
     m_window->Show(true);
+    AssetManager::Initialize(*m_renderer);
     m_window->SetResizeEvent([&](uint32_t width, uint32_t height)
     {
         m_renderer->Resize(width, height);
@@ -97,6 +99,7 @@ void App::Run(void)
         Render();
     OnExit();
     DestroyAllPanels();
+    AssetManager::Shutdown(*m_renderer);
     delete m_renderer;
     delete m_window;
     ImGuiShutdown();
