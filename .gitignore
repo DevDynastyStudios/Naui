@@ -1,0 +1,10 @@
+*.sln
+*.vcxproj
+*.filters
+*.pdb
+*.lib
+*.dll
+*.exp
+bin/Release/*.exe
+.vscode/
+obj/
