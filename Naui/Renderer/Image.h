@@ -17,7 +17,7 @@ public:
     virtual uint32_t GetHeight(void) const = 0;
     virtual void *GetNativeHandle(void) const = 0;
     
-    operator ImTextureID(void) const { return reinterpret_cast<ImTextureID>(GetNativeHandle()); }
+    operator ImTextureRef(void) const { return ImTextureRef((ImTextureID)GetNativeHandle()); }
 };
 
 }
