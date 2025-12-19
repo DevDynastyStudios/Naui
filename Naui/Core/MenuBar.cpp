@@ -98,8 +98,10 @@ void MenuBar::RenderMenuBar()
     if (ImGui::BeginMenu("View")) {
         for (auto& [id, panelPtr] : GetAllPanels()) {
             Panel& panel = *panelPtr;
+            ImGui::PushID(id);
             if (ImGui::MenuItem(panel.GetTitle().c_str(), nullptr, panel.IsOpen()))
                 panel.SetOpen(!panel.IsOpen());
+            ImGui::PopID();
         }
 			
         ImGui::EndMenu();
