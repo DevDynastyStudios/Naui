@@ -24,6 +24,8 @@ public:
     void SetMinSize(float x, float y) { m_minSize = ImVec2(x, y); }
     void SetTitle(const char *title) { m_title = title; }
 
+	std::string GetTitle() { return m_title; }
+
 protected:
     ImGuiWindowFlags m_imguiFlags = 0;
     ImVec2 m_minSize = ImVec2(0, 0);
@@ -39,6 +41,7 @@ public:
     const uint64_t GetUID(void) const { return (uint64_t)this; }
 
     void SetOpen(bool value) { m_open = value; m_calledClose = false; }
+	bool IsOpen() { return m_open; }
 
 protected:
     virtual void OnRender(void) = 0;

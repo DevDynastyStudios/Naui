@@ -124,13 +124,17 @@ bool Layout::Delete(const std::string& filename) {
 #pragma region Queries
 bool Layout::HasSection(const char* section, const char* /*key*/, const Ini* data) {
 	const Ini* src = data ? data : &currentLayout;
-	if (!src) return false;
+	if (!src) 
+		return false;
+
 	return src->HasSection(section);
 }
 
 bool Layout::IsImmutable(const Ini* data) {
 	const Ini* src = data ? data : &currentLayout;
-	if (!src) return false;
+	if (!src) 
+		return false;
+
 	return src->HasSection(IMMUTABLE);
 }
 #pragma endregion
@@ -144,10 +148,16 @@ std::vector<std::filesystem::path> Layout::Paths() {
 
 	std::error_code ec;
 	for (const auto& entry : std::filesystem::directory_iterator(layoutDir, ec)) {
-		if (ec) break;
-		if (!entry.is_regular_file()) continue;
+		if (ec) 
+			break;
+
+		if (!entry.is_regular_file()) 
+			continue;
+
 		const auto& p = entry.path();
-		if (!HasLayoutExtension(p)) continue;
+		if (!HasLayoutExtension(p)) 
+			continue;
+
 		layouts.push_back(p);
 	}
 	return layouts;
@@ -157,6 +167,7 @@ std::vector<std::string> Layout::PathsStr() {
 	std::vector<std::string> result;
 	for (const auto& p : Paths())
 		result.push_back(p.string());
+		
 	return result;
 }
 

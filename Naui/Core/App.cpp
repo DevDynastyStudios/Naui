@@ -3,6 +3,7 @@
 #include "Theme.h"
 #include "Layout.h"
 #include "AssetManager.h"
+#include "Defer.h"
 
 namespace Naui
 {
@@ -48,11 +49,19 @@ static void ImGuiInitialize(void)
 	ImFontConfig config{};
 	config.RasterizerMultiply = 2.0f;
 	io.Fonts->AddFontFromFileTTF("Fonts/Nunito.ttf", 18.0f, &config);
+
+	Layout::RefreshCache();
+	Layout::Load("Default");
 }
 
 static void ImGuiShutdown(void)
 {
     ImGui::DestroyContext();
+}
+
+void App::SetMenuBar(MenuBar* menubar)
+{
+	m_menubar = *menubar;
 }
 
 void App::Render(void)
@@ -61,14 +70,11 @@ void App::Render(void)
     m_renderer->Begin();
     ImGui::NewFrame();
     ImGui::DockSpaceOverViewport();
+
     ImGui::BeginMainMenuBar();
-    if (ImGui::BeginMenu("File"))
-    {
-        if (ImGui::MenuItem("Exit"))
-            m_window->Close();
-        ImGui::EndMenu();
-    }
+	m_menubar.RenderMenuBar();
     ImGui::EndMainMenuBar();
+
     PanelRenderer::Render();
     ImGui::EndFrame();
     ImGui::Render();
@@ -77,6 +83,7 @@ void App::Render(void)
         ImGui::UpdatePlatformWindows();
         ImGui::RenderPlatformWindowsDefault();
     }
+	
     m_renderer->End();
 }
 
@@ -96,9 +103,14 @@ void App::Run(void)
     });
     OnEnter();
     while (m_window->IsOpen())
-        Render();
+	{
+		Render();
+		Defer::Process();
+	}
+
     OnExit();
     DestroyAllPanels();
+	Defer::Flush();
     AssetManager::Shutdown(*m_renderer);
     delete m_renderer;
     delete m_window;
