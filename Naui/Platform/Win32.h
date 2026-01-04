@@ -138,6 +138,8 @@ PlatformWin32Window::PlatformWin32Window(int width, int height, const char *titl
 {
     HINSTANCE hInstance = GetModuleHandle(nullptr);
     
+    ImGui_ImplWin32_EnableDpiAwareness();
+
     WNDCLASSEXA wc = {};
     wc.cbSize = sizeof(WNDCLASSEX);
     wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
@@ -173,6 +175,8 @@ PlatformWin32Window::PlatformWin32Window(int width, int height, const char *titl
         m_isOpen = false;
         return;
     }
+
+    ImGui::GetStyle().FontScaleDpi = ImGui_ImplWin32_GetDpiScaleForHwnd(m_hwnd);;
 
     SetTitlebarDarkMode();
     DragAcceptFiles(m_hwnd, TRUE);

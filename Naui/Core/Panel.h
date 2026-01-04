@@ -37,11 +37,12 @@ class NAUI_API Panel : public PanelImGuiImpl
 {
 public:
     Panel(void) = default;
-    Panel(const char *title) { m_title = title; }
+    Panel(const char *title) { m_title = std::string(title) + "##" + std::to_string(GetUID()); }
     const uint64_t GetUID(void) const { return (uint64_t)this; }
 
     void SetOpen(bool value) { m_open = value; m_calledClose = false; }
-	bool IsOpen() { return m_open; }
+	bool IsOpen(void) const { return m_open; }
+    const std::string &GetLayoutID(void) const { return m_layoutID; }
 
 protected:
     virtual void OnRender(void) = 0;
@@ -49,11 +50,13 @@ protected:
 
     void SetClosable(bool value) { m_closable = value; }
     void SetCategory(const std::string &category);
-private:    
+    void SetLayoutID(const std::string &id) { m_layoutID = id; }
+private:
 
     bool m_closable = true;
     bool m_open = true;
     bool m_calledClose = false;
+    std::string m_layoutID;
 
     friend class PanelRenderer;
 };

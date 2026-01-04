@@ -16,10 +16,10 @@ MenuBar::MenuBar()
 void MenuBar::LayoutMenu()
 {
     for (const LayoutInfo& info : Layout::Cache()) {
-        bool selected = (info.filename == currentLayout);
-        if (ImGui::MenuItem(info.filename.c_str(), nullptr, selected)) {
-            currentLayout = info.filename;
-            Layout::LoadDeferred(info.filename);
+        bool selected = (info.name == currentLayout);
+        if (ImGui::MenuItem(info.name.c_str(), nullptr, selected)) {
+            currentLayout = info.name;
+            Layout::Load(info.name);
         }
     }
 
@@ -36,9 +36,9 @@ void MenuBar::LayoutMenu()
             if (info.immutable)
                 continue;
 
-            if (ImGui::MenuItem(info.filename.c_str())) {
-                Layout::Delete(info.filename);
-                if (currentLayout == info.filename)
+            if (ImGui::MenuItem(info.name.c_str())) {
+                std::filesystem::remove(info.filePath);
+                if (currentLayout == info.name)
                     currentLayout = "Layout";
             }
         }

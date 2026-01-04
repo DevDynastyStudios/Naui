@@ -23,9 +23,7 @@ void PanelRenderer::Render(void)
     {
         Naui::Panel& panel = *panel_ptr;
         ImGui::SetNextWindowSizeConstraints(panel.m_minSize, panel.m_maxSize);
-        static char title[1024];
-        snprintf(title, sizeof(title), "%s##%d", panel.m_title.c_str(), id);
-        ImGui::Begin(title, panel.m_closable ? &panel.m_open : nullptr, panel.m_imguiFlags);
+        ImGui::Begin(panel.GetTitle().c_str(), panel.m_closable ? &panel.m_open : nullptr, panel.m_imguiFlags);
         panel.OnRender();
         ImGui::End();
     }
@@ -50,7 +48,6 @@ static void ImGuiInitialize(void)
 	config.RasterizerMultiply = 2.0f;
 	io.Fonts->AddFontFromFileTTF("Fonts/Nunito.ttf", 18.0f, &config);
 
-	Layout::RefreshCache();
 	Layout::Load("Default");
 }
 
@@ -69,13 +66,16 @@ void App::Render(void)
     m_window->PollEvents();
     m_renderer->Begin();
     ImGui::NewFrame();
+
     ImGui::DockSpaceOverViewport();
+    Layout::RenderLoad();
 
     ImGui::BeginMainMenuBar();
 	m_menubar.RenderMenuBar();
     ImGui::EndMainMenuBar();
 
     PanelRenderer::Render();
+
     ImGui::EndFrame();
     ImGui::Render();
     if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)

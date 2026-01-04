@@ -1,0 +1,180 @@
+{
+  "dock_nodes": [
+    {
+      "hierarchy": {
+        "child_0": {
+          "id": 13,
+          "is_central": false,
+          "is_split": false,
+          "pos_x": 527.0,
+          "pos_y": 353.0,
+          "selected_window": "Midi Editor##2129994408688",
+          "size_x": 179.0,
+          "size_y": 686.0,
+          "windows": [
+            "Midi Editor##2129994408688"
+          ]
+        },
+        "child_1": {
+          "child_0": {
+            "id": 1,
+            "is_central": false,
+            "is_split": false,
+            "pos_x": 527.0,
+            "pos_y": 353.0,
+            "size_x": 604.0,
+            "size_y": 686.0,
+            "windows": []
+          },
+          "child_1": {
+            "child_0": {
+              "id": 3,
+              "is_central": false,
+              "is_split": false,
+              "pos_x": 1133.0,
+              "pos_y": 353.0,
+              "size_x": 317.0,
+              "size_y": 686.0,
+              "windows": []
+            },
+            "child_1": {
+              "child_0": {
+                "id": 5,
+                "is_central": false,
+                "is_split": false,
+                "pos_x": 1452.0,
+                "pos_y": 353.0,
+                "size_x": 134.0,
+                "size_y": 686.0,
+                "windows": []
+              },
+              "child_1": {
+                "child_0": {
+                  "id": 7,
+                  "is_central": false,
+                  "is_split": false,
+                  "pos_x": 1588.0,
+                  "pos_y": 353.0,
+                  "size_x": 131.0,
+                  "size_y": 686.0,
+                  "windows": []
+                },
+                "child_1": {
+                  "child_0": {
+                    "id": 9,
+                    "is_central": false,
+                    "is_split": false,
+                    "pos_x": 1721.0,
+                    "pos_y": 353.0,
+                    "size_x": 86.0,
+                    "size_y": 343.0,
+                    "windows": []
+                  },
+                  "child_1": {
+                    "child_0": {
+                      "id": 11,
+                      "is_central": true,
+                      "is_split": false,
+                      "pos_x": 708.0,
+                      "pos_y": 353.0,
+                      "size_x": 917.0,
+                      "size_y": 686.0,
+                      "windows": []
+                    },
+                    "child_1": {
+                      "id": 12,
+                      "is_central": false,
+                      "is_split": false,
+                      "pos_x": 1627.0,
+                      "pos_y": 353.0,
+                      "selected_window": "Song Timeline##2129994408352",
+                      "size_x": 180.0,
+                      "size_y": 686.0,
+                      "windows": [
+                        "Song Timeline##2129994408352"
+                      ]
+                    },
+                    "id": 10,
+                    "is_central": false,
+                    "is_split": true,
+                    "pos_x": 708.0,
+                    "pos_y": 353.0,
+                    "size_x": 1099.0,
+                    "size_y": 686.0,
+                    "split_axis": 0
+                  },
+                  "id": 8,
+                  "is_central": false,
+                  "is_split": true,
+                  "pos_x": 708.0,
+                  "pos_y": 353.0,
+                  "size_x": 1099.0,
+                  "size_y": 686.0,
+                  "split_axis": 1
+                },
+                "id": 6,
+                "is_central": false,
+                "is_split": true,
+                "pos_x": 708.0,
+                "pos_y": 353.0,
+                "size_x": 1099.0,
+                "size_y": 686.0,
+                "split_axis": 0
+              },
+              "id": 4,
+              "is_central": false,
+              "is_split": true,
+              "pos_x": 708.0,
+              "pos_y": 353.0,
+              "size_x": 1099.0,
+              "size_y": 686.0,
+              "split_axis": 0
+            },
+            "id": 2,
+            "is_central": false,
+            "is_split": true,
+            "pos_x": 708.0,
+            "pos_y": 353.0,
+            "size_x": 1099.0,
+            "size_y": 686.0,
+            "split_axis": 0
+          },
+          "id": 14,
+          "is_central": false,
+          "is_split": true,
+          "pos_x": 708.0,
+          "pos_y": 353.0,
+          "size_x": 1099.0,
+          "size_y": 686.0,
+          "split_axis": 0
+        },
+        "id": 146626941,
+        "is_central": false,
+        "is_split": true,
+        "pos_x": 527.0,
+        "pos_y": 353.0,
+        "size_x": 1280.0,
+        "size_y": 686.0,
+        "split_axis": 0
+      },
+      "id": 146626941,
+      "is_dockspace": true,
+      "is_floating": false,
+      "pos_x": 0.0,
+      "pos_y": 34.0,
+      "size_x": 1280.0,
+      "size_y": 686.0
+    }
+  ],
+  "layout_states": {
+    "midi-editor": {
+      "collapsed": false,
+      "window_name": ""
+    },
+    "song-timeline": {
+      "collapsed": false,
+      "window_name": "Song Timeline##2129994408352"
+    }
+  },
+  "version": 2
+}
