@@ -1,0 +1,1 @@
+MSBuild.exe NauiApp.sln -property:Configuration=Release
