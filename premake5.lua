@@ -30,7 +30,10 @@ project "NauiApp"
     }
 
     links { "Naui" }
-    includedirs { "naui/src" }
+    includedirs {
+        ".",
+        "app/vendor"
+    }
 
     filter "configurations:Debug"
         defines { "DEBUG" }
