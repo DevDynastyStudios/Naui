@@ -1,6 +1,18 @@
-#include <stdio.h>
+#include <naui/naui.h>
 
-int main(void)
+NAUI_APP("Hello World")
+
+void naui_app_start(void)
 {
-    return 0;
+
+}
+
+void naui_app_end(void)
+{
+
+}
+
+void naui_app_frame(void)
+{
+
 }

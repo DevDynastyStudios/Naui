@@ -4,11 +4,17 @@ workspace "NauiApp"
 project "Naui"
     kind "StaticLib"
     language "C"
+    architecture "x64"
     targetdir "build/%{cfg.buildcfg}"
 
     files {
         "naui/**.c",
         "naui/vendor/**.c"
+    }
+
+    includedirs {
+        "naui",
+        "naui/vendor"
     }
 
     filter "configurations:Debug"
@@ -22,6 +28,7 @@ project "Naui"
 project "NauiApp"
     kind "ConsoleApp"
     language "C"
+    architecture "x64"
     targetdir "build/%{cfg.buildcfg}"
 
     files {
@@ -32,6 +39,7 @@ project "NauiApp"
     links { "Naui" }
     includedirs {
         ".",
+        "app/src",
         "app/vendor"
     }
 
