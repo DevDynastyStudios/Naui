@@ -4,6 +4,8 @@
 #include <sokol/sokol_glue.h>
 #include <sokol/sokol_log.h>
 
+#include "shaders/basic.h"
+
 typedef struct
 {
     sg_pipeline pip;
@@ -19,6 +21,29 @@ void naui_renderer_initialize(void)
         .environment = sglue_environment(),
         .logger.func = slog_func
     });
+
+    float vertices[] = {
+         0.0f,  0.5f,     1.0f, 0.0f, 0.0f,
+         0.5f, -0.5f,     0.0f, 1.0f, 0.0f,
+        -0.5f, -0.5f,     0.0f, 0.0f, 1.0f,
+    };
+    state.bind.vertex_buffers[0] = sg_make_buffer(&(sg_buffer_desc){
+        .data = SG_RANGE(vertices),
+    });
+
+    state.pip = sg_make_pipeline(&(sg_pipeline_desc){
+        .shader = sg_make_shader(basic_shader_desc(sg_query_backend())),
+        .layout = {
+            .attrs = {
+                [ATTR_basic_in_position].format = SG_VERTEXFORMAT_FLOAT2,
+                [ATTR_basic_in_color].format = SG_VERTEXFORMAT_FLOAT3
+            }
+        },
+    });
+
+    state.pass_action = (sg_pass_action) {
+        .colors[0] = { .load_action=SG_LOADACTION_CLEAR, .clear_value={1.0f, 0.5f, 0.5f, 1.0f } }
+    };
 }
 
 void naui_renderer_shutdown(void)

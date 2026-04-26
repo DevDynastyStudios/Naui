@@ -16,12 +16,24 @@ typedef struct
 Naui_AppState;
 static Naui_AppState state;
 
+static void render(void)
+{
+extern void naui_renderer_begin(void);
+extern void naui_renderer_end(void);
+
+    naui_renderer_begin();
+    leaf_begin_frame(sapp_width(), sapp_height());
+    state.events.update();
+    Leaf_RenderCmdList cmd_list = leaf_end_frame();
+    naui_renderer_end();
+    (void)cmd_list;
+}
+
 static void __naui_app_event(const sapp_event* e)
 {
     if (e->type == SAPP_EVENTTYPE_RESIZED)
     {
-        extern void naui_renderer_resize(int32_t width, int32_t height);
-        naui_renderer_resize(e->window_width, e->window_height);
+
     }
 }
 
@@ -43,10 +55,7 @@ static void __naui_app_end(void)
 
 static void __naui_app_update(void)
 {
-    leaf_begin_frame(sapp_width(), sapp_height());
-    state.events.update();
-    Leaf_RenderCmdList cmd_list = leaf_end_frame();
-    (void)cmd_list;
+    render();
 }
 
 void naui_app_run(
