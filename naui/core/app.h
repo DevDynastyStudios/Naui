@@ -12,8 +12,8 @@ void naui_app_run(
 #define NAUI_APP(title) \
 void naui_app_start(void); \
 void naui_app_end(void); \
-void naui_app_frame(void); \
+void naui_app_update(void); \
 int main(void) { \
-    naui_app_run(title, naui_app_start, naui_app_end, naui_app_frame); \
+    naui_app_run(title, naui_app_start, naui_app_end, naui_app_update); \
     return 0; \
 }
