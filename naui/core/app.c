@@ -11,6 +11,15 @@
 #define SOKOL_IMPL
 #include "sokol/sokol_app.h"
 
+static void naui_app_event(const sapp_event* e)
+{
+    if (e->type == SAPP_EVENTTYPE_RESIZED)
+    {
+        int w = e->window_width;
+        int h = e->window_height;
+    }
+}
+
 void naui_app_run(
     const char *title,
     Naui_AppEvent start,
@@ -22,6 +31,7 @@ void naui_app_run(
         .init_cb = start,
         .frame_cb = end,
         .cleanup_cb = update,
+        .event_cb = naui_app_event,
         .window_title = title,
     });
 }
