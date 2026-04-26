@@ -7,7 +7,7 @@ project "Naui"
     targetdir "build/%{cfg.buildcfg}"
 
     files {
-        "naui/src/**.c",
+        "naui/**.c",
         "naui/vendor/**.c"
     }
 

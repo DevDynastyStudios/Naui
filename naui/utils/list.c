@@ -94,3 +94,8 @@ void *naui_list__reserve(void *arr, size_t elem_size, size_t len)
     header = realloc(header, sizeof(*header) + elem_size * len);
     return header + 1;
 }
+
+void naui_list__free(void *arr)
+{
+    free(naui_list_get_header(arr));
+}

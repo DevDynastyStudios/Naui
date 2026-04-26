@@ -17,6 +17,7 @@ void  naui_list__pop(void *arr, size_t elem_size);
 void  naui_list__remove(void *arr, size_t elem_size, size_t index);
 void  naui_list__uremove(void *arr, size_t elem_size, size_t index);
 void *naui_list__reserve(void *arr, size_t elem_size, size_t len);
+void  naui_list__free(void *arr);
 
 #define Naui_List(type) type *
 
@@ -41,4 +42,4 @@ void *naui_list__reserve(void *arr, size_t elem_size, size_t len);
     arr = naui_list__reserve(arr, sizeof(*arr), (len)); \
 } while (0)
 
-#define naui_list_free(arr) free(naui_list_get_header(arr))
+#define naui_list_free(arr) naui_list__free(arr)
