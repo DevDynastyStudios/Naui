@@ -10,4 +10,5 @@ if /I "%~1"=="-release" (
 )
 
 premake5 vs2022
+.\scripts\build_shaders.bat
 msbuild "%PROJECT%.sln" /p:Configuration=%CONFIG%
