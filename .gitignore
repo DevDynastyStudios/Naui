@@ -2,6 +2,7 @@
 *.vcxproj.filters
 *.vcxproj.user
 *.sln
+.vscode
 .vs
 build
 obj
@@ -9,3 +10,4 @@ makefile
 Makefile
 GNUmakefile
 *.make
+tags

@@ -50,3 +50,6 @@ project "NauiApp"
     filter "configurations:Release"
         defines { "NDEBUG" }
         optimize "On"
+
+    filter "system:linux"
+        links { "X11", "Xi", "Xcursor", "dl", "pthread", "m", "GL" } -- from sokol_app.h
