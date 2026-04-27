@@ -33,7 +33,9 @@ static void __naui_app_event(const sapp_event* e)
 {
     if (e->type == SAPP_EVENTTYPE_RESIZED)
     {
-
+        extern void naui_renderer_resize(int32_t width, int32_t height);
+        naui_renderer_resize(e->window_width, e->window_height);
+        render();
     }
 }
 

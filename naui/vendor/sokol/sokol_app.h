@@ -9684,9 +9684,7 @@ _SOKOL_PRIVATE LRESULT CALLBACK _sapp_win32_wndproc(HWND hWnd, UINT uMsg, WPARAM
             case WM_TIMER:
                 _sapp_timing_update(&_sapp.timing, 0.0);
                 _sapp_win32_frame(true);
-                /*
-                * NOTE: resizing each frame explodes memory usage
-                *
+                
                 if (_sapp_win32_update_dimensions()) {
                     #if defined(SOKOL_D3D11)
                     _sapp_d3d11_resize_default_render_target();
@@ -9695,7 +9693,7 @@ _SOKOL_PRIVATE LRESULT CALLBACK _sapp_win32_wndproc(HWND hWnd, UINT uMsg, WPARAM
                     #endif
                     _sapp_win32_app_event(SAPP_EVENTTYPE_RESIZED);
                 }
-                */
+                
                 break;
             case WM_NCLBUTTONDOWN:
                 /* workaround for half-second pause when starting to move window
