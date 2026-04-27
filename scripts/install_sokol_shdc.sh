@@ -1,5 +1,5 @@
 #!/bin/sh
 
-git clone https://github.com/floooh/sokol-tools-bin
-cp sokol-tools-bin/bin/linux/sokol-shdc ../
+curl -O https://raw.githubusercontent.com/floooh/sokol-tools-bin/refs/heads/master/bin/linux/sokol-shdc
+mv sokol-shdc ../
 chmod +x ../sokol-shdc
