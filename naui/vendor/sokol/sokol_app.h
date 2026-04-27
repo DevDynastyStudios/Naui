@@ -1,3 +1,12 @@
+/*
+    Modified from original Sokol source.
+
+    Modified by boxDev2008, 2026
+    Changes:
+    - Enabled dynamic resizing by uncommenting resize handling code
+      in the WM_TIMER event.
+*/
+
 #if defined(SOKOL_IMPL) && !defined(SOKOL_APP_IMPL)
 #define SOKOL_APP_IMPL
 #endif
