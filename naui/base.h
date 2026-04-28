@@ -8,6 +8,8 @@
 #define NAUI_WINDOWS 1
 #elif defined(__linux__) || defined(__gnu_linux__)
 #define NAUI_LINUX 1
+#elif defined(__APPLE__) && defined(__MACH__)
+#define NAUI_MACOS 1
 #endif
 
 #ifdef NAUI_EXPORT
