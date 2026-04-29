@@ -41,7 +41,8 @@ project "NauiApp"
         ".",
         "app/src",
         "app/vendor",
-		"naui"
+		"naui",
+        "naui/vendor"
     }
 
     filter "configurations:Debug"
@@ -70,7 +71,8 @@ project "UnitTest"
 	includedirs {
 		".",
 		"unit_test",
-		"naui"
+		"naui",
+        "naui/vendor"
 	}
 
 	filter "configurations:Debug"

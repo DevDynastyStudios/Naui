@@ -546,7 +546,9 @@ static bool match_extensions(const char* name, const char** extensions, int ext_
 
 Naui_List(NauiDirEntry) naui_directory_filter(const char* path, const char* filter, const char** extensions, int ext_count)
 {
-	Naui_List(NauiDirEntry) list = naui_list__init(sizeof(NauiDirEntry), NAUI_LIST_DEFAULT_CAP);
+	Naui_List(NauiDirEntry) list = NULL;
+	naui_list_reserve(list, 1);
+
 	if (!path)
 		return list;
 

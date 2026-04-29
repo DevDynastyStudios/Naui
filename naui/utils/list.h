@@ -3,7 +3,7 @@
 #include <stb/stb_ds.h>
 
 #define Naui_List(type) type *
-#define naui_list_length(arr)           arrlen(arr)
+#define naui_list_len(arr)              arrlen(arr)
 #define naui_list_push(arr, data)       arrput(arr, data)
 #define naui_list_pop(arr)              arrpop(arr)
 #define naui_list_free(arr)             arrfree(arr)
