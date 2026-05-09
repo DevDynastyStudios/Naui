@@ -1,4 +1,5 @@
 #include "test.h"
+#include "test_func.h"
 #include "naui/base.h"
 #include "naui/filesystem/filesystem.h"
 
@@ -351,32 +352,27 @@ static void test_file_hide_is_hidden(void)
 	TEST_BEGIN("naui_file_hide / naui_file_is_hidden");
 
 	{
-#if defined(_WIN32) || defined(_WIN64)
-		Naui_Path* hide = tp("hide_test.txt");
-		write_text(hide, "hidden");
+		Naui_Path* original = tp("hide_test.txt");
+		write_text(original, "hidden");
 
-		ASSERT(!naui_file_is_hidden(hide));
-		ASSERT(naui_file_hide(hide, true));
-		ASSERT(naui_file_is_hidden(hide));
-		ASSERT(naui_file_hide(hide, false));
-		ASSERT(!naui_file_is_hidden(hide));
-		naui_file_delete(hide);
-#else
-		/* On Unix, hiding renames the file by prepending a dot. */
-		Naui_Path* visible = tp("hide_me.txt");
-		Naui_Path* hidden = tp(".hide_me.txt");
+		ASSERT(!naui_file_is_hidden(original));
 
-		write_text(visible, "hide me");
-		ASSERT(!naui_file_is_hidden(visible));
-		ASSERT(naui_file_hide(visible, true));
-		ASSERT(naui_path_exists(hidden));
-		ASSERT(naui_file_is_hidden(hidden));
-		ASSERT(naui_file_hide(hidden, false));
-		ASSERT(naui_path_exists(visible));
-		ASSERT(!naui_file_is_hidden(visible));
-		naui_file_delete(visible);
-#endif
-		ASSERT(!naui_file_hide(empty_path(), true));
+		/* Hide it — returned path may differ on Unix */
+		Naui_Path hidden = naui_file_hide(original, true);
+		ASSERT(naui_file_is_hidden(&hidden));
+		ASSERT(naui_path_exists(&hidden));
+
+		/* Unhide it — returned path may differ on Unix */
+		Naui_Path unhidden = naui_file_hide(&hidden, false);
+		ASSERT(!naui_file_is_hidden(&unhidden));
+		ASSERT(naui_path_exists(&unhidden));
+
+		/* Cleanup */
+		naui_file_delete(&unhidden);
+
+		/* Empty path: should return the same empty path */
+		Naui_Path result = naui_file_hide(empty_path(), true);
+		ASSERT(naui_path_is_empty(&result));
 		ASSERT(!naui_file_is_hidden(empty_path()));
 	}
 
@@ -840,8 +836,7 @@ static void test_current_directory_all(void)
 	TEST_END();
 }
 
-
-int main(void)
+void filesystem_test()
 {
 	Naui_Path root = temp_root();
 	naui_directory_create(&root);
@@ -874,6 +869,5 @@ int main(void)
 	test_path_lock();
 	test_path_lock_independent();
 	test_current_directory_all();
-
-	return test_summary();
+	test_summary();
 }

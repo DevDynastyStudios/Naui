@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #if defined(_WIN32) || defined(_WIN64)
 
 #ifndef WIN32_LEAN_AND_MEAN
@@ -17,6 +18,21 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+
+typedef struct
+{
+	HANDLE h;
+} Naui_FileInternal;
+
+#define NAUI_LOCK_MAX 32
+typedef struct
+{
+	char path[NAUI_PATH_MAX];
+	HANDLE handle;
+} Naui_LockEntry;
+
+static Naui_LockEntry s_locks[NAUI_LOCK_MAX];
+static int s_lock_count = 0;
 
 static Naui_Path path_empty(void)
 {
@@ -51,22 +67,130 @@ static bool is_separator(char c)
 	return c == '/' || c == '\\';
 }
 
-typedef struct { HANDLE h; } NauiFileInternal;
-
-static NauiFileInternal* file_internal(const Naui_FileHandle* handle)
+static Naui_FileInternal* file_internal(const Naui_FileHandle* handle)
 {
-	return (NauiFileInternal*)(void*)handle->_opaque;
+	return (Naui_FileInternal*)(void*)handle->_opaque;
 }
 
-#define NAUI_LOCK_MAX 256
-static struct
+static bool match_filter(const char* name, const char* filter)
 {
-	char path[NAUI_PATH_MAX];
-} s_locks[NAUI_LOCK_MAX];
+	if (!filter || filter[0] == '\0')
+		return true;
 
-static int s_lock_count = 0;
+	const char* star = strchr(filter, '*');
+	if (!star)
+		return _stricmp(name, filter) == 0;
 
-bool naui_file_open(Naui_FileHandle* handle, Naui_Path* path, Naui_FileMode mode)
+	size_t prefix_len = (size_t)(star - filter);
+	if (_strnicmp(name, filter, prefix_len) != 0)
+		return false;
+
+	const char* suffix = star + 1;
+	size_t suffix_len = strlen(suffix);
+	size_t name_len = strlen(name);
+	if (suffix_len > name_len - prefix_len)
+		return false;
+
+	return _stricmp(name + name_len - suffix_len, suffix) == 0;
+}
+
+static bool match_extensions(const char* name, const char** exts, int ext_count)
+{
+	if (ext_count <= 0 || !exts)
+		return true;
+
+	const char* dot = strrchr(name, '.');
+	if (!dot)
+		return false;
+
+	for (int i = 0; i < ext_count; ++i)
+	{
+		if (exts[i] && _stricmp(dot, exts[i]) == 0)
+			return true;
+	}
+
+	return false;
+}
+
+static void filter_recursive_impl_w(const char* path, const char* filter, const char** extensions, int ext_count, Naui_List(Naui_DirEntry)* list)
+{
+	wchar_t wsearch[NAUI_PATH_MAX];
+	{
+		wchar_t wpath[NAUI_PATH_MAX];
+		if (!to_wide(path, wpath))
+			return;
+
+		_snwprintf(wsearch, NAUI_PATH_MAX, L"%s\\*", wpath);
+	}
+
+	WIN32_FIND_DATAW fd;
+	HANDLE h = FindFirstFileW(wsearch, &fd);
+	if (h == INVALID_HANDLE_VALUE)
+		return;
+
+	do
+	{
+		if (wcscmp(fd.cFileName, L".") == 0 || wcscmp(fd.cFileName, L"..") == 0)
+			continue;
+
+		char name_u8[NAUI_PATH_MAX];
+		if (!to_utf8(fd.cFileName, name_u8))
+			continue;
+
+		char child[NAUI_PATH_MAX];
+		snprintf(child, sizeof(child), "%s\\%s", path, name_u8);
+		bool is_dir = (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+
+		if (is_dir)
+		{
+			Naui_DirEntry de;
+			de.path = path_from(child);
+			de.is_directory = true;
+			de.size = 0;
+			naui_list_push(*list, de);
+			filter_recursive_impl_w(child, filter, extensions, ext_count, list);
+		}
+		else
+		{
+			if (!match_filter(name_u8, filter))
+				continue;
+
+			if (!match_extensions(name_u8, extensions, ext_count))
+				continue;
+
+			ULARGE_INTEGER size;
+			size.HighPart = fd.nFileSizeHigh;
+			size.LowPart = fd.nFileSizeLow;
+
+			Naui_DirEntry de;
+			de.path = path_from(child);
+			de.is_directory = false;
+			de.size = (size_t)size.QuadPart;
+			naui_list_push(*list, de);
+		}
+
+	} while (FindNextFileW(h, &fd));
+
+	FindClose(h);
+}
+
+static void resolve_lock_target(const char* path, char* out)
+{
+	wchar_t wpath[NAUI_PATH_MAX];
+	if (MultiByteToWideChar(CP_UTF8, 0, path, -1, wpath, NAUI_PATH_MAX) > 0)
+	{
+		DWORD attrs = GetFileAttributesW(wpath);
+		if (attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY))
+		{
+			snprintf(out, NAUI_PATH_MAX, "%s\\.lock", path);
+			return;
+		}
+	}
+
+	snprintf(out, NAUI_PATH_MAX, "%s", path);
+}
+
+bool naui_file_open(Naui_FileHandle* handle, const Naui_Path* path, Naui_FileMode mode)
 {
 	if (!handle)
 		return false;
@@ -108,7 +232,7 @@ bool naui_file_open(Naui_FileHandle* handle, Naui_Path* path, Naui_FileMode mode
 	return true;
 }
 
-size_t naui_file_read(const Naui_FileHandle* handle, void* restrict buffer, size_t size)
+size_t naui_file_read(const Naui_FileHandle* handle, void* buffer, size_t size)
 {
 	if (!handle || !buffer)
 		return 0;
@@ -122,7 +246,7 @@ size_t naui_file_read(const Naui_FileHandle* handle, void* restrict buffer, size
 	return (size_t)got;
 }
 
-size_t naui_file_write(const Naui_FileHandle* handle, const void* restrict buffer, size_t size)
+size_t naui_file_write(const Naui_FileHandle* handle, const void* buffer, size_t size)
 {
 	if (!handle || !buffer)
 		return 0;
@@ -181,7 +305,7 @@ void naui_file_close(Naui_FileHandle* handle)
 	if (!handle)
 		return;
 
-	NauiFileInternal* fi = file_internal(handle);
+	Naui_FileInternal* fi = file_internal(handle);
 	if (fi->h && fi->h != INVALID_HANDLE_VALUE)
 	{
 		CloseHandle(fi->h);
@@ -189,7 +313,7 @@ void naui_file_close(Naui_FileHandle* handle)
 	}
 }
 
-size_t naui_file_size(Naui_Path* path)
+size_t naui_file_size(const Naui_Path* path)
 {
 	wchar_t wpath[NAUI_PATH_MAX];
 	if (!to_wide(path->data, wpath))
@@ -205,7 +329,7 @@ size_t naui_file_size(Naui_Path* path)
 	return (size_t)size.QuadPart;
 }
 
-char* naui_file_read_all(Naui_Path* path, size_t* out_size)
+char* naui_file_read_all(const Naui_Path* path, size_t* out_size)
 {
 	Naui_FileHandle handle = NAUI_FILE_HANDLE_INIT;
 	if (!naui_file_open(&handle, path, NAUI_FILE_READ))
@@ -240,14 +364,13 @@ char* naui_file_read_all(Naui_Path* path, size_t* out_size)
 
 	naui_file_close(&handle);
 	buf[total] = '\0';
-
 	if (out_size)
 		*out_size = total;
 
 	return buf;
 }
 
-bool naui_file_write_all(Naui_Path* path, const void* data, size_t size)
+bool naui_file_write_all(const Naui_Path* path, const void* data, size_t size)
 {
 	if (!data)
 		return false;
@@ -261,7 +384,7 @@ bool naui_file_write_all(Naui_Path* path, const void* data, size_t size)
 	return written == size;
 }
 
-bool naui_file_delete(Naui_Path* path)
+bool naui_file_delete(const Naui_Path* path)
 {
 	wchar_t wpath[NAUI_PATH_MAX];
 	if (!to_wide(path->data, wpath))
@@ -270,7 +393,7 @@ bool naui_file_delete(Naui_Path* path)
 	return DeleteFileW(wpath) != 0;
 }
 
-bool naui_file_rename(Naui_Path* old_path, Naui_Path* new_path)
+bool naui_file_rename(const Naui_Path* old_path, const Naui_Path* new_path)
 {
 	wchar_t wold[NAUI_PATH_MAX];
 	wchar_t wnew[NAUI_PATH_MAX];
@@ -283,21 +406,23 @@ bool naui_file_rename(Naui_Path* old_path, Naui_Path* new_path)
 	return MoveFileExW(wold, wnew, MOVEFILE_REPLACE_EXISTING) != 0;
 }
 
-bool naui_file_hide(Naui_Path* path, bool hidden)
+Naui_Path naui_file_hide(const Naui_Path* path, bool hidden)
 {
+	Naui_Path result = *path;
 	wchar_t wpath[NAUI_PATH_MAX];
 	if (!to_wide(path->data, wpath))
-		return false;
+		return result;
 
 	DWORD attrs = GetFileAttributesW(wpath);
 	if (attrs == INVALID_FILE_ATTRIBUTES)
-		return false;
+		return result;
 
 	attrs = hidden ? attrs | FILE_ATTRIBUTE_HIDDEN : attrs & ~FILE_ATTRIBUTE_HIDDEN;
-	return SetFileAttributesW(wpath, attrs) != 0;
+	SetFileAttributesW(wpath, attrs);
+	return result;
 }
 
-bool naui_file_is_hidden(Naui_Path* path)
+bool naui_file_is_hidden(const Naui_Path* path)
 {
 	wchar_t wpath[NAUI_PATH_MAX];
 	if (!to_wide(path->data, wpath))
@@ -310,7 +435,7 @@ bool naui_file_is_hidden(Naui_Path* path)
 	return (attrs & FILE_ATTRIBUTE_HIDDEN) != 0;
 }
 
-const char* naui_file_filename(Naui_Path* path)
+const char* naui_file_filename(const Naui_Path* path)
 {
 	const char* data = path->data;
 	const char* last = NULL;
@@ -323,7 +448,7 @@ const char* naui_file_filename(Naui_Path* path)
 	return last ? last + 1 : data;
 }
 
-Naui_Path naui_file_stem(Naui_Path* path)
+Naui_Path naui_file_stem(const Naui_Path* path)
 {
 	const char* filename = naui_file_filename(path);
 	const char* dot = strrchr(filename, '.');
@@ -340,7 +465,7 @@ Naui_Path naui_file_stem(Naui_Path* path)
 	return result;
 }
 
-Naui_Path naui_file_extension(Naui_Path* path)
+Naui_Path naui_file_extension(const Naui_Path* path)
 {
 	const char* filename = naui_file_filename(path);
 	const char* dot = strrchr(filename, '.');
@@ -350,7 +475,7 @@ Naui_Path naui_file_extension(Naui_Path* path)
 	return path_from(dot);
 }
 
-bool naui_directory_create(Naui_Path* path)
+bool naui_directory_create(const Naui_Path* path)
 {
 	wchar_t wpath[NAUI_PATH_MAX];
 	if (!to_wide(path->data, wpath))
@@ -359,7 +484,7 @@ bool naui_directory_create(Naui_Path* path)
 	return CreateDirectoryW(wpath, NULL) != 0 || GetLastError() == ERROR_ALREADY_EXISTS;
 }
 
-bool naui_directory_remove(Naui_Path* path)
+bool naui_directory_remove(const Naui_Path* path)
 {
 	wchar_t wpath[NAUI_PATH_MAX];
 	if (!to_wide(path->data, wpath))
@@ -393,7 +518,7 @@ static bool remove_all_recursive(wchar_t* wpath)
 	return ok & (RemoveDirectoryW(wpath) != 0);
 }
 
-bool naui_directory_remove_all(Naui_Path* path)
+bool naui_directory_remove_all(const Naui_Path* path)
 {
 	if (path->data[0] == '\0')
 		return false;
@@ -405,12 +530,12 @@ bool naui_directory_remove_all(Naui_Path* path)
 	return remove_all_recursive(wpath);
 }
 
-bool naui_directory_rename(Naui_Path* old_path, Naui_Path* new_path)
+bool naui_directory_rename(const Naui_Path* old_path, const Naui_Path* new_path)
 {
 	return naui_file_rename(old_path, new_path);
 }
 
-static char s_working[NAUI_PATH_MAX] = {0};	// Used in `naui_directory_get` and `naui_path_set_current`
+static char s_working[NAUI_PATH_MAX] = {0}; // Used in `naui_directory_get` and `naui_path_set_current`
 Naui_Path naui_directory_get(Naui_Dir directory)
 {
 	static char s_home[NAUI_PATH_MAX] = {0};
@@ -450,7 +575,7 @@ Naui_Path naui_directory_get(Naui_Dir directory)
 		}
 		case NAUI_DIR_WORKING:
 		{
-			if(s_working[0])
+			if (s_working[0])
 				return path_from(s_working);
 
 			wchar_t w[NAUI_PATH_MAX];
@@ -486,47 +611,7 @@ Naui_Path naui_directory_get(Naui_Dir directory)
 	return path_empty();
 }
 
-static bool match_filter(const char* name, const char* filter)
-{
-	if (!filter || filter[0] == '\0')
-		return true;
-
-	const char* star = strchr(filter, '*');
-	if (!star)
-		return _stricmp(name, filter) == 0;
-
-	size_t prefix_len = (size_t)(star - filter);
-	if (_strnicmp(name, filter, prefix_len) != 0)
-		return false;
-
-	const char* suffix = star + 1;
-	size_t suffix_len = strlen(suffix);
-	size_t name_len = strlen(name);
-	if (suffix_len > name_len - prefix_len)
-		return false;
-
-	return _stricmp(name + name_len - suffix_len, suffix) == 0;
-}
-
-static bool match_extensions(const char* name, const char** exts, int ext_count)
-{
-	if (ext_count <= 0 || !exts)
-		return true;
-
-	const char* dot = strrchr(name, '.');
-	if (!dot)
-		return false;
-
-	for (int i = 0; i < ext_count; ++i)
-	{
-		if (exts[i] && _stricmp(dot, exts[i]) == 0)
-			return true;
-	}
-
-	return false;
-}
-
-Naui_List(Naui_DirEntry) naui_directory_filter(Naui_Path* path, const char* filter, const char** extensions, int ext_count)
+Naui_List(Naui_DirEntry) naui_directory_filter(const Naui_Path* path, const char* filter, const char** extensions, int ext_count)
 {
 	Naui_List(Naui_DirEntry) list = NULL;
 
@@ -580,27 +665,39 @@ Naui_List(Naui_DirEntry) naui_directory_filter(Naui_Path* path, const char* filt
 	return list;
 }
 
+Naui_List(Naui_DirEntry) naui_directory_filter_recursive(const Naui_Path* path, const char* filter, const char** extensions, int ext_count)
+{
+	Naui_List(Naui_DirEntry) list = NULL;
+	if (path->data[0] == '\0')
+		return list;
+
+	filter_recursive_impl_w(path->data, filter, extensions, ext_count, &list);
+	return list;
+}
+
 void naui_directory_filter_free(Naui_List(Naui_DirEntry) list)
 {
 	if (list)
 		naui_list_free(list);
 }
 
-bool naui_path_set_current(Naui_Path* path)
+bool naui_path_set_current(const Naui_Path* path)
 {
-	if(path->data[0] == '\0')
+	if (path->data[0] == '\0')
 		return false;
 
-	wchar_t w[NAUI_PATH_MAX];
-	to_wide(path->data, w);
-	if(!SetCurrentDirectoryW(w))
+	wchar_t wpath[NAUI_PATH_MAX];
+	if (!to_wide(path->data, wpath))
+		return false;
+
+	if (!SetCurrentDirectoryW(wpath))
 		return false;
 
 	memcpy(s_working, path->data, NAUI_PATH_MAX);
 	return true;
 }
 
-bool naui_path_exists(Naui_Path* path)
+bool naui_path_exists(const Naui_Path* path)
 {
 	wchar_t wpath[NAUI_PATH_MAX];
 	if (!to_wide(path->data, wpath))
@@ -609,7 +706,12 @@ bool naui_path_exists(Naui_Path* path)
 	return GetFileAttributesW(wpath) != INVALID_FILE_ATTRIBUTES;
 }
 
-Naui_Path naui_path_parent(Naui_Path* path)
+bool naui_path_is_empty(const Naui_Path* path)
+{
+	return path->data[0] == '\0';
+}
+
+Naui_Path naui_path_parent(const Naui_Path* path)
 {
 	size_t len = strlen(path->data);
 	while (len > 1 && is_separator(path->data[len - 1]))
@@ -643,14 +745,13 @@ Naui_Path naui_path_parent(Naui_Path* path)
 	return result;
 }
 
-Naui_Path naui_path_join(Naui_Path* a, Naui_Path* b)
+Naui_Path naui_path_join(const Naui_Path* a, const Naui_Path* b)
 {
 	if (b->data[0] == '/' || b->data[0] == '\\' || (b->data[0] && b->data[1] == ':'))
 		return *b;
 
 	Naui_Path result;
 	size_t a_len = strlen(a->data);
-
 	if (a_len == 0)
 		return *b;
 
@@ -659,11 +760,10 @@ Naui_Path naui_path_join(Naui_Path* a, Naui_Path* b)
 	return result;
 }
 
-Naui_Path naui_path_normalize(Naui_Path* path)
+Naui_Path naui_path_normalize(const Naui_Path* path)
 {
 	char buf[NAUI_PATH_MAX];
 	snprintf(buf, sizeof(buf), "%s", path->data);
-
 	for (char* p = buf; *p; ++p)
 	{
 		if (*p == '/')
@@ -673,7 +773,7 @@ Naui_Path naui_path_normalize(Naui_Path* path)
 	bool is_unix_abs = (buf[0] == '\\');
 	bool is_drive_abs = (buf[1] == ':' && buf[2] == '\\');
 	bool is_absolute = is_unix_abs || is_drive_abs;
-	const char* parts[NAUI_PATH_MAX >> 1];
+	const char* parts[NAUI_PATH_MAX / 2];
 	int n = 0;
 	char* tok = strtok(buf, "\\");
 
@@ -722,7 +822,7 @@ Naui_Path naui_path_normalize(Naui_Path* path)
 	return result;
 }
 
-Naui_Path naui_path_absolute(Naui_Path* path)
+Naui_Path naui_path_absolute(const Naui_Path* path)
 {
 	if ((path->data[0] && path->data[1] == ':') || path->data[0] == '/' || path->data[0] == '\\')
 		return *path;
@@ -731,7 +831,7 @@ Naui_Path naui_path_absolute(Naui_Path* path)
 	return naui_path_join(&cwd, path);
 }
 
-Naui_Path naui_path_canonical(Naui_Path* path)
+Naui_Path naui_path_canonical(const Naui_Path* path)
 {
 	wchar_t wpath[NAUI_PATH_MAX];
 	if (!to_wide(path->data, wpath))
@@ -749,11 +849,10 @@ Naui_Path naui_path_canonical(Naui_Path* path)
 	return result;
 }
 
-Naui_Path naui_path_weakly_canonical(Naui_Path* path)
+Naui_Path naui_path_weakly_canonical(const Naui_Path* path)
 {
 	Naui_Path existing = *path;
 	Naui_Path tail = path_empty();
-
 	while (existing.data[0] != '\0' && !naui_path_exists(&existing))
 	{
 		Naui_Path parent = naui_path_parent(&existing);
@@ -779,43 +878,113 @@ Naui_Path naui_path_weakly_canonical(Naui_Path* path)
 	return naui_path_normalize(&joined);
 }
 
-bool naui_path_lock(Naui_Path* path)
+bool naui_path_lock(const Naui_Path* path)
 {
 	if (path->data[0] == '\0' || s_lock_count >= NAUI_LOCK_MAX)
 		return false;
 
-	if (naui_path_is_locked(path))
+	char target[NAUI_PATH_MAX];
+	resolve_lock_target(path->data, target);
+	for (int i = 0; i < s_lock_count; ++i)
+	{
+		if (_stricmp(s_locks[i].path, target) == 0)
+			return false;
+	}
+
+	const char* dot_lock = strstr(target, "\\.lock");
+	if (dot_lock && *(dot_lock + 6) == '\0')
+	{
+		char parent[NAUI_PATH_MAX];
+		size_t parent_len = (size_t)(dot_lock - target);
+		memcpy(parent, target, parent_len);
+		parent[parent_len] = '\0';
+		wchar_t wparent[NAUI_PATH_MAX];
+		if (to_wide(parent, wparent))
+			CreateDirectoryW(wparent, NULL);
+	}
+
+	wchar_t wtarget[NAUI_PATH_MAX];
+	if (!to_wide(target, wtarget))
 		return false;
 
-	snprintf(s_locks[s_lock_count].path, NAUI_PATH_MAX, "%s", path->data);
+	HANDLE h = CreateFileW(
+		wtarget,
+		GENERIC_READ | GENERIC_WRITE,
+		0,
+		NULL,
+		OPEN_ALWAYS,
+		FILE_ATTRIBUTE_HIDDEN,
+		NULL
+	);
+
+	if (h == INVALID_HANDLE_VALUE)
+		return false;
+
+	OVERLAPPED overlap = {0};
+	if (!LockFileEx(h, LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY, 0, MAXWORD, MAXWORD, &overlap))
+	{
+		CloseHandle(h);
+		return false;
+	}
+
+	snprintf(s_locks[s_lock_count].path, NAUI_PATH_MAX, "%s", target);
+	s_locks[s_lock_count].handle = h;
 	++s_lock_count;
 	return true;
 }
 
-bool naui_path_is_locked(Naui_Path* path)
+bool naui_path_is_locked(const Naui_Path* path)
 {
 	if (path->data[0] == '\0')
 		return false;
 
+	char target[NAUI_PATH_MAX];
+	resolve_lock_target(path->data, target);
 	for (int i = 0; i < s_lock_count; ++i)
 	{
-		if (_stricmp(s_locks[i].path, path->data) == 0)
+		if (_stricmp(s_locks[i].path, target) == 0)
 			return true;
 	}
 
+	wchar_t wtarget[NAUI_PATH_MAX];
+	if (!to_wide(target, wtarget))
+		return false;
+
+	if (GetFileAttributesW(wtarget) == INVALID_FILE_ATTRIBUTES)
+		return false;
+
+	HANDLE h = CreateFileW(
+		wtarget,
+		GENERIC_READ | GENERIC_WRITE,
+		0,
+		NULL,
+		OPEN_EXISTING,
+		FILE_ATTRIBUTE_HIDDEN,
+		NULL
+	);
+
+	if (h == INVALID_HANDLE_VALUE)
+		return true;
+
+	CloseHandle(h);
 	return false;
 }
 
-void naui_path_unlock(Naui_Path* path)
+void naui_path_unlock(const Naui_Path* path)
 {
 	if (path->data[0] == '\0')
 		return;
 
+	char target[NAUI_PATH_MAX];
+	resolve_lock_target(path->data, target);
+
 	for (int i = 0; i < s_lock_count; ++i)
 	{
-		if (_stricmp(s_locks[i].path, path->data) != 0)
+		if (_stricmp(s_locks[i].path, target) != 0)
 			continue;
 
+		UnlockFile(s_locks[i].handle, 0, 0, MAXWORD, MAXWORD);
+		CloseHandle(s_locks[i].handle);
 		s_locks[i] = s_locks[--s_lock_count];
 		return;
 	}
