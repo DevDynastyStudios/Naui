@@ -14,15 +14,8 @@ project "Naui"
 
     includedirs {
         "naui",
-        "naui/vendor",
-        "F:/VulkanSDK/1.3.275.0/include"
+        "naui/vendor"
     }
-
-    libdirs {
-        "F:/VulkanSDK/1.3.275.0/lib"
-    }
-
-    links {"vulkan-1"}
 
     filter "configurations:Debug"
         defines { "DEBUG" }

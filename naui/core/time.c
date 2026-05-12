@@ -1,7 +1,7 @@
 #include "time.h"
-#include <sokol/sokol_app.h>
+#include <magma/mgapp.h>
 
 float naui_delta_time(void)
 {
-    return (float)sapp_frame_duration();
+    return (float)mg_app_delta_time();
 }
