@@ -22,7 +22,7 @@ enum
 typedef struct Naui_ArchiveEntry
 {
 	Naui_Path path;
-	uint64_t  size;
+	uint64_t size;
 	bool is_directory;
 } Naui_ArchiveEntry;
 
