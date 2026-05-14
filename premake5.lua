@@ -25,6 +25,11 @@ project "Naui"
         defines { "NDEBUG" }
         optimize "On"
 
+    filter "system:windows"
+        defines { "MGFX_D3D11" }
+    filter "system:linux"
+        defines { "MGFX_OPENGL" }
+
 project "NauiApp"
     kind "ConsoleApp"
     language "C"
@@ -54,7 +59,7 @@ project "NauiApp"
         optimize "On"
 
     filter "system:linux"
-        links { "X11", "Xi", "Xcursor", "dl", "pthread", "m", "GL" } -- from sokol_app.h
+        links { "X11", "EGL", "m" }
 
 
 project "UnitTest"
@@ -84,5 +89,5 @@ project "UnitTest"
         optimize "On"
 
     filter "system:linux"
-        links { "X11", "Xi", "Xcursor", "dl", "pthread", "m", "GL" }
+        links { "X11", "EGL", "m" }
 

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <leaf/leaf.h>
-#include <magma/mgfx.h>
 
 typedef struct
 {

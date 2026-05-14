@@ -1,4 +1,5 @@
 #include "app.h"
+#include <stddef.h>
 
 #include <leaf/leaf.h>
 #include <magma/mgapp.h>
