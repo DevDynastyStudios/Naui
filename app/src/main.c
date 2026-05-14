@@ -24,7 +24,7 @@ void naui_app_update(void)
         leaf({
             .sizing = {LEAF_SIZING_GROW, LEAF_SIZING_GROW},
             .color = leaf_solid(leaf_rgb(200, 0, 200)),
-            .rounding = 10.0f
+            .rounding = 16.0f
         });
     }
 }

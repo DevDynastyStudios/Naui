@@ -134,6 +134,15 @@ static void push_corner_ring(Naui_Vec2 center, float inner_r, float outer_r, flo
     }
 }
 
+void naui_renderer_build_atlas(uint32_t width, uint32_t height, void *data)
+{
+    mgfx_create_image(&(mgfx_image_create_info){
+        .data = data,
+        .width = width,
+        .height = height
+    });
+}
+
 void naui_renderer_initialize(const char *default_font_path)
 {
     data = calloc(1, sizeof(Naui_RendererData));
@@ -222,6 +231,8 @@ void naui_renderer_end(void)
     mgfx_begin();
     mgfx_bind_pass(&(mgfx_pass_info){});
     mgfx_bind_pipeline(data->base_pipeline);
+    //mgfx_bind_image(data->image_atlas, data->image_sampler, 0);
+    //mgfx_bind_image(data->font_sampler, data->font_sampler, 1);
 
     struct
     {
