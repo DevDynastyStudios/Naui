@@ -914,7 +914,7 @@ typedef struct
     GLuint texture_id;
     GLenum texture_target;
     GLenum format;
-    uint32_t width, height;
+    uint32_t width, height, depth;
 }
 mgfx_gl_image;
 
@@ -2100,7 +2100,7 @@ static void mgfx_vk_update_image(mgfx_vk_image *image, size_t size, void *data)
     vkUnmapMemory(ctx.vk.device.handle, staging_memory);
 
     mgfx_vk_transition_image_layout_temp(image->image, image->format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    mgfx_vk_copy_buffer_to_image(staging_buffer, image->image, image->width, image->height, depth);
+    mgfx_vk_copy_buffer_to_image(staging_buffer, image->image, image->width, image->height, image->depth);
     mgfx_vk_transition_image_layout_temp(image->image, image->format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     vkDestroyBuffer(ctx.vk.device.handle, staging_buffer, NULL);
@@ -3185,7 +3185,10 @@ void _mgfx_gl_set_swap_interval(bool enabled)
     _MGFX_XMACRO(glBlendEquationSeparate,   void,   (GLenum modeRGB, GLenum modeAlpha)) \
     _MGFX_XMACRO(glDeleteTextures,          void,   (GLsizei n, const GLuint* textures)) \
     _MGFX_XMACRO(glBindTexture,             void,   (GLenum target, GLuint texture)) \
+    _MGFX_XMACRO(glTexImage2D,              void,   (GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const void* pixels)) \
     _MGFX_XMACRO(glTexImage3D,              void,   (GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLsizei depth, GLint border, GLenum format, GLenum type, const void* pixels)) \
+    _MGFX_XMACRO(glTexSubImage2D,           void,   (GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const void* pixels)) \
+    _MGFX_XMACRO(glTexSubImage3D,           void,   (GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, const void* pixels)) \
     _MGFX_XMACRO(glCreateShader,            GLuint, (GLenum type)) \
     _MGFX_XMACRO(glFramebufferTexture2D,    void,   (GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level)) \
     _MGFX_XMACRO(glCreateProgram,           GLuint, (void)) \
@@ -3209,7 +3212,6 @@ void _mgfx_gl_set_swap_interval(bool enabled)
     _MGFX_XMACRO(glDepthFunc,               void,   (GLenum func)) \
     _MGFX_XMACRO(glEnableVertexAttribArray, void,   (GLuint index)) \
     _MGFX_XMACRO(glBlendFunc,               void,   (GLenum sfactor, GLenum dfactor)) \
-    _MGFX_XMACRO(glTexImage2D,              void,   (GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const void* pixels)) \
     _MGFX_XMACRO(glGenVertexArrays,         void,   (GLsizei n, GLuint* arrays)) \
     _MGFX_XMACRO(glFrontFace,               void,   (GLenum mode)) \
     _MGFX_XMACRO(glCullFace,                void,   (GLenum mode)) \
@@ -3579,6 +3581,7 @@ static mgfx_gl_image *mgfx_gl_create_image(const mgfx_image_create_info *create_
 
     image->width = create_info->width;
     image->height = create_info->height;
+    image->depth = create_info->depth;
 
     return image;
 }
