@@ -2,7 +2,8 @@
 
 #include <leaf/leaf.h>
 #include <magma/mgapp.h>
-#include <magma/mgfx.h>
+
+#include "renderer/renderer.h"
 
 typedef struct
 {
@@ -17,30 +18,56 @@ typedef struct
 Naui_AppState;
 static Naui_AppState state;
 
+extern void naui_renderer_initialize(const char *default_font_path);
+extern void naui_renderer_shutdown(void);
+extern void naui_renderer_resize(int32_t width, int32_t height);
+extern void naui_renderer_begin(void);
+extern void naui_renderer_end(void);
+
 static void render(void)
 {
-    mgfx_begin();
+    naui_renderer_begin();
     leaf_begin_frame(mg_app_width(), mg_app_height());
     state.events.update();
     Leaf_RenderCmdList cmd_list = leaf_end_frame();
-    mgfx_end();
-    (void)cmd_list;
+    for (uint32_t i = 0; i < cmd_list.count; i++)
+    {
+        Leaf_RenderCmd cmd = cmd_list.cmds[i];
+        switch (cmd.type)
+        {
+        case LEAF_RENDER_CMD_RECT:
+            naui_fill_round_rect(
+                (Naui_Vec2){cmd.bounding_box.x, cmd.bounding_box.y},
+                (Naui_Vec2){cmd.bounding_box.width, cmd.bounding_box.height},
+                (Naui_Color){cmd.color.color1.r, cmd.color.color1.g, cmd.color.color1.b, cmd.color.color1.a},
+                cmd.rect.rounding
+            );
+            break;
+        case LEAF_RENDER_CMD_RECT_LINES:
+            naui_draw_round_rect(
+                (Naui_Vec2){cmd.bounding_box.x, cmd.bounding_box.y},
+                (Naui_Vec2){cmd.bounding_box.width, cmd.bounding_box.height},
+                (Naui_Color){cmd.color.color1.r, cmd.color.color1.g, cmd.color.color1.b, cmd.color.color1.a},
+                cmd.rect.line_width, cmd.rect.rounding
+            );
+            break;
+        }
+    }
+    naui_renderer_end();
 }
 
 static void __naui_app_event(const mg_app_event* event)
 {
     if (event->type == MG_APP_EVENT_RESIZE)
+    {
+        naui_renderer_resize(event->window_width, event->window_height);
         render();
+    }
 }
 
 static void __naui_app_start(void)
 {
-    mgfx_init(&(mgfx_init_info){
-        .handle = mg_app_handle(),
-        .width = mg_app_width(),
-        .height = mg_app_height(),
-        .vsync = true
-    });
+    naui_renderer_initialize(NULL);
     leaf_initialize();
     state.events.start();
 }
@@ -49,7 +76,7 @@ static void __naui_app_end(void)
 {
     state.events.end();
     leaf_shutdown();
-    mgfx_shutdown();
+    naui_renderer_shutdown();
 }
 
 static void __naui_app_update(void)
