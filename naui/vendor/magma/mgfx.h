@@ -75,10 +75,10 @@ enum
     MGFX_RENDERER_D3D11,
 #endif
 #if defined(MGFX_OPENGL)
-#if !defined(__EMSCRIPTEN__)
-    MGFX_RENDERER_OPENGL,
+#if defined(__EMSCRIPTEN__)
+    MGFX_RENDERER_OPENGLES,
 #else
-    MGFX_RENDERER_OPENGLES
+    MGFX_RENDERER_OPENGL,
 #endif
 #endif
 };

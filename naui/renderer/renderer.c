@@ -1,8 +1,8 @@
 #include "renderer.h"
-#include "shaders/base.h"
 
 #include <magma/mgapp.h>
 #include <magma/mgfx.h>
+#include "shaders/base.h"
 
 #include <stdlib.h>
 #include <math.h>
