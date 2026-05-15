@@ -4,7 +4,7 @@ NAUI_APP("Hello World")
 
 void naui_app_start(void)
 {
-    
+    naui_attach_panel();
 }
 
 void naui_app_end(void)

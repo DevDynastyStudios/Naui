@@ -25,11 +25,15 @@ extern void naui_renderer_resize(int32_t width, int32_t height);
 extern void naui_renderer_begin(void);
 extern void naui_renderer_end(void);
 
+extern void naui_panel_manager_render(void);
+
 static void render(void)
 {
     naui_renderer_begin();
     leaf_begin_frame(mg_app_width(), mg_app_height());
+    leaf_set_pointer_pos(mg_app_mouse_x(), mg_app_mouse_y());
     state.events.update();
+    naui_panel_manager_render();
     Leaf_RenderCmdList cmd_list = leaf_end_frame();
     for (uint32_t i = 0; i < cmd_list.count; i++)
     {
