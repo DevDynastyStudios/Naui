@@ -1,12 +1,7 @@
 #pragma once
 
 #include "base.h"
-
-typedef struct
-{
-    float x, y;
-}
-Naui_Vec2;
+#include "math/vec2.h"
 
 typedef void(*NauiPanelEvent)(void *data);
 

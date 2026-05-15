@@ -4,7 +4,13 @@
 
 #include <leaf/leaf.h>
 
-static Naui_Map(uint64_t, Naui_Panel) panel_map = NULL;
+typedef struct
+{
+    uint64_t key;
+    Naui_Panel value;
+}
+Naui_PanelMapEntry;
+static Naui_Map(Naui_PanelMapEntry) panel_map = NULL;
 
 void naui_panel_manager_render(void)
 {

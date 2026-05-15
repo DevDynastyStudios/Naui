@@ -10,6 +10,6 @@ typedef struct
 }
 Naui_ImageHashEntry;
 
-Naui_StrMap(Naui_ImageHashEntry) naui_asset_manager_load_images(char *const images_path);
+Naui_Map(Naui_ImageHashEntry) naui_asset_manager_load_images(const char *const images_path);
 void naui_asset_manager_free(void);
-Naui_Image naui_get_image(char *const name);
+const Naui_Image *naui_get_image(const char *const name);

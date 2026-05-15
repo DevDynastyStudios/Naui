@@ -3,7 +3,11 @@
 #include "utils/list.h"
 
 #include <stdio.h>
+#if NAUI_WINDOWS
+#include <dirent/dirent.h>
+#else
 #include <dirent.h>
+#endif
 #include <stb/stb_image.h>
 #include <stb/stb_rect_pack.h>
 
@@ -11,18 +15,17 @@
 
 static Naui_ImageHashEntry *image_hm = NULL;
 
-struct image
-{
-    int width, height; // for stb_image
-    uint8_t *pixels;
-};
-// Naui_Image   -> sprite (an area from an image)
-// struct image -> actual image with pixel data
-
 // TODO(doomguy): use arena for this.
-Naui_StrMap(Naui_ImageHashEntry) naui_asset_manager_load_images(char *const images_path)
+Naui_Map(Naui_ImageHashEntry) naui_asset_manager_load_images(const char *const images_path)
 {
-    Naui_List(struct image) images = NULL;
+    typedef struct
+    {
+        int32_t width, height;
+        uint8_t *pixels;
+    }
+    Naui_TempImageData;
+
+    Naui_List(Naui_TempImageData) images = NULL;
 
     // looping thru the images directory.
     {
@@ -50,9 +53,9 @@ Naui_StrMap(Naui_ImageHashEntry) naui_asset_manager_load_images(char *const imag
             name[sizeof(name) - 1] = '\0';
             char *image_name = strtok(name, "."); // this is also a hack, should iterate backwards thru str instead.
 
-            struct image image;
-            int c;
-            image.pixels = stbi_load(path, &image.width, &image.height, &c, 4);
+            Naui_TempImageData image;
+            int32_t temp_channels;
+            image.pixels = stbi_load(path, &image.width, &image.height, &temp_channels, 4);
             if (!image.pixels)
             {
                 fprintf(stderr, "[Naui]: failed to load image: %s\n", path);
@@ -79,7 +82,7 @@ Naui_StrMap(Naui_ImageHashEntry) naui_asset_manager_load_images(char *const imag
         for (int i=0; i < image_count; ++i)
         {
             stbrp_rect *r = &rects[i];
-            const struct image *img = &images[i];
+            const Naui_TempImageData *img = &images[i];
             r->w = img->width, r->h = img->height;
             r->id = i;
         }
@@ -90,12 +93,12 @@ Naui_StrMap(Naui_ImageHashEntry) naui_asset_manager_load_images(char *const imag
             exit(1);
         }
 
-        for (int i=0; i < image_count; ++i)
+        for (int i = 0; i < image_count; ++i)
         {
             const stbrp_rect r = rects[i];
             Naui_Image *sprite = &image_hm[i].value;
 
-            for (int y=0; y < r.h; ++y)
+            for (int y = 0; y < r.h; ++y)
             {
                 uint8_t *dst_row = pixels + ((r.y + y) * NAUI_IMAGE_ATLAS_SIZE + r.x) * 4;
                 uint8_t *src_row = images[i].pixels + (y * r.w) * 4;
@@ -117,8 +120,7 @@ Naui_StrMap(Naui_ImageHashEntry) naui_asset_manager_load_images(char *const imag
         free(pixels);
     }
 
-    // clean up
-    for (int i=0; i < naui_list_len(images); ++i)
+    for (int32_t i = 0; i < naui_list_len(images); ++i)
         stbi_image_free(images[i].pixels);
     naui_list_free(images);
 
@@ -130,7 +132,7 @@ void naui_asset_manager_free(void)
     naui_strmap_free(image_hm);
 }
 
-Naui_Image naui_get_image(char *const name)
+const Naui_Image *naui_get_image(const char *const name)
 {
-    return naui_strmap_get(image_hm, name);
+    return &naui_strmap_get(image_hm, name);
 }

@@ -27,17 +27,11 @@ extern void naui_renderer_end(void);
 
 extern void naui_panel_manager_render(void);
 
-static void render(void)
+static void render_leaf_cmd_list(const Leaf_RenderCmdList *list)
 {
-    naui_renderer_begin();
-    leaf_begin_frame(mg_app_width(), mg_app_height());
-    leaf_set_pointer_pos(mg_app_mouse_x(), mg_app_mouse_y());
-    state.events.update();
-    naui_panel_manager_render();
-    Leaf_RenderCmdList cmd_list = leaf_end_frame();
-    for (uint32_t i = 0; i < cmd_list.count; i++)
+    for (uint32_t i = 0; i < list->count; i++)
     {
-        Leaf_RenderCmd cmd = cmd_list.cmds[i];
+        Leaf_RenderCmd cmd = list->cmds[i];
         switch (cmd.type)
         {
         case LEAF_RENDER_CMD_RECT:
@@ -56,10 +50,28 @@ static void render(void)
                 cmd.rect.line_width, cmd.rect.rounding
             );
             break;
+        case LEAF_RENDER_CMD_IMAGE:
+            naui_draw_round_image(
+                (Naui_Image*)cmd.image.handle,
+                (Naui_Vec2){cmd.bounding_box.x, cmd.bounding_box.y},
+                (Naui_Vec2){cmd.bounding_box.width, cmd.bounding_box.height},
+                (Naui_Color){cmd.color.color1.r, cmd.color.color1.g, cmd.color.color1.b, cmd.color.color1.a},
+                cmd.image.rounding
+            );
+            break;
         }
     }
-    const Naui_Image img = naui_get_image("ded");
-    naui_draw_image(img, (Naui_Vec2){0}, (Naui_Vec2){500.0f, 500.0f});
+}
+
+static void render(void)
+{
+    naui_renderer_begin();
+    leaf_begin_frame(mg_app_width(), mg_app_height());
+    leaf_set_pointer_pos(mg_app_mouse_x(), mg_app_mouse_y());
+    state.events.update();
+    naui_panel_manager_render();
+    Leaf_RenderCmdList cmd_list = leaf_end_frame();
+    render_leaf_cmd_list(&cmd_list);
     naui_renderer_end();
 }
 

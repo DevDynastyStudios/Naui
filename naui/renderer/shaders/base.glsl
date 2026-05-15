@@ -26,6 +26,7 @@ void main()
 @stage fragment
 
 layout(binding = 0) uniform sampler2D texture0;
+layout(binding = 1) uniform sampler2D texture1;
 
 in vec4 frag_color;
 in vec2 frag_uv;
@@ -36,8 +37,7 @@ out vec4 out_color;
 void main()
 {
     const int texture_id = int(frag_texture_id);
-    if (texture_id == -1)
-        out_color = frag_color;
-    else
-        out_color = texture(texture0, frag_uv);
+    if (texture_id == -1) out_color = frag_color;
+    else if (texture_id == 0) out_color = texture(texture0, frag_uv) * frag_color;
+    else out_color = texture(texture1, frag_uv) * frag_color;
 }

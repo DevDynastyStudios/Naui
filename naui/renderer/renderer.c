@@ -2,7 +2,7 @@
 
 #include <magma/mgapp.h>
 #include <magma/mgfx.h>
-#include "shaders/base.h"
+#include "shaders/base.glsl.h"
 
 #include <stdlib.h>
 #include <math.h>
@@ -47,7 +47,7 @@ typedef struct
 }
 Naui_RendererData;
 
-static Naui_RendererData *data;
+static Naui_RendererData *rdata;
 static float s_cos[NAUI_RENDERER_CORNER_SEGMENTS + 1];
 static float s_sin[NAUI_RENDERER_CORNER_SEGMENTS + 1];
 
@@ -63,8 +63,8 @@ static inline uint32_t naui_pack_color(Naui_Color c)
 
 static void naui_push_quad4(Naui_Vec2 a, Naui_Vec2 b, Naui_Vec2 c, Naui_Vec2 d, uint32_t color, int32_t texture_id)
 {
-    uint32_t i = data->geometry_count;
-    Naui_BatchGeometry *g = &data->geometry_vertices[i];
+    uint32_t i = rdata->geometry_count;
+    Naui_BatchGeometry *g = &rdata->geometry_vertices[i];
 
     g->vertices[0] = (Naui_BatchVertex){ {a.x, a.y}, {0, 0}, color, texture_id };
     g->vertices[1] = (Naui_BatchVertex){ {b.x, b.y}, {0, 0}, color, texture_id };
@@ -72,17 +72,17 @@ static void naui_push_quad4(Naui_Vec2 a, Naui_Vec2 b, Naui_Vec2 c, Naui_Vec2 d, 
     g->vertices[3] = (Naui_BatchVertex){ {d.x, d.y}, {0, 0}, color, texture_id };
 
     uint32_t base = i * 4;
-    uint32_t *idx = &data->geometry_indices[i * 6];
+    uint32_t *idx = &rdata->geometry_indices[i * 6];
     idx[0] = base + 0; idx[1] = base + 1; idx[2] = base + 2;
     idx[3] = base + 2; idx[4] = base + 3; idx[5] = base + 0;
 
-    data->geometry_count++;
+    rdata->geometry_count++;
 }
 
 static void naui_push_textured_quad4(Naui_Vec2 a, Naui_Vec2 b, Naui_Vec2 c, Naui_Vec2 d, Naui_Vec4 texture_area, uint32_t color, int32_t texture_id)
 {
-    uint32_t i = data->geometry_count;
-    Naui_BatchGeometry *g = &data->geometry_vertices[i];
+    uint32_t i = rdata->geometry_count;
+    Naui_BatchGeometry *g = &rdata->geometry_vertices[i];
 
     // long boooooi
     g->vertices[0] = (Naui_BatchVertex){ {a.x, a.y}, {texture_area.x,                  texture_area.y},                  color, texture_id };
@@ -91,11 +91,11 @@ static void naui_push_textured_quad4(Naui_Vec2 a, Naui_Vec2 b, Naui_Vec2 c, Naui
     g->vertices[3] = (Naui_BatchVertex){ {d.x, d.y}, {texture_area.x,                  texture_area.y + texture_area.w}, color, texture_id };
 
     uint32_t base = i * 4;
-    uint32_t *idx = &data->geometry_indices[i * 6];
+    uint32_t *idx = &rdata->geometry_indices[i * 6];
     idx[0] = base + 0; idx[1] = base + 1; idx[2] = base + 2;
     idx[3] = base + 2; idx[4] = base + 3; idx[5] = base + 0;
 
-    data->geometry_count++;
+    rdata->geometry_count++;
 }
 
 static void naui_push_rect(Naui_Vec2 tl, Naui_Vec2 br, uint32_t color, int32_t texture_id)
@@ -123,8 +123,8 @@ static void naui_push_textured_rect(Naui_Vec2 tl, Naui_Vec2 br, Naui_Vec4 textur
 
 static void naui_push_triangle(Naui_Vec2 a, Naui_Vec2 b, Naui_Vec2 c, uint32_t color)
 {
-    uint32_t i = data->geometry_count;
-    Naui_BatchGeometry *g = &data->geometry_vertices[i];
+    uint32_t i = rdata->geometry_count;
+    Naui_BatchGeometry *g = &rdata->geometry_vertices[i];
 
     g->vertices[0] = (Naui_BatchVertex){ {a.x, a.y}, {0, 0}, color, -1 };
     g->vertices[1] = (Naui_BatchVertex){ {b.x, b.y}, {0, 0}, color, -1 };
@@ -132,11 +132,11 @@ static void naui_push_triangle(Naui_Vec2 a, Naui_Vec2 b, Naui_Vec2 c, uint32_t c
     g->vertices[3] = g->vertices[2]; // degenerate
 
     uint32_t base = i * 4;
-    uint32_t *idx = &data->geometry_indices[i * 6];
+    uint32_t *idx = &rdata->geometry_indices[i * 6];
     idx[0] = base + 0; idx[1] = base + 1; idx[2] = base + 2;
     idx[3] = base + 2; idx[4] = base + 3; idx[5] = base + 2; // degenerate
 
-    data->geometry_count++;
+    rdata->geometry_count++;
 }
 
 static void naui_push_corner_fan(Naui_Vec2 center, float r, float ax, float ay, uint32_t color)
@@ -165,21 +165,21 @@ static void naui_push_corner_ring(Naui_Vec2 center, float inner_r, float outer_r
     }
 }
 
-void naui_renderer_build_atlas(uint32_t width, uint32_t height, void *d)
+void naui_renderer_build_atlas(uint32_t width, uint32_t height, void *data)
 {
-    data->image_atlas = mgfx_create_image(&(mgfx_image_create_info){
+    rdata->image_atlas = mgfx_create_image(&(mgfx_image_create_info){
         .type = MGFX_IMAGE_TYPE_2D,
         .format = MGFX_FORMAT_RGBA8_UNORM,
         .usage = MGFX_IMAGE_USAGE_COLOR_ATTACHMENT,
         .width = width,
         .height = height,
-        .data = d,
+        .data = data,
     });
 }
 
 void naui_renderer_initialize(const char *default_font_path)
 {
-    data = calloc(1, sizeof(Naui_RendererData));
+    rdata = calloc(1, sizeof(Naui_RendererData));
 
     mgfx_init(&(mgfx_init_info){
         .handle = mg_app_handle(),
@@ -195,29 +195,38 @@ void naui_renderer_initialize(const char *default_font_path)
         s_sin[i] = sinf(a);
     }
 
-    data->batch_vb = mgfx_create_buffer(&(mgfx_buffer_create_info){
+    rdata->batch_vb = mgfx_create_buffer(&(mgfx_buffer_create_info){
         .usage  = MGFX_BUFFER_USAGE_VERTEX,
         .access = MGFX_ACCESS_CPU,
-        .size   = sizeof(data->geometry_vertices)
+        .size   = sizeof(rdata->geometry_vertices)
     });
 
-    data->batch_ib = mgfx_create_buffer(&(mgfx_buffer_create_info){
+    rdata->batch_ib = mgfx_create_buffer(&(mgfx_buffer_create_info){
         .usage  = MGFX_BUFFER_USAGE_INDEX,
         .access = MGFX_ACCESS_CPU,
-        .size   = sizeof(data->geometry_indices)
+        .size   = sizeof(rdata->geometry_indices)
     });
 
-    data->base_pipeline = mgfx_create_pipeline(&(mgfx_pipeline_create_info){
+    rdata->base_pipeline = mgfx_create_pipeline(&(mgfx_pipeline_create_info){
         .shader = get_base_shader(mgfx_get_shader_lang()),
         .vertex_attributes = {
             MGFX_VERTEX_FORMAT_FLOAT2,
             MGFX_VERTEX_FORMAT_FLOAT2,
             MGFX_VERTEX_FORMAT_UBYTE4N,
             MGFX_VERTEX_FORMAT_INT
+        },
+        .color_blend = {
+            .blend_enabled = true,
+            .src_color_blend_factor = MGFX_BLEND_FACTOR_SRC_ALPHA,
+            .dst_color_blend_factor = MGFX_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+            .color_blend_op = MGFX_BLEND_OP_ADD,
+            .src_alpha_blend_factor = MGFX_BLEND_FACTOR_ONE,
+            .dst_alpha_blend_factor = MGFX_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+            .alpha_blend_op = MGFX_BLEND_OP_ADD
         }
     });
 
-    data->image_sampler = mgfx_create_sampler(&(mgfx_sampler_create_info){
+    rdata->image_sampler = mgfx_create_sampler(&(mgfx_sampler_create_info){
         .min_filter     = MGFX_SAMPLER_FILTER_NEAREST,
         .mag_filter     = MGFX_SAMPLER_FILTER_NEAREST,
         .address_mode_u = MGFX_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
@@ -225,7 +234,7 @@ void naui_renderer_initialize(const char *default_font_path)
         .address_mode_w = MGFX_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE
     });
 
-    data->font_sampler = mgfx_create_sampler(&(mgfx_sampler_create_info){
+    rdata->font_sampler = mgfx_create_sampler(&(mgfx_sampler_create_info){
         .min_filter     = MGFX_SAMPLER_FILTER_LINEAR,
         .mag_filter     = MGFX_SAMPLER_FILTER_LINEAR,
         .address_mode_u = MGFX_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
@@ -233,39 +242,39 @@ void naui_renderer_initialize(const char *default_font_path)
         .address_mode_w = MGFX_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE
     });
 
-    data->width = mg_app_width();
-    data->height = mg_app_height();
+    rdata->width = mg_app_width();
+    rdata->height = mg_app_height();
 }
 
 void naui_renderer_shutdown(void)
 {
-    mgfx_destroy_sampler(data->image_sampler);
-    mgfx_destroy_sampler(data->font_sampler);
-    mgfx_destroy_buffer(data->batch_vb);
-    mgfx_destroy_buffer(data->batch_ib);
-    mgfx_destroy_pipeline(data->base_pipeline);
+    mgfx_destroy_sampler(rdata->image_sampler);
+    mgfx_destroy_sampler(rdata->font_sampler);
+    mgfx_destroy_buffer(rdata->batch_vb);
+    mgfx_destroy_buffer(rdata->batch_ib);
+    mgfx_destroy_pipeline(rdata->base_pipeline);
     mgfx_shutdown();
-    free(data);
+    free(rdata);
 }
 
 void naui_renderer_resize(int32_t width, int32_t height)
 {
     mgfx_resize(width, height);
-    data->width = width;
-    data->height = height;
+    rdata->width = width;
+    rdata->height = height;
 }
 
 void naui_renderer_begin(void)
 {
-    data->geometry_count = 0;
+    rdata->geometry_count = 0;
 }
 
 void naui_renderer_end(void)
 {
     mgfx_begin();
     mgfx_bind_pass(&(mgfx_pass_info){});
-    mgfx_bind_pipeline(data->base_pipeline);
-    mgfx_bind_image(data->image_atlas, data->image_sampler, 0);
+    mgfx_bind_pipeline(rdata->base_pipeline);
+    mgfx_bind_image(rdata->image_atlas, rdata->image_sampler, 0);
     //mgfx_bind_image(data->font_sampler, data->font_sampler, 1);
 
     struct
@@ -273,14 +282,14 @@ void naui_renderer_end(void)
         Naui_Vec2 u_resolution;
     }
     ub_data;
-    ub_data.u_resolution = (Naui_Vec2){(float)data->width, (float)data->height};
+    ub_data.u_resolution = (Naui_Vec2){(float)rdata->width, (float)rdata->height};
     mgfx_bind_uniforms(0, sizeof(ub_data), &ub_data);
 
-    mgfx_update_buffer(data->batch_vb, data->geometry_count * sizeof(Naui_BatchGeometry), data->geometry_vertices);
-    mgfx_update_buffer(data->batch_ib, data->geometry_count * 6 * sizeof(uint32_t), data->geometry_indices);
-    mgfx_bind_vertex_buffer(data->batch_vb);
-    mgfx_bind_index_buffer(data->batch_ib, MGFX_INDEX_TYPE_UINT32);
-    mgfx_draw_indexed(data->geometry_count * 6, 0, 0);
+    mgfx_update_buffer(rdata->batch_vb, rdata->geometry_count * sizeof(Naui_BatchGeometry), rdata->geometry_vertices);
+    mgfx_update_buffer(rdata->batch_ib, rdata->geometry_count * 6 * sizeof(uint32_t), rdata->geometry_indices);
+    mgfx_bind_vertex_buffer(rdata->batch_vb);
+    mgfx_bind_index_buffer(rdata->batch_ib, MGFX_INDEX_TYPE_UINT32);
+    mgfx_draw_indexed(rdata->geometry_count * 6, 0, 0);
     mgfx_end();
 }
 
@@ -359,11 +368,86 @@ void naui_draw_line(Naui_Vec2 a, Naui_Vec2 b, Naui_Color color, float line_width
     );
 }
 
-void naui_draw_image(Naui_Image image, Naui_Vec2 position, Naui_Vec2 scale)
+void naui_draw_image(const Naui_Image *image, Naui_Vec2 position, Naui_Vec2 scale, Naui_Color tint)
 {
     Naui_Vec2 br = { position.x + scale.x, position.y + scale.y };
-    const float s0 = image.texture_area[0],      t0 = image.texture_area[1],
-                s1 = s0 + image.texture_area[2], t1 = t0 + image.texture_area[3];
+    const float s0 = image->texture_area[0],
+    t0 = image->texture_area[1],
+    s1 = image->texture_area[2],
+    t1 = image->texture_area[3];
 
-    naui_push_textured_rect(position, br, (Naui_Vec4){ s0,t0,s1,t1 }, 0, 0);
+    naui_push_textured_rect(position, br, (Naui_Vec4){ s0,t0,s1,t1 }, naui_pack_color(tint), 0);
+}
+
+static void naui_push_textured_corner_fan(
+    Naui_Vec2 center, float r, float ax, float ay,
+    Naui_Vec4 uv_rect,
+    Naui_Vec2 img_tl, Naui_Vec2 img_size,
+    uint32_t color)
+{
+    for (int s = 0; s < NAUI_RENDERER_CORNER_SEGMENTS; s++)
+    {
+        float cx0 = ax * s_cos[s],     cy0 = ay * s_sin[s];
+        float cx1 = ax * s_cos[s + 1], cy1 = ay * s_sin[s + 1];
+
+        Naui_Vec2 p0 = { center.x + cx0 * r, center.y + cy0 * r };
+        Naui_Vec2 p1 = { center.x + cx1 * r, center.y + cy1 * r };
+
+        float u_c  = uv_rect.x + ((center.x - img_tl.x) / img_size.x) * uv_rect.z;
+        float v_c  = uv_rect.y + ((center.y - img_tl.y) / img_size.y) * uv_rect.w;
+        float u_p0 = uv_rect.x + ((p0.x     - img_tl.x) / img_size.x) * uv_rect.z;
+        float v_p0 = uv_rect.y + ((p0.y     - img_tl.y) / img_size.y) * uv_rect.w;
+        float u_p1 = uv_rect.x + ((p1.x     - img_tl.x) / img_size.x) * uv_rect.z;
+        float v_p1 = uv_rect.y + ((p1.y     - img_tl.y) / img_size.y) * uv_rect.w;
+
+        uint32_t i = rdata->geometry_count;
+        Naui_BatchGeometry *g = &rdata->geometry_vertices[i];
+
+        g->vertices[0] = (Naui_BatchVertex){ {center.x, center.y}, {u_c,  v_c},  color, 0 };
+        g->vertices[1] = (Naui_BatchVertex){ {p0.x,     p0.y    }, {u_p0, v_p0}, color, 0 };
+        g->vertices[2] = (Naui_BatchVertex){ {p1.x,     p1.y    }, {u_p1, v_p1}, color, 0 };
+        g->vertices[3] = g->vertices[2]; // degenerate
+
+        uint32_t base = i * 4;
+        uint32_t *idx = &rdata->geometry_indices[i * 6];
+        idx[0] = base + 0; idx[1] = base + 1; idx[2] = base + 2;
+        idx[3] = base + 2; idx[4] = base + 3; idx[5] = base + 2;
+
+        rdata->geometry_count++;
+    }
+}
+
+static inline Naui_Vec4 uv_for_sub(Naui_Vec4 uv, Naui_Vec2 img_tl, Naui_Vec2 img_size, float sx0, float sy0, float sx1, float sy1)
+{
+    float u0 = uv.x + ((sx0 - img_tl.x) / img_size.x) * uv.z;
+    float v0 = uv.y + ((sy0 - img_tl.y) / img_size.y) * uv.w;
+    float u1 = ((sx1 - sx0) / img_size.x) * uv.z;
+    float v1 = ((sy1 - sy0) / img_size.y) * uv.w;
+    return (Naui_Vec4){ u0, v0, u1, v1 };
+}
+
+void naui_draw_round_image(const Naui_Image *image, Naui_Vec2 position, Naui_Vec2 scale, Naui_Color tint, float rounding)
+{
+    float x0 = position.x, y0 = position.y;
+    float x1 = x0 + scale.x, y1 = y0 + scale.y;
+    float r = naui_min(rounding, naui_min(scale.x, scale.y) * 0.5f);
+
+    const float s0 = image->texture_area[0], t0 = image->texture_area[1];
+    const float s1 = image->texture_area[2], t1 = image->texture_area[3];
+    Naui_Vec4 uv = { s0, t0, s1, t1 };
+
+    Naui_Vec2 img_tl   = { x0, y0 };
+    Naui_Vec2 img_size = { scale.x, scale.y };
+
+    uint32_t c = naui_pack_color(tint);
+
+    naui_push_textured_rect((Naui_Vec2){x0+r, y0  }, (Naui_Vec2){x1-r, y1  }, uv_for_sub(uv, img_tl, img_size, x0+r, y0,   x1-r, y1  ), c, 0);
+    naui_push_textured_rect((Naui_Vec2){x0,   y0+r}, (Naui_Vec2){x0+r, y1-r}, uv_for_sub(uv, img_tl, img_size, x0,   y0+r, x0+r, y1-r), c, 0);
+    naui_push_textured_rect((Naui_Vec2){x1-r, y0+r}, (Naui_Vec2){x1,   y1-r}, uv_for_sub(uv, img_tl, img_size, x1-r, y0+r, x1,   y1-r), c, 0);
+
+    // Corners
+    naui_push_textured_corner_fan((Naui_Vec2){x0+r, y0+r}, r, -1, -1, uv, img_tl, img_size, c); // TL
+    naui_push_textured_corner_fan((Naui_Vec2){x1-r, y0+r}, r, +1, -1, uv, img_tl, img_size, c); // TR
+    naui_push_textured_corner_fan((Naui_Vec2){x1-r, y1-r}, r, +1, +1, uv, img_tl, img_size, c); // BR
+    naui_push_textured_corner_fan((Naui_Vec2){x0+r, y1-r}, r, -1, +1, uv, img_tl, img_size, c); // BL
 }
