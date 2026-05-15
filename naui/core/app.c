@@ -4,7 +4,7 @@
 #include <leaf/leaf.h>
 #include <magma/mgapp.h>
 
-#include "renderer/renderer.h"
+#include "renderer/asset_manager.h"
 
 typedef struct
 {
@@ -58,6 +58,8 @@ static void render(void)
             break;
         }
     }
+    const Naui_Image img = naui_get_image("ded");
+    naui_draw_image(img, (Naui_Vec2){0}, (Naui_Vec2){500.0f, 500.0f});
     naui_renderer_end();
 }
 
@@ -73,6 +75,7 @@ static void __naui_app_event(const mg_app_event* event)
 static void __naui_app_start(void)
 {
     naui_renderer_initialize(NULL);
+    naui_asset_manager_load_images("res");
     leaf_initialize();
     state.events.start();
 }

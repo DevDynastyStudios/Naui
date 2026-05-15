@@ -56,12 +56,12 @@ static inline float naui_min(float a, float b)
     return a < b ? a : b;
 }
 
-static inline uint32_t pack_color(Naui_Color c)
+static inline uint32_t naui_pack_color(Naui_Color c)
 {
     return ((uint32_t)c.a << 24) | ((uint32_t)c.b << 16) | ((uint32_t)c.g <<  8) |  (uint32_t)c.r;
 }
 
-static void push_quad4(Naui_Vec2 a, Naui_Vec2 b, Naui_Vec2 c, Naui_Vec2 d, uint32_t color, int32_t texture_id)
+static void naui_push_quad4(Naui_Vec2 a, Naui_Vec2 b, Naui_Vec2 c, Naui_Vec2 d, uint32_t color, int32_t texture_id)
 {
     uint32_t i = data->geometry_count;
     Naui_BatchGeometry *g = &data->geometry_vertices[i];
@@ -79,9 +79,28 @@ static void push_quad4(Naui_Vec2 a, Naui_Vec2 b, Naui_Vec2 c, Naui_Vec2 d, uint3
     data->geometry_count++;
 }
 
-static void push_rect(Naui_Vec2 tl, Naui_Vec2 br, uint32_t color, int32_t texture_id)
+static void naui_push_textured_quad4(Naui_Vec2 a, Naui_Vec2 b, Naui_Vec2 c, Naui_Vec2 d, Naui_Vec4 texture_area, uint32_t color, int32_t texture_id)
 {
-    push_quad4(
+    uint32_t i = data->geometry_count;
+    Naui_BatchGeometry *g = &data->geometry_vertices[i];
+
+    // long boooooi
+    g->vertices[0] = (Naui_BatchVertex){ {a.x, a.y}, {texture_area.x,                  texture_area.y},                  color, texture_id };
+    g->vertices[1] = (Naui_BatchVertex){ {b.x, b.y}, {texture_area.x + texture_area.z, texture_area.y},                  color, texture_id };
+    g->vertices[2] = (Naui_BatchVertex){ {c.x, c.y}, {texture_area.x + texture_area.z, texture_area.y + texture_area.w}, color, texture_id };
+    g->vertices[3] = (Naui_BatchVertex){ {d.x, d.y}, {texture_area.x,                  texture_area.y + texture_area.w}, color, texture_id };
+
+    uint32_t base = i * 4;
+    uint32_t *idx = &data->geometry_indices[i * 6];
+    idx[0] = base + 0; idx[1] = base + 1; idx[2] = base + 2;
+    idx[3] = base + 2; idx[4] = base + 3; idx[5] = base + 0;
+
+    data->geometry_count++;
+}
+
+static void naui_push_rect(Naui_Vec2 tl, Naui_Vec2 br, uint32_t color, int32_t texture_id)
+{
+    naui_push_quad4(
         (Naui_Vec2){tl.x, tl.y},
         (Naui_Vec2){br.x, tl.y},
         (Naui_Vec2){br.x, br.y},
@@ -90,7 +109,19 @@ static void push_rect(Naui_Vec2 tl, Naui_Vec2 br, uint32_t color, int32_t textur
     );
 }
 
-static void push_triangle(Naui_Vec2 a, Naui_Vec2 b, Naui_Vec2 c, uint32_t color)
+static void naui_push_textured_rect(Naui_Vec2 tl, Naui_Vec2 br, Naui_Vec4 texture_area, uint32_t color, int32_t texture_id)
+{
+    naui_push_textured_quad4(
+        (Naui_Vec2){tl.x, tl.y},
+        (Naui_Vec2){br.x, tl.y},
+        (Naui_Vec2){br.x, br.y},
+        (Naui_Vec2){tl.x, br.y},
+        texture_area,
+        color, texture_id
+    );
+}
+
+static void naui_push_triangle(Naui_Vec2 a, Naui_Vec2 b, Naui_Vec2 c, uint32_t color)
 {
     uint32_t i = data->geometry_count;
     Naui_BatchGeometry *g = &data->geometry_vertices[i];
@@ -108,17 +139,17 @@ static void push_triangle(Naui_Vec2 a, Naui_Vec2 b, Naui_Vec2 c, uint32_t color)
     data->geometry_count++;
 }
 
-static void push_corner_fan(Naui_Vec2 center, float r, float ax, float ay, uint32_t color)
+static void naui_push_corner_fan(Naui_Vec2 center, float r, float ax, float ay, uint32_t color)
 {
     for (int s = 0; s < NAUI_RENDERER_CORNER_SEGMENTS; s++)
     {
         Naui_Vec2 p0 = { center.x + ax * s_cos[s]     * r, center.y + ay * s_sin[s]     * r };
         Naui_Vec2 p1 = { center.x + ax * s_cos[s + 1] * r, center.y + ay * s_sin[s + 1] * r };
-        push_triangle(center, p0, p1, color);
+        naui_push_triangle(center, p0, p1, color);
     }
 }
 
-static void push_corner_ring(Naui_Vec2 center, float inner_r, float outer_r, float ax, float ay, uint32_t color)
+static void naui_push_corner_ring(Naui_Vec2 center, float inner_r, float outer_r, float ax, float ay, uint32_t color)
 {
     for (int s = 0; s < NAUI_RENDERER_CORNER_SEGMENTS; s++)
     {
@@ -130,16 +161,19 @@ static void push_corner_ring(Naui_Vec2 center, float inner_r, float outer_r, flo
         Naui_Vec2 i0 = { center.x + ax * cx * inner_r, center.y + ay * cy * inner_r };
         Naui_Vec2 i1 = { center.x + ax * nx * inner_r, center.y + ay * ny * inner_r };
 
-        push_quad4(o0, o1, i1, i0, color, -1);
+        naui_push_quad4(o0, o1, i1, i0, color, -1);
     }
 }
 
-void naui_renderer_build_atlas(uint32_t width, uint32_t height, void *data)
+void naui_renderer_build_atlas(uint32_t width, uint32_t height, void *d)
 {
-    mgfx_create_image(&(mgfx_image_create_info){
-        .data = data,
+    data->image_atlas = mgfx_create_image(&(mgfx_image_create_info){
+        .type = MGFX_IMAGE_TYPE_2D,
+        .format = MGFX_FORMAT_RGBA8_UNORM,
+        .usage = MGFX_IMAGE_USAGE_COLOR_ATTACHMENT,
         .width = width,
-        .height = height
+        .height = height,
+        .data = d,
     });
 }
 
@@ -231,7 +265,7 @@ void naui_renderer_end(void)
     mgfx_begin();
     mgfx_bind_pass(&(mgfx_pass_info){});
     mgfx_bind_pipeline(data->base_pipeline);
-    //mgfx_bind_image(data->image_atlas, data->image_sampler, 0);
+    mgfx_bind_image(data->image_atlas, data->image_sampler, 0);
     //mgfx_bind_image(data->font_sampler, data->font_sampler, 1);
 
     struct
@@ -253,7 +287,7 @@ void naui_renderer_end(void)
 void naui_fill_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color)
 {
     Naui_Vec2 br = { position.x + scale.x, position.y + scale.y };
-    push_rect(position, br, pack_color(color), -1);
+    naui_push_rect(position, br, naui_pack_color(color), -1);
 }
 
 void naui_draw_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color, float line_width)
@@ -261,12 +295,12 @@ void naui_draw_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color, float
     float x0 = position.x, y0 = position.y;
     float x1 = x0 + scale.x, y1 = y0 + scale.y;
     float lw = line_width;
-    uint32_t c = pack_color(color);
+    uint32_t c = naui_pack_color(color);
 
-    push_rect((Naui_Vec2){x0,    y0     }, (Naui_Vec2){x1,    y0+lw  }, c, -1); // top
-    push_rect((Naui_Vec2){x0,    y1-lw  }, (Naui_Vec2){x1,    y1     }, c, -1); // bottom
-    push_rect((Naui_Vec2){x0,    y0+lw  }, (Naui_Vec2){x0+lw, y1-lw  }, c, -1); // left
-    push_rect((Naui_Vec2){x1-lw, y0+lw  }, (Naui_Vec2){x1,    y1-lw  }, c, -1); // right
+    naui_push_rect((Naui_Vec2){x0,    y0     }, (Naui_Vec2){x1,    y0+lw  }, c, -1); // top
+    naui_push_rect((Naui_Vec2){x0,    y1-lw  }, (Naui_Vec2){x1,    y1     }, c, -1); // bottom
+    naui_push_rect((Naui_Vec2){x0,    y0+lw  }, (Naui_Vec2){x0+lw, y1-lw  }, c, -1); // left
+    naui_push_rect((Naui_Vec2){x1-lw, y0+lw  }, (Naui_Vec2){x1,    y1-lw  }, c, -1); // right
 }
 
 void naui_fill_round_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color, float rounding)
@@ -275,16 +309,16 @@ void naui_fill_round_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color,
     float x1 = x0 + scale.x, y1 = y0 + scale.y;
     float r = naui_min(rounding, naui_min(scale.x, scale.y) * 0.5f);
 
-    uint32_t c = pack_color(color);
+    uint32_t c = naui_pack_color(color);
 
-    push_rect((Naui_Vec2){x0+r, y0  }, (Naui_Vec2){x1-r, y1  }, c, -1); // center
-    push_rect((Naui_Vec2){x0,   y0+r}, (Naui_Vec2){x0+r, y1-r}, c, -1); // left wing
-    push_rect((Naui_Vec2){x1-r, y0+r}, (Naui_Vec2){x1,   y1-r}, c, -1); // right wing
+    naui_push_rect((Naui_Vec2){x0+r, y0  }, (Naui_Vec2){x1-r, y1  }, c, -1); // center
+    naui_push_rect((Naui_Vec2){x0,   y0+r}, (Naui_Vec2){x0+r, y1-r}, c, -1); // left wing
+    naui_push_rect((Naui_Vec2){x1-r, y0+r}, (Naui_Vec2){x1,   y1-r}, c, -1); // right wing
 
-    push_corner_fan((Naui_Vec2){x0+r, y0+r}, r, -1, -1, c); // TL
-    push_corner_fan((Naui_Vec2){x1-r, y0+r}, r, +1, -1, c); // TR
-    push_corner_fan((Naui_Vec2){x1-r, y1-r}, r, +1, +1, c); // BR
-    push_corner_fan((Naui_Vec2){x0+r, y1-r}, r, -1, +1, c); // BL
+    naui_push_corner_fan((Naui_Vec2){x0+r, y0+r}, r, -1, -1, c); // TL
+    naui_push_corner_fan((Naui_Vec2){x1-r, y0+r}, r, +1, -1, c); // TR
+    naui_push_corner_fan((Naui_Vec2){x1-r, y1-r}, r, +1, +1, c); // BR
+    naui_push_corner_fan((Naui_Vec2){x0+r, y1-r}, r, -1, +1, c); // BL
 }
 
 void naui_draw_round_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color, float line_width, float rounding)
@@ -293,17 +327,17 @@ void naui_draw_round_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color,
     float x1 = x0 + scale.x, y1 = y0 + scale.y;
     float r = naui_min(rounding, naui_min(scale.x, scale.y) * 0.5f), lw = line_width;
     float inner_r = fmaxf(r - lw, 0.0f);
-    uint32_t c = pack_color(color);
+    uint32_t c = naui_pack_color(color);
 
-    push_rect((Naui_Vec2){x0+r, y0    }, (Naui_Vec2){x1-r, y0+lw }, c, -1); // top
-    push_rect((Naui_Vec2){x0+r, y1-lw }, (Naui_Vec2){x1-r, y1    }, c, -1); // bottom
-    push_rect((Naui_Vec2){x0,   y0+r  }, (Naui_Vec2){x0+lw, y1-r }, c, -1); // left
-    push_rect((Naui_Vec2){x1-lw,y0+r  }, (Naui_Vec2){x1,    y1-r }, c, -1); // right
+    naui_push_rect((Naui_Vec2){x0+r, y0    }, (Naui_Vec2){x1-r, y0+lw }, c, -1); // top
+    naui_push_rect((Naui_Vec2){x0+r, y1-lw }, (Naui_Vec2){x1-r, y1    }, c, -1); // bottom
+    naui_push_rect((Naui_Vec2){x0,   y0+r  }, (Naui_Vec2){x0+lw, y1-r }, c, -1); // left
+    naui_push_rect((Naui_Vec2){x1-lw,y0+r  }, (Naui_Vec2){x1,    y1-r }, c, -1); // right
 
-    push_corner_ring((Naui_Vec2){x0+r, y0+r}, inner_r, r, -1, -1, c); // TL
-    push_corner_ring((Naui_Vec2){x1-r, y0+r}, inner_r, r, +1, -1, c); // TR
-    push_corner_ring((Naui_Vec2){x1-r, y1-r}, inner_r, r, +1, +1, c); // BR
-    push_corner_ring((Naui_Vec2){x0+r, y1-r}, inner_r, r, -1, +1, c); // BL
+    naui_push_corner_ring((Naui_Vec2){x0+r, y0+r}, inner_r, r, -1, -1, c); // TL
+    naui_push_corner_ring((Naui_Vec2){x1-r, y0+r}, inner_r, r, +1, -1, c); // TR
+    naui_push_corner_ring((Naui_Vec2){x1-r, y1-r}, inner_r, r, +1, +1, c); // BR
+    naui_push_corner_ring((Naui_Vec2){x0+r, y1-r}, inner_r, r, -1, +1, c); // BL
 }
 
 void naui_draw_line(Naui_Vec2 a, Naui_Vec2 b, Naui_Color color, float line_width)
@@ -316,11 +350,20 @@ void naui_draw_line(Naui_Vec2 a, Naui_Vec2 b, Naui_Color color, float line_width
     float nx = -dy * inv_len;
     float ny =  dx * inv_len;
 
-    push_quad4(
+    naui_push_quad4(
         (Naui_Vec2){ a.x + nx, a.y + ny },
         (Naui_Vec2){ b.x + nx, b.y + ny },
         (Naui_Vec2){ b.x - nx, b.y - ny },
         (Naui_Vec2){ a.x - nx, a.y - ny },
-        pack_color(color), -1
+        naui_pack_color(color), -1
     );
+}
+
+void naui_draw_image(Naui_Image image, Naui_Vec2 position, Naui_Vec2 scale)
+{
+    Naui_Vec2 br = { position.x + scale.x, position.y + scale.y };
+    const float s0 = image.texture_area[0],      t0 = image.texture_area[1],
+                s1 = s0 + image.texture_area[2], t1 = t0 + image.texture_area[3];
+
+    naui_push_textured_rect(position, br, (Naui_Vec4){ s0,t0,s1,t1 }, 0, 0);
 }

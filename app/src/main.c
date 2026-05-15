@@ -1,6 +1,7 @@
 #include <naui/naui.h>
+#include <naui/renderer/asset_manager.h>
 
-NAUI_APP("Hello World")
+NAUI_APP("test")
 
 void naui_app_start(void)
 {
