@@ -890,7 +890,7 @@ void naui_draw_image(const Naui_Image *image, Naui_Vec2 position, Naui_Vec2 scal
 
     const float s0 = image->texture_area[0], t0 = image->texture_area[1];
     const float s1 = image->texture_area[2], t1 = image->texture_area[3];
-    Naui_Vec4 uv = { s0, t0, s1 - s0, t1 - t0 };
+    Naui_Vec4 uv = { s0, t0, s1, t1 };
     uint32_t c = naui_pack_color(tint);
 
     if (rounding <= 0.0f)

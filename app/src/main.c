@@ -27,7 +27,7 @@ void naui_app_update(void)
             leaf({
                 .sizing = {LEAF_SIZING_GROW, LEAF_SIZING_GROW},
                 .color = leaf_solid(leaf_rgb(200, 0, 200)),
-                .image = naui_get_image("dude"),
+                .image = naui_get_image("bebe"),
                 .padding = LEAF_PADDING_ALL(25.0f),
                 .rounding = naui_time() * 10.0f,
                 .border = {leaf_gradient(leaf_rgb(0, 0, 255), leaf_rgb(0, 255, 0), leaf_deg(0)), 8.0f},
