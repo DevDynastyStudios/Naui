@@ -18,7 +18,7 @@
 #define NAUI_FONT_MAX_SLOTS     4
 #define NAUI_FONT_FIRST_CHAR    32
 #define NAUI_FONT_CHAR_COUNT    96
-#define NAUI_FONT_BAKE_SIZE     64.0f
+#define NAUI_FONT_BAKE_SIZE     38.0f
 #define NAUI_FONT_SDF_PADDING   4
 #define NAUI_FONT_SDF_EDGE_VAL  128
 #define NAUI_FONT_SDF_SCALE     32.0f
@@ -63,8 +63,8 @@ typedef struct
     mgfx_sampler image_sampler;
     mgfx_image image_atlas;
 
+    mgfx_sampler    font_sampler;
     mgfx_image      font_atlases[NAUI_FONT_MAX_SLOTS];
-    mgfx_sampler    font_samplers[NAUI_FONT_MAX_SLOTS];
     stbtt_bakedchar font_chars[NAUI_FONT_MAX_SLOTS][NAUI_FONT_CHAR_COUNT];
     uint8_t         font_loaded[NAUI_FONT_MAX_SLOTS];
 
@@ -412,16 +412,13 @@ void naui_renderer_initialize(void)
         .address_mode_w = MGFX_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE
     });
 
-    for (int i = 0; i < NAUI_FONT_MAX_SLOTS; i++)
-    {
-        rdata->font_samplers[i] = mgfx_create_sampler(&(mgfx_sampler_create_info){
-            .min_filter     = MGFX_SAMPLER_FILTER_LINEAR,
-            .mag_filter     = MGFX_SAMPLER_FILTER_LINEAR,
-            .address_mode_u = MGFX_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-            .address_mode_v = MGFX_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-            .address_mode_w = MGFX_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE
-        });
-    }
+    rdata->font_sampler = mgfx_create_sampler(&(mgfx_sampler_create_info){
+        .min_filter     = MGFX_SAMPLER_FILTER_LINEAR,
+        .mag_filter     = MGFX_SAMPLER_FILTER_LINEAR,
+        .address_mode_u = MGFX_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .address_mode_v = MGFX_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .address_mode_w = MGFX_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE
+    });
 
     rdata->width = mg_app_width();
     rdata->height = mg_app_height();
@@ -431,11 +428,9 @@ void naui_renderer_shutdown(void)
 {
     mgfx_destroy_sampler(rdata->image_sampler);
     for (int i = 0; i < NAUI_FONT_MAX_SLOTS; i++)
-    {
-        mgfx_destroy_sampler(rdata->font_samplers[i]);
         if (rdata->font_loaded[i])
             mgfx_destroy_image(rdata->font_atlases[i]);
-    }
+    mgfx_destroy_sampler(rdata->font_sampler);
     mgfx_destroy_buffer(rdata->batch_vb);
     mgfx_destroy_buffer(rdata->batch_ib);
     mgfx_destroy_pipeline(rdata->base_pipeline);
@@ -463,7 +458,7 @@ void naui_renderer_begin(void)
 
     for (int i = 0; i < NAUI_FONT_MAX_SLOTS; i++)
         if (rdata->font_loaded[i])
-            mgfx_bind_image(rdata->font_atlases[i], rdata->font_samplers[i], 1 + i);
+            mgfx_bind_image(rdata->font_atlases[i], rdata->font_sampler, 1 + i);
 
     struct { Naui_Vec2 u_resolution; } ub_data;
     ub_data.u_resolution = (Naui_Vec2){(float)rdata->width, (float)rdata->height};
