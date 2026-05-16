@@ -51,7 +51,8 @@ void naui_app_update(void)
                 leaf_text("Hello", {
                     .font_size = font_size,
                     .color = leaf_rgb(0, 0, 0),
-                    .alignment = LEAF_TEXT_ALIGN_CENTER
+                    .alignment = LEAF_TEXT_ALIGN_CENTER,
+                    .wrap_mode = LEAF_TEXT_WRAP_MODE_CHAR
                 });
             }
         }

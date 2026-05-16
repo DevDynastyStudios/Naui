@@ -14,14 +14,14 @@
 #define NAUI_RENDERER_MAX_GEOMETRY (1 << 14)
 #define NAUI_RENDERER_CORNER_SEGMENTS 16
 
-#define NAUI_FONT_ATLAS_SIZE    1024
-#define NAUI_FONT_MAX_SLOTS     4
-#define NAUI_FONT_FIRST_CHAR    32
-#define NAUI_FONT_CHAR_COUNT    96
-#define NAUI_FONT_BAKE_SIZE     38.0f
-#define NAUI_FONT_SDF_PADDING   4
-#define NAUI_FONT_SDF_EDGE_VAL  128
-#define NAUI_FONT_SDF_SCALE     32.0f
+#define NAUI_FONT_ATLAS_SIZE_SMALL  1024
+#define NAUI_FONT_ATLAS_SIZE_LARGE  4096
+#define NAUI_FONT_MAX_SLOTS         4
+#define NAUI_FONT_FIRST_CHAR        32
+#define NAUI_FONT_CHAR_COUNT        96
+#define NAUI_FONT_SIZE_SMALL        32.0f
+#define NAUI_FONT_SIZE_LARGE        256.0f
+#define NAUI_FONT_SIZE_THRESHOLD    32.0f
 
 #define NAUI_CLIP_STACK_MAX 32
 
@@ -63,10 +63,13 @@ typedef struct
     mgfx_sampler image_sampler;
     mgfx_image image_atlas;
 
-    mgfx_sampler    font_sampler;
-    mgfx_image      font_atlases[NAUI_FONT_MAX_SLOTS];
-    stbtt_bakedchar font_chars[NAUI_FONT_MAX_SLOTS][NAUI_FONT_CHAR_COUNT];
-    uint8_t         font_loaded[NAUI_FONT_MAX_SLOTS];
+    mgfx_sampler        font_sampler;
+    mgfx_image          font_atlases_small[NAUI_FONT_MAX_SLOTS];
+    mgfx_image          font_atlases_large[NAUI_FONT_MAX_SLOTS];
+    stbtt_bakedchar     font_chars_small[NAUI_FONT_MAX_SLOTS][NAUI_FONT_CHAR_COUNT];
+    stbtt_bakedchar     font_chars_large[NAUI_FONT_MAX_SLOTS][NAUI_FONT_CHAR_COUNT];
+    uint8_t             font_loaded[NAUI_FONT_MAX_SLOTS];
+    int8_t              font_current_index;
 
     Naui_ClipRect clip_stack[NAUI_CLIP_STACK_MAX];
     int32_t       clip_stack_depth;
@@ -163,8 +166,6 @@ static void naui_renderer_flush(void)
     mgfx_update_buffer(rdata->batch_vb, vb_off, count * sizeof(Naui_BatchGeometry), rdata->geometry_vertices + rdata->geometry_offset);
     mgfx_update_buffer(rdata->batch_ib, ib_off, count * 6 * sizeof(uint32_t), rdata->geometry_indices + rdata->geometry_offset * 6);
 
-    mgfx_bind_vertex_buffer(rdata->batch_vb);
-    mgfx_bind_index_buffer(rdata->batch_ib, MGFX_INDEX_TYPE_UINT32);
     mgfx_draw_indexed(count * 6, rdata->geometry_offset * 6, 0);
 
     rdata->geometry_offset = rdata->geometry_count;
@@ -428,8 +429,13 @@ void naui_renderer_shutdown(void)
 {
     mgfx_destroy_sampler(rdata->image_sampler);
     for (int i = 0; i < NAUI_FONT_MAX_SLOTS; i++)
+    {
         if (rdata->font_loaded[i])
-            mgfx_destroy_image(rdata->font_atlases[i]);
+        {
+            mgfx_destroy_image(rdata->font_atlases_small[i]);
+            mgfx_destroy_image(rdata->font_atlases_large[i]);
+        }
+    }
     mgfx_destroy_sampler(rdata->font_sampler);
     mgfx_destroy_buffer(rdata->batch_vb);
     mgfx_destroy_buffer(rdata->batch_ib);
@@ -450,15 +456,14 @@ void naui_renderer_begin(void)
     rdata->geometry_count   = 0;
     rdata->geometry_offset = 0;
     rdata->clip_stack_depth = 0;
+    rdata->font_current_index = -1;
 
     mgfx_begin();
     mgfx_bind_pass(&(mgfx_pass_info){});
     mgfx_bind_pipeline(rdata->base_pipeline);
+    mgfx_bind_vertex_buffer(rdata->batch_vb);
+    mgfx_bind_index_buffer(rdata->batch_ib, MGFX_INDEX_TYPE_UINT32);
     mgfx_bind_image(rdata->image_atlas, rdata->image_sampler, 0);
-
-    for (int i = 0; i < NAUI_FONT_MAX_SLOTS; i++)
-        if (rdata->font_loaded[i])
-            mgfx_bind_image(rdata->font_atlases[i], rdata->font_sampler, 1 + i);
 
     struct { Naui_Vec2 u_resolution; } ub_data;
     ub_data.u_resolution = (Naui_Vec2){(float)rdata->width, (float)rdata->height};
@@ -474,12 +479,12 @@ void naui_renderer_end(void)
 void naui_push_clip_rect(Naui_Vec2 position, Naui_Vec2 size)
 {
     if (rdata->clip_stack_depth >= NAUI_CLIP_STACK_MAX) return;
- 
+
     naui_renderer_flush();
- 
+
     float x0 = position.x, y0 = position.y;
     float x1 = x0 + size.x, y1 = y0 + size.y;
- 
+
     if (rdata->clip_stack_depth > 0)
     {
         Naui_ClipRect *p = &rdata->clip_stack[rdata->clip_stack_depth - 1];
@@ -490,18 +495,46 @@ void naui_push_clip_rect(Naui_Vec2 position, Naui_Vec2 size)
         if (x1 < x0) x1 = x0;
         if (y1 < y0) y1 = y0;
     }
- 
+
     rdata->clip_stack[rdata->clip_stack_depth++] = (Naui_ClipRect){ x0, y0, x1, y1 };
     naui_apply_scissor();
 }
- 
+
 void naui_pop_clip_rect(void)
 {
     if (rdata->clip_stack_depth == 0) return;
- 
+
     naui_renderer_flush();
     rdata->clip_stack_depth--;
     naui_apply_scissor();
+}
+
+static mgfx_image naui_bake_font_atlas(uint8_t *ttf_buf, float bake_size, int atlas_size, stbtt_bakedchar *chars_out)
+{
+    uint8_t *alpha = calloc(atlas_size * atlas_size, 1);
+
+    stbtt_BakeFontBitmap(ttf_buf, 0, bake_size,
+        alpha, atlas_size, atlas_size,
+        NAUI_FONT_FIRST_CHAR, NAUI_FONT_CHAR_COUNT, chars_out);
+
+    uint32_t *rgba = malloc(atlas_size * atlas_size * 4);
+    for (int p = 0; p < atlas_size * atlas_size; p++)
+    {
+        uint8_t v = alpha[p];
+        rgba[p] = ((uint32_t)v << 24) | ((uint32_t)v << 16) | ((uint32_t)v << 8) | v;
+    }
+    free(alpha);
+
+    mgfx_image img = mgfx_create_image(&(mgfx_image_create_info){
+        .type   = MGFX_IMAGE_TYPE_2D,
+        .format = MGFX_FORMAT_RGBA8_UNORM,
+        .usage  = MGFX_IMAGE_USAGE_COLOR_ATTACHMENT,
+        .width  = (uint32_t)atlas_size,
+        .height = (uint32_t)atlas_size,
+        .data   = rgba,
+    });
+    free(rgba);
+    return img;
 }
 
 void naui_set_font(uint8_t index, const char *file_path)
@@ -518,112 +551,32 @@ void naui_set_font(uint8_t index, const char *file_path)
     fread(ttf_buf, 1, size, f);
     fclose(f);
 
-    stbtt_fontinfo font;
-    stbtt_InitFont(&font, ttf_buf, 0);
-
-    float scale = stbtt_ScaleForPixelHeight(&font, NAUI_FONT_BAKE_SIZE);
-
-    uint8_t *atlas = calloc(NAUI_FONT_ATLAS_SIZE * NAUI_FONT_ATLAS_SIZE, 1);
-
-    int atlas_x = NAUI_FONT_SDF_PADDING;
-    int atlas_y = NAUI_FONT_SDF_PADDING;
-    int row_h   = 0;
-
-    for (int ci = 0; ci < NAUI_FONT_CHAR_COUNT; ci++)
+    if (rdata->font_loaded[index])
     {
-        int codepoint = NAUI_FONT_FIRST_CHAR + ci;
-
-        int w, h, xoff, yoff;
-        uint8_t *sdf = stbtt_GetCodepointSDF(
-            &font, scale, codepoint,
-            NAUI_FONT_SDF_PADDING,
-            NAUI_FONT_SDF_EDGE_VAL,
-            NAUI_FONT_SDF_SCALE,
-            &w, &h, &xoff, &yoff
-        );
-
-        if (!sdf)
-        {
-            int adv, lsb;
-            stbtt_GetCodepointHMetrics(&font, codepoint, &adv, &lsb);
-            rdata->font_chars[index][ci].x0 = 0; rdata->font_chars[index][ci].x1 = 0;
-            rdata->font_chars[index][ci].y0 = 0; rdata->font_chars[index][ci].y1 = 0;
-            rdata->font_chars[index][ci].xoff  = 0;
-            rdata->font_chars[index][ci].yoff  = 0;
-            rdata->font_chars[index][ci].xadvance = adv * scale;
-            continue;
-        }
-
-        if (atlas_x + w > NAUI_FONT_ATLAS_SIZE - NAUI_FONT_SDF_PADDING)
-        {
-            atlas_x  = NAUI_FONT_SDF_PADDING;
-            atlas_y += row_h + NAUI_FONT_SDF_PADDING;
-            row_h    = 0;
-        }
-
-        if (atlas_y + h > NAUI_FONT_ATLAS_SIZE)
-        {
-            stbtt_FreeSDF(sdf, NULL);
-            continue;
-        }
-
-        for (int gy = 0; gy < h; gy++)
-            for (int gx = 0; gx < w; gx++)
-                atlas[(atlas_y + gy) * NAUI_FONT_ATLAS_SIZE + (atlas_x + gx)] = sdf[gy * w + gx];
-
-        int adv, lsb;
-        stbtt_GetCodepointHMetrics(&font, codepoint, &adv, &lsb);
-
-        rdata->font_chars[index][ci].x0 = (uint16_t)atlas_x;
-        rdata->font_chars[index][ci].y0 = (uint16_t)atlas_y;
-        rdata->font_chars[index][ci].x1 = (uint16_t)(atlas_x + w);
-        rdata->font_chars[index][ci].y1 = (uint16_t)(atlas_y + h);
-        rdata->font_chars[index][ci].xoff     = (float)xoff;
-        rdata->font_chars[index][ci].yoff     = (float)yoff;
-        rdata->font_chars[index][ci].xadvance = adv * scale;
-
-        if (h > row_h) row_h = h;
-        atlas_x += w + NAUI_FONT_SDF_PADDING;
-
-        stbtt_FreeSDF(sdf, NULL);
+        mgfx_destroy_image(rdata->font_atlases_small[index]);
+        mgfx_destroy_image(rdata->font_atlases_large[index]);
     }
+
+    rdata->font_atlases_small[index] = naui_bake_font_atlas(ttf_buf, NAUI_FONT_SIZE_SMALL, NAUI_FONT_ATLAS_SIZE_SMALL, rdata->font_chars_small[index]);
+    rdata->font_atlases_large[index] = naui_bake_font_atlas(ttf_buf, NAUI_FONT_SIZE_LARGE, NAUI_FONT_ATLAS_SIZE_LARGE, rdata->font_chars_large[index]);
 
     free(ttf_buf);
-
-    uint32_t *rgba = malloc(NAUI_FONT_ATLAS_SIZE * NAUI_FONT_ATLAS_SIZE * 4);
-    for (int p = 0; p < NAUI_FONT_ATLAS_SIZE * NAUI_FONT_ATLAS_SIZE; p++)
-    {
-        uint8_t v = atlas[p];
-        rgba[p] = ((uint32_t)v << 24) | ((uint32_t)v << 16) | ((uint32_t)v << 8) | v;
-    }
-    free(atlas);
-
-    if (rdata->font_loaded[index])
-        mgfx_destroy_image(rdata->font_atlases[index]);
-
-    rdata->font_atlases[index] = mgfx_create_image(&(mgfx_image_create_info){
-        .type   = MGFX_IMAGE_TYPE_2D,
-        .format = MGFX_FORMAT_RGBA8_UNORM,
-        .usage  = MGFX_IMAGE_USAGE_COLOR_ATTACHMENT,
-        .width  = NAUI_FONT_ATLAS_SIZE,
-        .height = NAUI_FONT_ATLAS_SIZE,
-        .data   = rgba,
-    });
-    free(rgba);
     rdata->font_loaded[index] = 1;
 }
 
 Naui_Vec2 naui_measure_text(const char *text, uint32_t length, float font_size, uint8_t font_index)
 {
     if (!text || length == 0) return (Naui_Vec2){0};
-
     if (font_index >= NAUI_FONT_MAX_SLOTS) return (Naui_Vec2){0};
     if (!rdata->font_loaded[font_index]) return (Naui_Vec2){0};
 
-    float scale = font_size / NAUI_FONT_BAKE_SIZE;
+    int use_large = (font_size > NAUI_FONT_SIZE_THRESHOLD);
+    float bake_size = use_large ? NAUI_FONT_SIZE_LARGE : NAUI_FONT_SIZE_SMALL;
+    stbtt_bakedchar *chars = use_large ? rdata->font_chars_large[font_index] : rdata->font_chars_small[font_index];
+
+    float scale = font_size / bake_size;
     float x = 0.0f;
     float max_x = 0.0f;
-
     float y_min = 1e30f;
     float y_max = -1e30f;
     int has_glyph = 0;
@@ -637,12 +590,12 @@ Naui_Vec2 naui_measure_text(const char *text, uint32_t length, float font_size, 
             continue;
         }
 
-        stbtt_bakedchar *bc = &rdata->font_chars[font_index][cp - NAUI_FONT_FIRST_CHAR];
+        stbtt_bakedchar *bc = &chars[cp - NAUI_FONT_FIRST_CHAR];
 
-        float glyph_top = bc->yoff * scale;
+        float glyph_top    = bc->yoff * scale;
         float glyph_bottom = glyph_top + (bc->y1 - bc->y0) * scale;
 
-        if (glyph_top < y_min) y_min = glyph_top;
+        if (glyph_top    < y_min) y_min = glyph_top;
         if (glyph_bottom > y_max) y_max = glyph_bottom;
 
         x += bc->xadvance * scale;
@@ -650,13 +603,9 @@ Naui_Vec2 naui_measure_text(const char *text, uint32_t length, float font_size, 
         has_glyph = 1;
     }
 
-    if (!has_glyph)
-        return (Naui_Vec2){0};
+    if (!has_glyph) return (Naui_Vec2){0};
 
-    return (Naui_Vec2){
-        .x = max_x,
-        .y = y_max - y_min,
-    };
+    return (Naui_Vec2){ .x = max_x, .y = y_max - y_min };
 }
 
 void naui_draw_text(Naui_Vec2 position, const char *text, float size, uint8_t font_index, Naui_Color color)
@@ -664,7 +613,21 @@ void naui_draw_text(Naui_Vec2 position, const char *text, float size, uint8_t fo
     if (font_index >= NAUI_FONT_MAX_SLOTS) return;
     if (!rdata->font_loaded[font_index]) return;
 
-    float scale = size / NAUI_FONT_BAKE_SIZE;
+    int use_large = (size > NAUI_FONT_SIZE_THRESHOLD);
+    float bake_size = use_large ? NAUI_FONT_SIZE_LARGE : NAUI_FONT_SIZE_SMALL;
+    stbtt_bakedchar *chars = use_large ? rdata->font_chars_large[font_index] : rdata->font_chars_small[font_index];
+
+    int8_t wanted = (int8_t)(font_index * 2 + use_large);
+    if (rdata->font_current_index != wanted)
+    {
+        naui_renderer_flush();
+        mgfx_bind_image(
+            use_large ? rdata->font_atlases_large[font_index] : rdata->font_atlases_small[font_index],
+            rdata->font_sampler, 1);
+        rdata->font_current_index = wanted;
+    }
+
+    float scale = size / bake_size;
 
     float ascent = 0.0f;
     for (const char *ch = text; *ch; ch++)
@@ -672,7 +635,7 @@ void naui_draw_text(Naui_Vec2 position, const char *text, float size, uint8_t fo
         int cp = (unsigned char)*ch;
         if (cp < NAUI_FONT_FIRST_CHAR || cp >= NAUI_FONT_FIRST_CHAR + NAUI_FONT_CHAR_COUNT)
             continue;
-        stbtt_bakedchar *bc = &rdata->font_chars[font_index][cp - NAUI_FONT_FIRST_CHAR];
+        stbtt_bakedchar *bc = &chars[cp - NAUI_FONT_FIRST_CHAR];
         float top = bc->yoff * scale;
         if (top < ascent) ascent = top;
     }
@@ -680,8 +643,7 @@ void naui_draw_text(Naui_Vec2 position, const char *text, float size, uint8_t fo
     float x = position.x;
     float y = position.y - ascent;
     uint32_t c = naui_pack_color(color);
-    int32_t tex_id = 1 + (int32_t)font_index;
-    float atlas_sz = (float)NAUI_FONT_ATLAS_SIZE;
+    float atlas_sz = (float)(use_large ? NAUI_FONT_ATLAS_SIZE_LARGE : NAUI_FONT_ATLAS_SIZE_SMALL);
 
     for (const char *ch = text; *ch; ch++)
     {
@@ -692,7 +654,7 @@ void naui_draw_text(Naui_Vec2 position, const char *text, float size, uint8_t fo
             continue;
         }
 
-        stbtt_bakedchar *bc = &rdata->font_chars[font_index][cp - NAUI_FONT_FIRST_CHAR];
+        stbtt_bakedchar *bc = &chars[cp - NAUI_FONT_FIRST_CHAR];
 
         float gx0 = x + bc->xoff * scale;
         float gy0 = y + bc->yoff * scale;
@@ -704,10 +666,10 @@ void naui_draw_text(Naui_Vec2 position, const char *text, float size, uint8_t fo
         uint32_t i = rdata->geometry_count;
         Naui_BatchGeometry *g = &rdata->geometry_vertices[i];
 
-        g->vertices[0] = (Naui_BatchVertex){ {gx0, gy0}, {gu0, gv0}, c, tex_id };
-        g->vertices[1] = (Naui_BatchVertex){ {gx1, gy0}, {gu1, gv0}, c, tex_id };
-        g->vertices[2] = (Naui_BatchVertex){ {gx1, gy1}, {gu1, gv1}, c, tex_id };
-        g->vertices[3] = (Naui_BatchVertex){ {gx0, gy1}, {gu0, gv1}, c, tex_id };
+        g->vertices[0] = (Naui_BatchVertex){ {gx0, gy0}, {gu0, gv0}, c, 1 };
+        g->vertices[1] = (Naui_BatchVertex){ {gx1, gy0}, {gu1, gv0}, c, 1 };
+        g->vertices[2] = (Naui_BatchVertex){ {gx1, gy1}, {gu1, gv1}, c, 1 };
+        g->vertices[3] = (Naui_BatchVertex){ {gx0, gy1}, {gu0, gv1}, c, 1 };
 
         uint32_t base = i * 4;
         uint32_t *idx = &rdata->geometry_indices[i * 6];
