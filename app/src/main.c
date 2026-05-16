@@ -5,7 +5,7 @@ NAUI_APP("test")
 
 void naui_app_start(void)
 {
-    naui_attach_panel();
+    
 }
 
 void naui_app_end(void)
@@ -25,7 +25,16 @@ void naui_app_update(void)
         leaf({
             .sizing = {LEAF_SIZING_GROW, LEAF_SIZING_GROW},
             .color = leaf_solid(leaf_rgb(200, 0, 200)),
-            .rounding = 16.0f
-        });
+            .image = naui_get_image("dude"),
+            .rounding = 16.0f,
+            .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER}
+        })
+        {
+            leaf_text("Hello", {
+                .font_size = 128.0f,
+                .color = LEAF_COLOR_WHITE,
+                .alignment = LEAF_TEXT_ALIGN_CENTER
+            });
+        }
     }
 }

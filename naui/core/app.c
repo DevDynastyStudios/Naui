@@ -19,13 +19,19 @@ typedef struct
 Naui_AppState;
 static Naui_AppState state;
 
-extern void naui_renderer_initialize(const char *default_font_path);
+extern void naui_renderer_initialize(void);
 extern void naui_renderer_shutdown(void);
 extern void naui_renderer_resize(int32_t width, int32_t height);
 extern void naui_renderer_begin(void);
 extern void naui_renderer_end(void);
 
 extern void naui_panel_manager_render(void);
+
+static Leaf_Dimensions measure_text_bridge(const char *text, uint32_t length, const Leaf_TextConfig *config)
+{
+    Naui_Vec2 size = naui_measure_text(text, length, config->font_size, config->font_id);
+    return (Leaf_Dimensions){size.x, size.y};
+}
 
 static void render_leaf_cmd_list(const Leaf_RenderCmdList *list)
 {
@@ -59,6 +65,21 @@ static void render_leaf_cmd_list(const Leaf_RenderCmdList *list)
                 cmd.image.rounding
             );
             break;
+        case LEAF_RENDER_CMD_TEXT:
+            naui_draw_text((Naui_Vec2){cmd.bounding_box.x, cmd.bounding_box.y}, cmd.text.text, cmd.text.font_size, cmd.text.font_id, (Naui_Color){cmd.color.color1.r, cmd.color.color1.g, cmd.color.color1.b, cmd.color.color1.a});
+            break;
+        case LEAF_RENDER_CMD_SCISSOR_PUSH:
+            naui_push_clip_rect(
+                (Naui_Vec2){cmd.bounding_box.x, cmd.bounding_box.y},
+                (Naui_Vec2){cmd.bounding_box.width, cmd.bounding_box.height}
+            );
+            break;
+        case LEAF_RENDER_CMD_SCISSOR_POP:
+            naui_pop_clip_rect();
+            break;
+        case LEAF_RENDER_CMD_CUSTOM:
+            cmd.custom.draw(cmd.bounding_box, cmd.custom.user_data);
+            break;
         }
     }
 }
@@ -67,7 +88,7 @@ static void render(void)
 {
     naui_renderer_begin();
     leaf_begin_frame(mg_app_width(), mg_app_height());
-    leaf_set_pointer_pos(mg_app_mouse_x(), mg_app_mouse_y());
+    leaf_set_pointer_pos((float)mg_app_mouse_x(), (float)mg_app_mouse_y());
     state.events.update();
     naui_panel_manager_render();
     Leaf_RenderCmdList cmd_list = leaf_end_frame();
@@ -86,9 +107,11 @@ static void __naui_app_event(const mg_app_event* event)
 
 static void __naui_app_start(void)
 {
-    naui_renderer_initialize(NULL);
-    naui_asset_manager_load_images("res");
+    naui_renderer_initialize();
+    naui_set_font(0, "Assets/Fonts/Quicksand-SemiBold.ttf");
+    naui_asset_manager_load_images("Assets/Images");
     leaf_initialize();
+    leaf_set_measure_text(measure_text_bridge);
     state.events.start();
 }
 

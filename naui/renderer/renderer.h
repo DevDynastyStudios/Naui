@@ -11,6 +11,21 @@ typedef struct
 }
 Naui_Color;
 
+typedef uint8_t Naui_GradientType;
+enum
+{
+    NAUI_GRADIENT_LINEAR_COLOR_FILL,
+    NAUI_GRADIENT_DOT_COLOR_FILL
+};
+
+typedef struct
+{
+    Naui_Color color1, color2;
+    float angle;
+    Naui_GradientType type;
+}
+Naui_Gradient;
+
 typedef struct
 {
     uint32_t width, height;
@@ -18,10 +33,25 @@ typedef struct
 }
 Naui_Image;
 
-void naui_fill_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color);
 void naui_draw_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color, float line_width);
-void naui_fill_round_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color, float rounding);
+void naui_fill_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color);
+void naui_fill_gradient_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Gradient gradient, float rounding);
+
 void naui_draw_round_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color, float line_width, float rounding);
+void naui_fill_round_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color, float rounding);
+void naui_fill_round_gradient_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Gradient gradient, float rounding);
+
 void naui_draw_line(Naui_Vec2 a, Naui_Vec2 b, Naui_Color color, float line_width);
+
 void naui_draw_image(const Naui_Image *image, Naui_Vec2 position, Naui_Vec2 scale, Naui_Color tint);
 void naui_draw_round_image(const Naui_Image *image, Naui_Vec2 position, Naui_Vec2 scale, Naui_Color tint, float rounding);
+void naui_draw_gradient_image(const Naui_Image *image, Naui_Vec2 position, Naui_Vec2 scale, Naui_Gradient tint);
+void naui_draw_round_gradient_image(const Naui_Image *image, Naui_Vec2 position, Naui_Vec2 scale, Naui_Gradient tint, float rounding);
+
+void naui_set_font(uint8_t index, const char *file_path); // loads/reloads a font from a file to an index into the font_data[4] array in the render data context (max of 4 font slots, textures from 1 to 4)
+void naui_draw_text(Naui_Vec2 position, const char *text, float size, uint8_t font_index, Naui_Color color);
+
+Naui_Vec2 naui_measure_text(const char *text, uint32_t length, float font_size, uint8_t font_index);
+
+void naui_push_clip_rect(Naui_Vec2 position, Naui_Vec2 size);
+void naui_pop_clip_rect(void);

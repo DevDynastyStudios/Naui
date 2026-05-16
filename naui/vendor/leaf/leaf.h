@@ -40,8 +40,7 @@ typedef uint8_t Leaf_ColorFillType;
 enum
 {
     LEAF_SOLID_COLOR_FILL = 0,
-    LEAF_GRADIENT_LINEAR_COLOR_FILL,
-    LEAF_GRADIENT_DOT_COLOR_FILL
+    LEAF_GRADIENT_LINEAR_COLOR_FILL = 1
 };
 
 typedef struct
@@ -55,7 +54,6 @@ Leaf_ColorFill;
 
 #define leaf_solid(c) (Leaf_ColorFill){ (c), {}, 0.0f, LEAF_SOLID_COLOR_FILL }
 #define leaf_gradient(c1, c2, angle) (Leaf_ColorFill){ (c1), (c2), angle, LEAF_GRADIENT_LINEAR_COLOR_FILL }
-#define leaf_gradient_dot(c1, c2) (Leaf_ColorFill){ (c1), (c2), 0.0f, LEAF_GRADIENT_DOT_COLOR_FILL }
 
 #define leaf_deg(v) ((v) * 0.0174532925f)
 #define leaf_rad(v) (v)
@@ -678,6 +676,9 @@ static inline bool leaf_is_color_fill_empty(Leaf_ColorFill fill)
 
 static void leaf_render_node(Leaf_Node *node)
 {
+    if (node->bounding_box.width <= 0 || node->bounding_box.height <= 0)
+        return;
+
     switch (node->type)
     {
     case LEAF_NODE_TYPE_ELEMENT:
