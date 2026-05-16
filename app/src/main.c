@@ -30,6 +30,7 @@ void naui_app_update(void)
                 .image = naui_get_image("dude"),
                 .padding = LEAF_PADDING_ALL(25.0f),
                 .rounding = naui_time() * 10.0f,
+                .border = {leaf_gradient(leaf_rgb(0, 0, 255), leaf_rgb(0, 255, 0), leaf_deg(0)), 8.0f},
                 .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER}
             })
             {
