@@ -110,7 +110,7 @@ Naui_GradientAxis;
 
 static Naui_GradientAxis naui_gradient_axis(Naui_Vec2 tl, Naui_Vec2 br, float angle_deg)
 {
-    float rad = angle_deg * (float)(M_PI / 180.0);
+    float rad = angle_deg;
     float dx = cosf(rad), dy = sinf(rad);
 
     float pts[4][2] = {
@@ -681,23 +681,58 @@ void naui_draw_text(Naui_Vec2 position, const char *text, float size, uint8_t fo
     }
 }
 
-void naui_fill_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color)
+void naui_fill_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color, float rounding)
 {
-    Naui_Vec2 br = { position.x + scale.x, position.y + scale.y };
-    naui_push_rect(position, br, naui_pack_color(color), -1);
+    float x0 = position.x, y0 = position.y;
+    float x1 = x0 + scale.x, y1 = y0 + scale.y;
+    uint32_t c = naui_pack_color(color);
+
+    if (rounding <= 0.0f)
+    {
+        naui_push_rect(position, (Naui_Vec2){x1, y1}, c, -1);
+        return;
+    }
+
+    float r = naui_min(rounding, naui_min(scale.x, scale.y) * 0.5f);
+
+    naui_push_rect((Naui_Vec2){x0+r, y0  }, (Naui_Vec2){x1-r, y1  }, c, -1);
+    naui_push_rect((Naui_Vec2){x0,   y0+r}, (Naui_Vec2){x0+r, y1-r}, c, -1);
+    naui_push_rect((Naui_Vec2){x1-r, y0+r}, (Naui_Vec2){x1,   y1-r}, c, -1);
+
+    naui_push_corner_fan((Naui_Vec2){x0+r, y0+r}, r, -1, -1, c);
+    naui_push_corner_fan((Naui_Vec2){x1-r, y0+r}, r, +1, -1, c);
+    naui_push_corner_fan((Naui_Vec2){x1-r, y1-r}, r, +1, +1, c);
+    naui_push_corner_fan((Naui_Vec2){x0+r, y1-r}, r, -1, +1, c);
 }
 
-void naui_draw_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color, float line_width)
+void naui_draw_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color, float line_width, float rounding)
 {
     float x0 = position.x, y0 = position.y;
     float x1 = x0 + scale.x, y1 = y0 + scale.y;
     float lw = line_width;
     uint32_t c = naui_pack_color(color);
 
-    naui_push_rect((Naui_Vec2){x0,    y0    }, (Naui_Vec2){x1,    y0+lw }, c, -1);
-    naui_push_rect((Naui_Vec2){x0,    y1-lw }, (Naui_Vec2){x1,    y1    }, c, -1);
-    naui_push_rect((Naui_Vec2){x0,    y0+lw }, (Naui_Vec2){x0+lw, y1-lw }, c, -1);
-    naui_push_rect((Naui_Vec2){x1-lw, y0+lw }, (Naui_Vec2){x1,    y1-lw }, c, -1);
+    if (rounding <= 0.0f)
+    {
+        naui_push_rect((Naui_Vec2){x0,    y0    }, (Naui_Vec2){x1,    y0+lw }, c, -1);
+        naui_push_rect((Naui_Vec2){x0,    y1-lw }, (Naui_Vec2){x1,    y1    }, c, -1);
+        naui_push_rect((Naui_Vec2){x0,    y0+lw }, (Naui_Vec2){x0+lw, y1-lw }, c, -1);
+        naui_push_rect((Naui_Vec2){x1-lw, y0+lw }, (Naui_Vec2){x1,    y1-lw }, c, -1);
+        return;
+    }
+
+    float r = naui_min(rounding, naui_min(scale.x, scale.y) * 0.5f);
+    float inner_r = fmaxf(r - lw, 0.0f);
+
+    naui_push_rect((Naui_Vec2){x0+r,  y0    }, (Naui_Vec2){x1-r,  y0+lw }, c, -1);
+    naui_push_rect((Naui_Vec2){x0+r,  y1-lw }, (Naui_Vec2){x1-r,  y1    }, c, -1);
+    naui_push_rect((Naui_Vec2){x0,    y0+r  }, (Naui_Vec2){x0+lw, y1-r  }, c, -1);
+    naui_push_rect((Naui_Vec2){x1-lw, y0+r  }, (Naui_Vec2){x1,    y1-r  }, c, -1);
+
+    naui_push_corner_ring((Naui_Vec2){x0+r, y0+r}, inner_r, r, -1, -1, c);
+    naui_push_corner_ring((Naui_Vec2){x1-r, y0+r}, inner_r, r, +1, -1, c);
+    naui_push_corner_ring((Naui_Vec2){x1-r, y1-r}, inner_r, r, +1, +1, c);
+    naui_push_corner_ring((Naui_Vec2){x0+r, y1-r}, inner_r, r, -1, +1, c);
 }
 
 void naui_fill_gradient_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Gradient gradient, float rounding)
@@ -724,46 +759,62 @@ void naui_fill_gradient_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Gradient 
     naui_push_gradient_corner_fan((Naui_Vec2){x0+r, y1-r}, r, -1, +1, &gradient, &axis);
 }
 
-void naui_fill_round_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color, float rounding)
+void naui_draw_gradient_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Gradient gradient, float line_width, float rounding)
 {
     float x0 = position.x, y0 = position.y;
     float x1 = x0 + scale.x, y1 = y0 + scale.y;
+    float lw = line_width;
+    Naui_GradientAxis axis = naui_gradient_axis((Naui_Vec2){x0, y0}, (Naui_Vec2){x1, y1}, gradient.angle);
+
+    if (rounding <= 0.0f)
+    {
+        naui_push_gradient_rect((Naui_Vec2){x0,    y0    }, (Naui_Vec2){x1,    y0+lw }, &gradient, &axis, -1);
+        naui_push_gradient_rect((Naui_Vec2){x0,    y1-lw }, (Naui_Vec2){x1,    y1    }, &gradient, &axis, -1);
+        naui_push_gradient_rect((Naui_Vec2){x0,    y0+lw }, (Naui_Vec2){x0+lw, y1-lw }, &gradient, &axis, -1);
+        naui_push_gradient_rect((Naui_Vec2){x1-lw, y0+lw }, (Naui_Vec2){x1,    y1-lw }, &gradient, &axis, -1);
+        return;
+    }
+
     float r = naui_min(rounding, naui_min(scale.x, scale.y) * 0.5f);
-
-    uint32_t c = naui_pack_color(color);
-
-    naui_push_rect((Naui_Vec2){x0+r, y0  }, (Naui_Vec2){x1-r, y1  }, c, -1);
-    naui_push_rect((Naui_Vec2){x0,   y0+r}, (Naui_Vec2){x0+r, y1-r}, c, -1);
-    naui_push_rect((Naui_Vec2){x1-r, y0+r}, (Naui_Vec2){x1,   y1-r}, c, -1);
-
-    naui_push_corner_fan((Naui_Vec2){x0+r, y0+r}, r, -1, -1, c);
-    naui_push_corner_fan((Naui_Vec2){x1-r, y0+r}, r, +1, -1, c);
-    naui_push_corner_fan((Naui_Vec2){x1-r, y1-r}, r, +1, +1, c);
-    naui_push_corner_fan((Naui_Vec2){x0+r, y1-r}, r, -1, +1, c);
-}
-
-void naui_fill_round_gradient_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Gradient gradient, float rounding)
-{
-    naui_fill_gradient_rect(position, scale, gradient, rounding);
-}
-
-void naui_draw_round_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color, float line_width, float rounding)
-{
-    float x0 = position.x, y0 = position.y;
-    float x1 = x0 + scale.x, y1 = y0 + scale.y;
-    float r = naui_min(rounding, naui_min(scale.x, scale.y) * 0.5f), lw = line_width;
     float inner_r = fmaxf(r - lw, 0.0f);
-    uint32_t c = naui_pack_color(color);
 
-    naui_push_rect((Naui_Vec2){x0+r,  y0    }, (Naui_Vec2){x1-r,  y0+lw }, c, -1);
-    naui_push_rect((Naui_Vec2){x0+r,  y1-lw }, (Naui_Vec2){x1-r,  y1    }, c, -1);
-    naui_push_rect((Naui_Vec2){x0,    y0+r  }, (Naui_Vec2){x0+lw, y1-r  }, c, -1);
-    naui_push_rect((Naui_Vec2){x1-lw, y0+r  }, (Naui_Vec2){x1,    y1-r  }, c, -1);
+    naui_push_gradient_rect((Naui_Vec2){x0+r,  y0    }, (Naui_Vec2){x1-r,  y0+lw }, &gradient, &axis, -1);
+    naui_push_gradient_rect((Naui_Vec2){x0+r,  y1-lw }, (Naui_Vec2){x1-r,  y1    }, &gradient, &axis, -1);
+    naui_push_gradient_rect((Naui_Vec2){x0,    y0+r  }, (Naui_Vec2){x0+lw, y1-r  }, &gradient, &axis, -1);
+    naui_push_gradient_rect((Naui_Vec2){x1-lw, y0+r  }, (Naui_Vec2){x1,    y1-r  }, &gradient, &axis, -1);
 
-    naui_push_corner_ring((Naui_Vec2){x0+r, y0+r}, inner_r, r, -1, -1, c);
-    naui_push_corner_ring((Naui_Vec2){x1-r, y0+r}, inner_r, r, +1, -1, c);
-    naui_push_corner_ring((Naui_Vec2){x1-r, y1-r}, inner_r, r, +1, +1, c);
-    naui_push_corner_ring((Naui_Vec2){x0+r, y1-r}, inner_r, r, -1, +1, c);
+    for (int s = 0; s < NAUI_RENDERER_CORNER_SEGMENTS; s++)
+    {
+        float cx = s_cos[s],     cy = s_sin[s];
+        float nx = s_cos[s + 1], ny = s_sin[s + 1];
+
+        float ax_vals[4] = { -1, +1, +1, -1 };
+        float ay_vals[4] = { -1, -1, +1, +1 };
+        Naui_Vec2 centers[4] = {
+            { x0+r, y0+r },
+            { x1-r, y0+r },
+            { x1-r, y1-r },
+            { x0+r, y1-r },
+        };
+
+        for (int corner = 0; corner < 4; corner++)
+        {
+            float ax = ax_vals[corner], ay = ay_vals[corner];
+            Naui_Vec2 center = centers[corner];
+
+            Naui_Vec2 o0 = { center.x + ax * cx * r,       center.y + ay * cy * r       };
+            Naui_Vec2 o1 = { center.x + ax * nx * r,       center.y + ay * ny * r       };
+            Naui_Vec2 i0 = { center.x + ax * cx * inner_r, center.y + ay * cy * inner_r };
+            Naui_Vec2 i1 = { center.x + ax * nx * inner_r, center.y + ay * ny * inner_r };
+
+            naui_push_gradient_quad4(o0, o1, i1, i0,
+                naui_gradient_color_at(&gradient, &axis, o0.x, o0.y),
+                naui_gradient_color_at(&gradient, &axis, o1.x, o1.y),
+                naui_gradient_color_at(&gradient, &axis, i1.x, i1.y),
+                naui_gradient_color_at(&gradient, &axis, i0.x, i0.y),
+                -1);
+        }
+    }
 }
 
 void naui_draw_line(Naui_Vec2 a, Naui_Vec2 b, Naui_Color color, float line_width)
@@ -785,15 +836,13 @@ void naui_draw_line(Naui_Vec2 a, Naui_Vec2 b, Naui_Color color, float line_width
     );
 }
 
-void naui_draw_image(const Naui_Image *image, Naui_Vec2 position, Naui_Vec2 scale, Naui_Color tint)
+static inline Naui_Vec4 uv_for_sub(Naui_Vec4 uv, Naui_Vec2 img_tl, Naui_Vec2 img_size, float sx0, float sy0, float sx1, float sy1)
 {
-    Naui_Vec2 br = { position.x + scale.x, position.y + scale.y };
-    const float s0 = image->texture_area[0],
-    t0 = image->texture_area[1],
-    s1 = image->texture_area[2],
-    t1 = image->texture_area[3];
-
-    naui_push_textured_rect(position, br, (Naui_Vec4){ s0, t0, s1, t1 }, naui_pack_color(tint), 0);
+    float u0 = uv.x + ((sx0 - img_tl.x) / img_size.x) * uv.z;
+    float v0 = uv.y + ((sy0 - img_tl.y) / img_size.y) * uv.w;
+    float u1 = ((sx1 - sx0) / img_size.x) * uv.z;
+    float v1 = ((sy1 - sy0) / img_size.y) * uv.w;
+    return (Naui_Vec4){ u0, v0, u1, v1 };
 }
 
 static void naui_push_textured_corner_fan(
@@ -834,29 +883,25 @@ static void naui_push_textured_corner_fan(
     }
 }
 
-static inline Naui_Vec4 uv_for_sub(Naui_Vec4 uv, Naui_Vec2 img_tl, Naui_Vec2 img_size, float sx0, float sy0, float sx1, float sy1)
-{
-    float u0 = uv.x + ((sx0 - img_tl.x) / img_size.x) * uv.z;
-    float v0 = uv.y + ((sy0 - img_tl.y) / img_size.y) * uv.w;
-    float u1 = ((sx1 - sx0) / img_size.x) * uv.z;
-    float v1 = ((sy1 - sy0) / img_size.y) * uv.w;
-    return (Naui_Vec4){ u0, v0, u1, v1 };
-}
-
-void naui_draw_round_image(const Naui_Image *image, Naui_Vec2 position, Naui_Vec2 scale, Naui_Color tint, float rounding)
+void naui_draw_image(const Naui_Image *image, Naui_Vec2 position, Naui_Vec2 scale, Naui_Color tint, float rounding)
 {
     float x0 = position.x, y0 = position.y;
     float x1 = x0 + scale.x, y1 = y0 + scale.y;
-    float r = naui_min(rounding, naui_min(scale.x, scale.y) * 0.5f);
 
     const float s0 = image->texture_area[0], t0 = image->texture_area[1];
     const float s1 = image->texture_area[2], t1 = image->texture_area[3];
-    Naui_Vec4 uv = { s0, t0, s1, t1 };
+    Naui_Vec4 uv = { s0, t0, s1 - s0, t1 - t0 };
+    uint32_t c = naui_pack_color(tint);
 
+    if (rounding <= 0.0f)
+    {
+        naui_push_textured_rect(position, (Naui_Vec2){x1, y1}, uv, c, 0);
+        return;
+    }
+
+    float r = naui_min(rounding, naui_min(scale.x, scale.y) * 0.5f);
     Naui_Vec2 img_tl   = { x0, y0 };
     Naui_Vec2 img_size = { scale.x, scale.y };
-
-    uint32_t c = naui_pack_color(tint);
 
     naui_push_textured_rect((Naui_Vec2){x0+r, y0  }, (Naui_Vec2){x1-r, y1  }, uv_for_sub(uv, img_tl, img_size, x0+r, y0,   x1-r, y1  ), c, 0);
     naui_push_textured_rect((Naui_Vec2){x0,   y0+r}, (Naui_Vec2){x0+r, y1-r}, uv_for_sub(uv, img_tl, img_size, x0,   y0+r, x0+r, y1-r), c, 0);
@@ -925,7 +970,7 @@ static void naui_push_textured_gradient_rect(Naui_Vec2 tl, Naui_Vec2 br,
     rdata->geometry_count++;
 }
 
-void naui_draw_gradient_image(const Naui_Image *image, Naui_Vec2 position, Naui_Vec2 scale, Naui_Gradient tint)
+void naui_draw_gradient_image(const Naui_Image *image, Naui_Vec2 position, Naui_Vec2 scale, Naui_Gradient tint, float rounding)
 {
     float x0 = position.x, y0 = position.y;
     float x1 = x0 + scale.x, y1 = y0 + scale.y;
@@ -935,23 +980,16 @@ void naui_draw_gradient_image(const Naui_Image *image, Naui_Vec2 position, Naui_
     Naui_Vec4 uv = { s0, t0, s1, t1 };
 
     Naui_GradientAxis axis = naui_gradient_axis((Naui_Vec2){x0, y0}, (Naui_Vec2){x1, y1}, tint.angle);
-    naui_push_textured_gradient_rect((Naui_Vec2){x0, y0}, (Naui_Vec2){x1, y1}, uv, &tint, &axis);
-}
 
-void naui_draw_round_gradient_image(const Naui_Image *image, Naui_Vec2 position, Naui_Vec2 scale, Naui_Gradient tint, float rounding)
-{
-    float x0 = position.x, y0 = position.y;
-    float x1 = x0 + scale.x, y1 = y0 + scale.y;
+    if (rounding <= 0.0f)
+    {
+        naui_push_textured_gradient_rect((Naui_Vec2){x0, y0}, (Naui_Vec2){x1, y1}, uv, &tint, &axis);
+        return;
+    }
+
     float r = naui_min(rounding, naui_min(scale.x, scale.y) * 0.5f);
-
-    const float s0 = image->texture_area[0], t0 = image->texture_area[1];
-    const float s1 = image->texture_area[2], t1 = image->texture_area[3];
-    Naui_Vec4 uv = { s0, t0, s1, t1 };
-
     Naui_Vec2 img_tl   = { x0, y0 };
     Naui_Vec2 img_size = { scale.x, scale.y };
-
-    Naui_GradientAxis axis = naui_gradient_axis((Naui_Vec2){x0, y0}, (Naui_Vec2){x1, y1}, tint.angle);
 
     naui_push_textured_gradient_rect((Naui_Vec2){x0+r, y0  }, (Naui_Vec2){x1-r, y1  }, uv_for_sub(uv, img_tl, img_size, x0+r, y0,   x1-r, y1  ), &tint, &axis);
     naui_push_textured_gradient_rect((Naui_Vec2){x0,   y0+r}, (Naui_Vec2){x0+r, y1-r}, uv_for_sub(uv, img_tl, img_size, x0,   y0+r, x0+r, y1-r), &tint, &axis);

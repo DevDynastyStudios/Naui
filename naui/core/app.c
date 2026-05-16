@@ -41,30 +41,34 @@ static void render_leaf_cmd_list(const Leaf_RenderCmdList *list)
         switch (cmd.type)
         {
         case LEAF_RENDER_CMD_RECT:
-            naui_fill_round_rect(
-                (Naui_Vec2){cmd.bounding_box.x, cmd.bounding_box.y},
-                (Naui_Vec2){cmd.bounding_box.width, cmd.bounding_box.height},
-                (Naui_Color){cmd.color.color1.r, cmd.color.color1.g, cmd.color.color1.b, cmd.color.color1.a},
-                cmd.rect.rounding
-            );
+        {
+            Naui_Vec2 position = (Naui_Vec2){cmd.bounding_box.x, cmd.bounding_box.y};
+            Naui_Vec2 size = (Naui_Vec2){cmd.bounding_box.width, cmd.bounding_box.height};
+            Naui_Color color1 = (Naui_Color){cmd.color.color1.r, cmd.color.color1.g, cmd.color.color1.b, cmd.color.color1.a};
+            if (cmd.color.type == LEAF_GRADIENT_LINEAR_COLOR_FILL)
+                naui_fill_gradient_rect(position, size, (Naui_Gradient){ color1, (Naui_Color){cmd.color.color2.r, cmd.color.color2.g, cmd.color.color2.b, cmd.color.color2.a}, cmd.color.angle }, cmd.rect.rounding);
+            else naui_fill_rect(position, size, color1, cmd.rect.rounding);
             break;
+        }
         case LEAF_RENDER_CMD_RECT_LINES:
-            naui_draw_round_rect(
-                (Naui_Vec2){cmd.bounding_box.x, cmd.bounding_box.y},
-                (Naui_Vec2){cmd.bounding_box.width, cmd.bounding_box.height},
-                (Naui_Color){cmd.color.color1.r, cmd.color.color1.g, cmd.color.color1.b, cmd.color.color1.a},
-                cmd.rect.line_width, cmd.rect.rounding
-            );
+            Naui_Vec2 position = (Naui_Vec2){cmd.bounding_box.x, cmd.bounding_box.y};
+            Naui_Vec2 size = (Naui_Vec2){cmd.bounding_box.width, cmd.bounding_box.height};
+            Naui_Color color1 = (Naui_Color){cmd.color.color1.r, cmd.color.color1.g, cmd.color.color1.b, cmd.color.color1.a};
+            if (cmd.color.type == LEAF_GRADIENT_LINEAR_COLOR_FILL)
+                naui_draw_gradient_rect(position, size, (Naui_Gradient){ color1, (Naui_Color){cmd.color.color2.r, cmd.color.color2.g, cmd.color.color2.b, cmd.color.color2.a}, cmd.color.angle }, cmd.rect.line_width, cmd.rect.rounding);
+            else naui_draw_rect(position, size, color1, cmd.rect.line_width, cmd.rect.rounding);
             break;
         case LEAF_RENDER_CMD_IMAGE:
-            naui_draw_round_image(
-                (Naui_Image*)cmd.image.handle,
-                (Naui_Vec2){cmd.bounding_box.x, cmd.bounding_box.y},
-                (Naui_Vec2){cmd.bounding_box.width, cmd.bounding_box.height},
-                (Naui_Color){cmd.color.color1.r, cmd.color.color1.g, cmd.color.color1.b, cmd.color.color1.a},
-                cmd.image.rounding
-            );
+        {
+            Naui_Image *image = (Naui_Image*)cmd.image.handle;
+            Naui_Vec2 position = (Naui_Vec2){cmd.bounding_box.x, cmd.bounding_box.y};
+            Naui_Vec2 size = (Naui_Vec2){cmd.bounding_box.width, cmd.bounding_box.height};
+            Naui_Color color1 = (Naui_Color){cmd.color.color1.r, cmd.color.color1.g, cmd.color.color1.b, cmd.color.color1.a};
+            if (cmd.color.type == LEAF_GRADIENT_LINEAR_COLOR_FILL)
+                naui_draw_gradient_image(image, position, size, (Naui_Gradient){ color1, (Naui_Color){cmd.color.color2.r, cmd.color.color2.g, cmd.color.color2.b, cmd.color.color2.a}, cmd.color.angle }, cmd.rect.rounding);
+            else naui_draw_image(image, position, size, color1, cmd.image.rounding);
             break;
+        }
         case LEAF_RENDER_CMD_TEXT:
             naui_draw_text((Naui_Vec2){cmd.bounding_box.x, cmd.bounding_box.y}, cmd.text.text, cmd.text.font_size, cmd.text.font_id, (Naui_Color){cmd.color.color1.r, cmd.color.color1.g, cmd.color.color1.b, cmd.color.color1.a});
             break;

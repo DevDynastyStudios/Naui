@@ -29,7 +29,7 @@ void naui_app_update(void)
                 .color = leaf_solid(leaf_rgb(200, 0, 200)),
                 .image = naui_get_image("dude"),
                 .padding = LEAF_PADDING_ALL(25.0f),
-                .rounding = 16.0f,
+                .rounding = naui_time() * 10.0f,
                 .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER}
             })
             {
@@ -44,7 +44,7 @@ void naui_app_update(void)
                 .color = leaf_solid(leaf_rgb(200, 0, 200)),
                 .image = naui_get_image("dude"),
                 .padding = LEAF_PADDING_ALL(25.0f),
-                .rounding = 16.0f,
+                .rounding = naui_time() * 10.0f,
                 .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER}
             })
             {
