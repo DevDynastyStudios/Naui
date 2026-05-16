@@ -474,7 +474,7 @@ Leaf_ID leaf_id_indexed(const char *label, uint64_t index)
 
 void leaf_initialize(void)
 {
-    leaf_ctx = (Leaf_Context*)malloc(sizeof(Leaf_Context));
+    leaf_ctx = (Leaf_Context*)calloc(1, sizeof(Leaf_Context));
 }
 
 void leaf_shutdown(void)

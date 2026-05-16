@@ -12,29 +12,49 @@ void naui_app_end(void)
 {
 
 }
-
+static float font_size = 128.0f;
 void naui_app_update(void)
 {
-    leaf({
-        .sizing = {LEAF_SIZING_GROW, LEAF_SIZING_GROW},
-        .color = leaf_solid(LEAF_COLOR_WHITE),
-        .padding = LEAF_PADDING_ALL(25.0f),
-        .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER}
-    })
+    leaf_debug(true, 400, naui_delta_time(), 0)
     {
         leaf({
             .sizing = {LEAF_SIZING_GROW, LEAF_SIZING_GROW},
-            .color = leaf_solid(leaf_rgb(200, 0, 200)),
-            .image = naui_get_image("dude"),
-            .rounding = 16.0f,
+            .color = leaf_solid(LEAF_COLOR_WHITE),
+            .padding = LEAF_PADDING_ALL(25.0f),
             .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER}
         })
         {
-            leaf_text("Hello", {
-                .font_size = 128.0f,
-                .color = LEAF_COLOR_WHITE,
-                .alignment = LEAF_TEXT_ALIGN_CENTER
-            });
+            leaf({
+                .sizing = {LEAF_SIZING_GROW, LEAF_SIZING_GROW},
+                .color = leaf_solid(leaf_rgb(200, 0, 200)),
+                .image = naui_get_image("dude"),
+                .padding = LEAF_PADDING_ALL(25.0f),
+                .rounding = 16.0f,
+                .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER}
+            })
+            {
+                leaf_text("Hello", {
+                    .font_size = font_size,
+                    .color = leaf_rgb(0, 0, 0),
+                    .alignment = LEAF_TEXT_ALIGN_CENTER
+                });
+            }
+            leaf({
+                .sizing = {LEAF_SIZING_GROW, LEAF_SIZING_GROW},
+                .color = leaf_solid(leaf_rgb(200, 0, 200)),
+                .image = naui_get_image("dude"),
+                .padding = LEAF_PADDING_ALL(25.0f),
+                .rounding = 16.0f,
+                .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER}
+            })
+            {
+                leaf_text("Hello", {
+                    .font_size = font_size,
+                    .color = leaf_rgb(0, 0, 0),
+                    .alignment = LEAF_TEXT_ALIGN_CENTER
+                });
+            }
         }
     }
+
 }
