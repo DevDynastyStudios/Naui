@@ -27,7 +27,6 @@ typedef struct
 } AnimState;
 
 static float font_size = 128.0f;
-static bool show_debug = false;
 static Naui_List(Icon) g_icons = NULL;
 
 #define ANIM_STATE_MAX 128
@@ -245,19 +244,13 @@ void main_body()
 
 void naui_app_update(void)
 {
-	if(mg_app_key_pressed(MG_KEY_F3))
-		show_debug = !show_debug;
-
-    leaf_debug(show_debug, 400, naui_delta_time(), 0)
+	leaf({
+		.size = { LEAF_SIZE_GROW, LEAF_SIZE_GROW },
+		.direction = LEAF_LAYOUT_VERTICAL,
+		.color = leaf_rgb(18, 18, 22)
+	})
 	{
-		leaf({
-			.size = { LEAF_SIZE_GROW, LEAF_SIZE_GROW },
-			.direction = LEAF_LAYOUT_VERTICAL,
-			.color = leaf_rgb(18, 18, 22)
-		})
-		{
-			title_bar("Naui Demo");
-			main_body();
-		}
+		title_bar("Naui Demo");
+		main_body();
 	}
 }

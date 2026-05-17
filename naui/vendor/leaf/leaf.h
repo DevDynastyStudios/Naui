@@ -340,18 +340,6 @@ LEAF_API Leaf_RenderCmdList leaf_end_frame(void);
 #define leaf_text(text, ...) do { Leaf_TextConfig __cfg = __VA_ARGS__; __leaf_text(text, __cfg); } while(0)
 LEAF_API void __leaf_text(const char *text, Leaf_TextConfig config);
 
-#ifndef LEAF_NO_DEBUG_TOOLS
-
-#define leaf_debug(show, menu_width, delta_time, scroll_delta) \
-    for (int leaf__i_ = (leaf_begin_debug_context(show, delta_time, scroll_delta), 1); \
-         leaf__i_; \
-         leaf__i_ = (leaf_end_debug_context(menu_width), 0))
-
-LEAF_API void leaf_begin_debug_context(bool show, float delta_time, float scroll_delta);
-LEAF_API void leaf_end_debug_context(float menu_width);
-
-#endif
-
 #ifdef LEAF_IMPLEMENTATION
 
 #include <stdio.h>
@@ -1237,21 +1225,12 @@ static void leaf_position_render(Leaf_Node *parent)
 #undef LEAF_ALIGN_OFFSET
 }
 
-#ifndef LEAF_NO_DEBUG_TOOLS
-static Leaf_Node *leaf_debug_selected_node;
-static Leaf_BoundingBox leaf_debug_selected_bounding_box;
-#endif
-
 void leaf_begin_frame(int32_t width, int32_t height)
 {
     leaf_ctx->stack_top = 0;
     leaf_ctx->node_count = 0;
     leaf_ctx->render_cmd_count = 0;
     leaf_ctx->wrap_cache_cursor = 0;
-
-#ifndef LEAF_NO_DEBUG_TOOLS
-    leaf_debug_selected_node = NULL;
-#endif
 
     Leaf_Node *root = leaf_alloc_node();
     root->bounding_box.width = (float)width;
@@ -1265,206 +1244,11 @@ Leaf_RenderCmdList leaf_end_frame(void)
     leaf_size_pass(root);
     leaf_position_render(root);
 
-#ifndef LEAF_NO_DEBUG_TOOLS
-    if (leaf_debug_selected_node)
-    {
-        leaf_debug_selected_bounding_box = leaf_debug_selected_node->bounding_box;
-        leaf_push_render_cmd((Leaf_RenderCmd){
-            .type = LEAF_RENDER_CMD_RECT,
-            .bounding_box = leaf_debug_selected_node->bounding_box,
-            .color = leaf_rgba(150, 170, 255, 100)
-        });
-    }
-#endif
-
     Leaf_RenderCmdList list;
     list.cmds = leaf_ctx->render_cmds;
     list.count = leaf_ctx->render_cmd_count;
     return list;
 }
-
-#ifndef LEAF_NO_DEBUG_TOOLS
-static const float LEAF_BASE_DEBUG_FONT_SIZE = 20.0f;
-
-static const Leaf_Color LEAF_DBG_BG1 = {37, 35, 33, 255};
-static const Leaf_Color LEAF_DBG_BG2 = {46, 44, 42, 255};
-static const Leaf_Color LEAF_DBG_BG3 = {62, 60, 58, 255};
-static const Leaf_Color LEAF_DBG_SELECTED = {102, 80, 78, 255};
-static const Leaf_Color LEAF_DBG_TEXT_PRI = {237, 226, 231, 255};
-static const Leaf_Color LEAF_DBG_TEXT_SEC = {141, 133, 135, 255};
-static const Leaf_Color LEAF_DBG_BORDER = {90, 88, 85, 255};
-
-static bool leaf_debug_menu_secondary_tab = false;
-static int32_t leaf_debug_button_index;
-static float leaf_debug_menu_show_factor = 0.0f;
-static float leaf_debug_scroll_offset = 0.0f;
-static float leaf_debug_scroll_offset_smooth = 0.0f;
-
-static inline float leaf_lerp(float a, float b, float t)
-{
-    return a + (b - a) * t;
-}
-
-static void leaf_debug_child_tab(Leaf_Node *node, int32_t level)
-{
-    static const char *labels[] = {
-        "Element",
-        "Text",
-        "Image"
-    };
-    leaf_debug_menu_secondary_tab = !leaf_debug_menu_secondary_tab;
-    const Leaf_ID id = leaf_id_indexed("__leaf_debug_button", leaf_debug_button_index++);
-    bool hovered;
-    if ((hovered = leaf_hovered(id)))
-        leaf_debug_selected_node = node;
-    leaf({
-        .id = id,
-        .size = {LEAF_SIZE_GROW, LEAF_SIZE_FIT},
-        .color = hovered ? LEAF_DBG_SELECTED : leaf_debug_menu_secondary_tab ? LEAF_DBG_BG2 : LEAF_DBG_BG1,
-        .padding = {16.0f + level * 24.0f, 16, 16, 16},
-        .direction = LEAF_LAYOUT_HORIZONAL,
-        .child_gap = 32.0f
-    })
-    {
-        leaf_text((node->type == LEAF_NODE_TYPE_ELEMENT && node->element.config.id.label) ?
-            node->element.config.id.label : labels[node->type], {
-            .font_size = LEAF_SIZE_FIXED(LEAF_BASE_DEBUG_FONT_SIZE),
-            .color = LEAF_DBG_TEXT_PRI
-        });
-
-        if (node->type == LEAF_NODE_TYPE_TEXT)
-        {
-            leaf_text(node->text.text, {
-                .font_size = LEAF_SIZE_FIXED(LEAF_BASE_DEBUG_FONT_SIZE),
-                .color = LEAF_DBG_TEXT_SEC
-            });
-        }
-    }
-    LEAF_FOREACH_CHILD(child, node)
-        leaf_debug_child_tab(child, level + 1);
-}
-
-void leaf_begin_debug_context(bool show, float delta_time, float scroll_delta)
-{
-    leaf_debug_menu_secondary_tab = false;
-    leaf_debug_button_index = 0;
-    if (leaf_hovered(leaf_id("__leaf_debug_menu")))
-        leaf_debug_scroll_offset = leaf_maxf(0.0f, leaf_debug_scroll_offset - scroll_delta * 100.0f);
-    leaf_debug_menu_show_factor = leaf_lerp(leaf_debug_menu_show_factor, show ? 1.0f : 0.0f, delta_time * 16.0f);
-    leaf_debug_scroll_offset_smooth = leaf_lerp(leaf_debug_scroll_offset_smooth, leaf_debug_scroll_offset, delta_time * 25.0f);
-    leaf_begin_element((Leaf_ElementConfig){
-        .direction = LEAF_LAYOUT_HORIZONAL,
-        .child_alignment = {LEAF_ALIGN_X_RIGHT, LEAF_ALIGN_Y_TOP},
-        .size = {LEAF_SIZE_GROW, LEAF_SIZE_GROW}
-    });
-}
-
-void leaf_end_debug_context(float menu_width)
-{
-    Leaf_Node *inner_root = leaf_stack_top();
-    leaf({
-        .size = {LEAF_SIZE_FIXED(menu_width * leaf_debug_menu_show_factor), LEAF_SIZE_GROW},
-        .color = LEAF_DBG_BG1,
-        .border = {LEAF_DBG_BORDER, 1.0f}
-    })
-    {
-        leaf({
-            .id = leaf_id("__leaf_debug_menu"),
-            .size = {LEAF_SIZE_GROW, LEAF_SIZE_PERCENT(0.6f)},
-            .color = LEAF_DBG_BG1,
-            .child_offset = {0.0f, leaf_debug_scroll_offset_smooth}
-        })
-        {
-            leaf({
-                .size = { LEAF_SIZE_GROW, LEAF_SIZE_FIT },
-                .padding = {16, 16, 16, 16},
-            })
-            {
-                leaf_text("Leaf Debug Tools", {
-                    .font_size = LEAF_SIZE_FIXED(LEAF_BASE_DEBUG_FONT_SIZE),
-                    .color = LEAF_DBG_TEXT_PRI
-                });
-            }
-            leaf({
-                .size = { LEAF_SIZE_GROW, LEAF_SIZE_FIXED(1.0f) },
-                .color = LEAF_DBG_BORDER
-            });
-
-            leaf_debug_child_tab(inner_root, 0);
-        }
-
-        leaf({
-            .size = {LEAF_SIZE_GROW, LEAF_SIZE_FIXED(1.0f)},
-            .color = LEAF_DBG_BG3,
-        });
-
-        leaf({
-            .size = {LEAF_SIZE_GROW, LEAF_SIZE_GROW},
-            .padding = {16, 16, 16, 16},
-            .color = LEAF_DBG_BG1,
-            .child_gap = 20.0f
-        })
-        {
-            if (!leaf_debug_selected_node)
-                continue;
-            const Leaf_TextConfig title = { .font_size = LEAF_SIZE_FIXED(LEAF_BASE_DEBUG_FONT_SIZE), .color = LEAF_DBG_TEXT_SEC };
-            const Leaf_TextConfig data  = { .font_size = LEAF_SIZE_FIXED(LEAF_BASE_DEBUG_FONT_SIZE), .color = LEAF_DBG_TEXT_PRI };
-
-            leaf({})
-            {
-                leaf_text("Bounding Box", title);
-                static char buffer[256];
-                snprintf(buffer, sizeof(buffer), "{ x: %i, y: %i, width: %i, height: %i }",
-                    (int)leaf_debug_selected_bounding_box.x, (int)leaf_debug_selected_bounding_box.y,
-                    (int)leaf_debug_selected_bounding_box.width, (int)leaf_debug_selected_bounding_box.height);
-                leaf_text(buffer, data);
-            }
-
-            if (leaf_debug_selected_node->type == LEAF_NODE_TYPE_ELEMENT)
-            {
-                Leaf_ElementConfig config = leaf_debug_selected_node->element.config;
-                leaf({}){
-                    leaf_text("Direction", title);
-                    leaf_text(config.direction == LEAF_LAYOUT_HORIZONAL ? "Horizontal" : "Vertical", data);
-                }
-
-                leaf({}){
-                    static const char *labels[] = {
-                        "Fit",
-                        "Grow",
-                        "Percent",
-                        "Fixed"
-                    };
-                    static char width[16], height[16];
-                    snprintf(width, sizeof(width), "Width: %s", labels[config.size.width.type]);
-                    snprintf(height, sizeof(height), "Height: %s", labels[config.size.height.type]);
-                    leaf_text("Size", title);
-                    leaf_text(width, data);
-                    leaf_text(height, data);
-                }
-
-                leaf({}){
-                    static char buffer[16];
-                    snprintf(buffer, sizeof(buffer), "%d", (int)config.child_gap);
-                    leaf_text("Child Gap", title);
-                    leaf_text(buffer, data);
-                }
-            }
-
-            if (leaf_debug_selected_node->type == LEAF_NODE_TYPE_TEXT)
-            {
-                static char font_size_buf[64];
-                snprintf(font_size_buf, sizeof(font_size_buf), "%.1f (resolved)", leaf_debug_selected_node->text.resolved_font_size);
-                leaf({}){
-                    leaf_text("Font Size", title);
-                    leaf_text(font_size_buf, data);
-                }
-            }
-        }
-    }
-    leaf_end_element();
-}
-#endif // LEAF_NO_DEBUG_TOOLS
 
 #endif // LEAF_IMPLEMENTATION
 
