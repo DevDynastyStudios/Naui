@@ -19,9 +19,9 @@ void naui_panel_manager_render(void)
         Naui_Panel *panel = &panel_map[i].value;
         leaf({
             .positioning = LEAF_POSITIONING_FLOATING_TO_ROOT,
-            .sizing = {LEAF_SIZING_FIXED(panel->size.x), LEAF_SIZING_FIXED(panel->size.y)},
+            .size = {LEAF_SIZE_FIXED(panel->size.x), LEAF_SIZE_FIXED(panel->size.y)},
             .floating_offset = {panel->position.x, panel->position.y},
-            .color = leaf_solid(LEAF_COLOR_WHITE),
+            .color = LEAF_COLOR_WHITE,
             .padding = LEAF_PADDING_ALL(8.0f),
             .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER}
         })

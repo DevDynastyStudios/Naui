@@ -27,9 +27,9 @@ extern void naui_renderer_end(void);
 
 extern void naui_panel_manager_render(void);
 
-static Leaf_Dimensions measure_text_bridge(const char *text, uint32_t length, const Leaf_TextConfig *config)
+static Leaf_Dimensions measure_text_bridge(const char *text, uint32_t length, float resolved_font_size, const Leaf_TextConfig *config)
 {
-    Naui_Vec2 size = naui_measure_text(text, length, config->font_size, config->font_id);
+    Naui_Vec2 size = naui_measure_text(text, length, resolved_font_size, config->font_id);
     return (Leaf_Dimensions){size.x, size.y};
 }
 

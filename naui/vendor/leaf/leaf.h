@@ -7,6 +7,10 @@
 extern "C" {
 #endif
 
+#ifndef LEAF_DEFAULT_FONT_SIZE
+    #define LEAF_DEFAULT_FONT_SIZE 16.0f
+#endif
+
 #define LEAF_COLOR_WHITE (Leaf_Color) { 255, 255, 255, 255 }
 
 #define LEAF_API // TODO(box): implement proper dll/wasm exporting
@@ -52,7 +56,6 @@ typedef struct
 }
 Leaf_ColorFill;
 
-#define leaf_solid(c) (Leaf_ColorFill){ (c), {}, 0.0f, LEAF_SOLID_COLOR_FILL }
 #define leaf_gradient(c1, c2, angle) (Leaf_ColorFill){ (c1), (c2), angle, LEAF_GRADIENT_LINEAR_COLOR_FILL }
 
 #define leaf_deg(v) ((v) * 0.0174532925f)
@@ -132,13 +135,13 @@ typedef struct
 }
 Leaf_Alignment;
 
-typedef uint8_t Leaf_SizingType;
+typedef uint8_t Leaf_SizeType;
 enum
 {
-    LEAF_SIZING_TYPE_FIT,
-    LEAF_SIZING_TYPE_GROW,
-    LEAF_SIZING_TYPE_PERCENT,
-    LEAF_SIZING_TYPE_FIXED
+    LEAF_SIZE_TYPE_FIT,
+    LEAF_SIZE_TYPE_GROW,
+    LEAF_SIZE_TYPE_PERCENT,
+    LEAF_SIZE_TYPE_FIXED
 };
 
 typedef struct
@@ -149,16 +152,16 @@ typedef struct
         float percent;
     }
     size;
-    Leaf_SizingType type;
+    Leaf_SizeType type;
 }
-Leaf_SizingAxis;
+Leaf_SizeAxis;
 
 typedef struct
 {
-    Leaf_SizingAxis width;
-    Leaf_SizingAxis height;
+    Leaf_SizeAxis width;
+    Leaf_SizeAxis height;
 }
-Leaf_Sizing;
+Leaf_Size;
 
 typedef struct
 {
@@ -190,7 +193,7 @@ typedef struct
     Leaf_CustomDrawFn custom_draw;
     void *custom_draw_user_data;
 
-    Leaf_Sizing sizing;
+    Leaf_Size size;
     Leaf_Padding padding;
     Leaf_Border border;
     Leaf_ColorFill color;
@@ -234,7 +237,7 @@ enum
 typedef struct
 {
     Leaf_ColorFill color;
-    float font_size;
+    Leaf_SizeAxis font_size;
     uint32_t font_id;
     Leaf_TextAlignment alignment;
     Leaf_TextWrapMode wrap_mode;
@@ -300,16 +303,16 @@ typedef struct
 }
 Leaf_RenderCmdList;
 
-typedef Leaf_Dimensions (*Leaf_MeasureTextFn)(const char *text, uint32_t length, const Leaf_TextConfig *config);
+typedef Leaf_Dimensions (*Leaf_MeasureTextFn)(const char *text, uint32_t length, float resolved_font_size, const Leaf_TextConfig *config);
 
-#define LEAF_SIZING_GROW            (Leaf_SizingAxis){ .type = LEAF_SIZING_TYPE_GROW }
-#define LEAF_SIZING_GROW_MIN(v)     (Leaf_SizingAxis){ .type = LEAF_SIZING_TYPE_GROW, .size.min_max.min = (v) }
-#define LEAF_SIZING_GROW_MAX(v)     (Leaf_SizingAxis){ .type = LEAF_SIZING_TYPE_GROW, .size.min_max.max = (v) }
-#define LEAF_SIZING_FIT             (Leaf_SizingAxis){ .type = LEAF_SIZING_TYPE_FIT  }
-#define LEAF_SIZING_FIT_MIN(v)      (Leaf_SizingAxis){ .type = LEAF_SIZING_TYPE_FIT,     .size.min_max.min = (v) }
-#define LEAF_SIZING_FIXED(v)        (Leaf_SizingAxis){ .type = LEAF_SIZING_TYPE_FIXED,   .size.min_max.min = (v) }
-#define LEAF_SIZING_PERCENT(v)      (Leaf_SizingAxis){ .type = LEAF_SIZING_TYPE_PERCENT, .size.percent     = (v) }
-#define LEAF_SIZING_PERCENT_MIN(p, m)   (Leaf_SizingAxis){ .type = LEAF_SIZING_TYPE_PERCENT, .size.percent     = (p), .size.min_max.min = (m) }
+#define LEAF_SIZE_GROW            (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_GROW }
+#define LEAF_SIZE_GROW_MIN(v)     (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_GROW, .size.min_max.min = (v) }
+#define LEAF_SIZE_GROW_MAX(v)     (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_GROW, .size.min_max.max = (v) }
+#define LEAF_SIZE_FIT             (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_FIT  }
+#define LEAF_SIZE_FIT_MIN(v)      (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_FIT,     .size.min_max.min = (v) }
+#define LEAF_SIZE_FIXED(v)        (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_FIXED,   .size.min_max.min = (v) }
+#define LEAF_SIZE_PERCENT(v)      (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_PERCENT, .size.percent     = (v) }
+#define LEAF_SIZE_PERCENT_MIN(p, m)   (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_PERCENT, .size.percent     = (p), .size.min_max.min = (m) }
 
 #define leaf(...) \
     for (int leaf__i_ = (leaf_begin_element((Leaf_ElementConfig)__VA_ARGS__), 1); \
@@ -378,6 +381,7 @@ struct Leaf_Node
             Leaf_TextConfig config;
             const char *text;
             uint32_t size;
+            float resolved_font_size;
         }
         text;
     };
@@ -442,6 +446,11 @@ static inline int32_t leaf_max(int32_t a, int32_t b)
 static inline float leaf_maxf(float a, float b)
 {
     return a > b ? a : b;
+}
+
+static inline float leaf_minf(float a, float b)
+{
+    return a < b ? a : b;
 }
 
 static uint64_t leaf_murmur(const void *key, int len, uint64_t seed)
@@ -571,6 +580,53 @@ static inline void leaf_append_child(Leaf_Node *parent, Leaf_Node *child)
     }
 }
 
+static float leaf_resolve_font_size(const Leaf_SizeAxis *axis, Leaf_Node *parent, const char *text, uint32_t text_len, const Leaf_TextConfig *cfg)
+{
+    switch (axis->type)
+    {
+    case LEAF_SIZE_TYPE_FIXED:
+        return axis->size.min_max.min;
+
+    case LEAF_SIZE_TYPE_FIT:
+    default:
+        return axis->size.min_max.min > 0.0f ? axis->size.min_max.min : LEAF_DEFAULT_FONT_SIZE;
+
+    case LEAF_SIZE_TYPE_PERCENT:
+    case LEAF_SIZE_TYPE_GROW:
+    {
+        float parent_w = 0.0f;
+        float parent_h = 0.0f;
+        if (parent && parent->type == LEAF_NODE_TYPE_ELEMENT)
+        {
+            const Leaf_ElementConfig *pc = &parent->element.config;
+            parent_w = parent->bounding_box.width  - pc->padding.left - pc->padding.right;
+            parent_h = parent->bounding_box.height - pc->padding.top  - pc->padding.bottom;
+            if (parent_w < 0.0f) parent_w = 0.0f;
+            if (parent_h < 0.0f) parent_h = 0.0f;
+        }
+
+        float parent_smaller = parent_w < parent_h ? parent_w : parent_h;
+        float target = (axis->type == LEAF_SIZE_TYPE_PERCENT)
+            ? parent_smaller * axis->size.percent
+            : parent_smaller;
+
+        float ref_size = 16.0f;
+        Leaf_Dimensions ref_dim = leaf_ctx->measure_text(text, text_len, ref_size, cfg);
+        float text_larger = ref_dim.width > ref_dim.height ? ref_dim.width : ref_dim.height;
+
+        float resolved = (text_larger > 0.0f)
+            ? ref_size * (target / text_larger)
+            : target;
+
+        if (axis->size.min_max.min > 0.0f && resolved < axis->size.min_max.min)
+            resolved = axis->size.min_max.min;
+        if (axis->size.min_max.max > 0.0f && resolved > axis->size.min_max.max)
+            resolved = axis->size.min_max.max;
+        return resolved;
+    }
+    }
+}
+
 void __leaf_text(const char *text, Leaf_TextConfig config)
 {
     Leaf_Node *parent = leaf_stack_top();
@@ -580,8 +636,9 @@ void __leaf_text(const char *text, Leaf_TextConfig config)
     node->text.config = config;
     node->text.text = text;
     node->text.size = (uint32_t)strlen(text);
+    node->text.resolved_font_size = leaf_resolve_font_size(&config.font_size, parent, text, node->text.size, &config);
 
-    Leaf_Dimensions size = leaf_ctx->measure_text(text, node->text.size, &config);
+    Leaf_Dimensions size = leaf_ctx->measure_text(text, node->text.size, node->text.resolved_font_size, &config);
     node->bounding_box.width  = size.width;
     node->bounding_box.height = size.height;
 
@@ -595,11 +652,11 @@ void leaf_begin_element(Leaf_ElementConfig config)
     node->type = LEAF_NODE_TYPE_ELEMENT;
     node->element.config = config;
 
-    if (config.sizing.width.type == LEAF_SIZING_TYPE_FIXED)
-        node->bounding_box.width = config.sizing.width.size.min_max.min;
-    if (config.sizing.height.type == LEAF_SIZING_TYPE_FIXED)
-        node->bounding_box.height = config.sizing.height.size.min_max.min;
-    
+    if (config.size.width.type == LEAF_SIZE_TYPE_FIXED)
+        node->bounding_box.width = config.size.width.size.min_max.min;
+    if (config.size.height.type == LEAF_SIZE_TYPE_FIXED)
+        node->bounding_box.height = config.size.height.size.min_max.min;
+
     node->parent = leaf_stack_top();
     leaf_stack_push(node);
 }
@@ -609,16 +666,15 @@ void leaf_end_element(void)
     Leaf_Node *node = leaf_stack_top();
     Leaf_Node *parent = node->parent;
 
-    const Leaf_ElementConfig *parent_config = &parent->element.config;
     const Leaf_ElementConfig *child_config = &node->element.config;
 
     node->bounding_box.width += child_config->padding.left + child_config->padding.right;
     node->bounding_box.height += child_config->padding.top + child_config->padding.bottom;
 
     const float child_gap = leaf_max(node->child_count - 1, 0) * child_config->child_gap;
-    if (child_config->sizing.width.type == LEAF_SIZING_TYPE_FIT && child_config->direction == LEAF_LAYOUT_HORIZONAL)
+    if (child_config->size.width.type == LEAF_SIZE_TYPE_FIT && child_config->direction == LEAF_LAYOUT_HORIZONAL)
         node->bounding_box.width += child_gap;
-    else if (child_config->sizing.height.type == LEAF_SIZING_TYPE_FIT && child_config->direction == LEAF_LAYOUT_VERTICAL)
+    else if (child_config->size.height.type == LEAF_SIZE_TYPE_FIT && child_config->direction == LEAF_LAYOUT_VERTICAL)
         node->bounding_box.height += child_gap;
 
     if (node->parent)
@@ -639,15 +695,15 @@ static inline void leaf_push_render_cmd(Leaf_RenderCmd cmd)
 
 static inline void leaf_element_clamp_min_max(Leaf_Node *node, const Leaf_ElementConfig *config)
 {
-    float mn = config->sizing.width.size.min_max.min;
-    float mx = config->sizing.width.size.min_max.max;
+    float mn = config->size.width.size.min_max.min;
+    float mx = config->size.width.size.min_max.max;
     if (mn > 0 && node->bounding_box.width < mn)
         node->bounding_box.width = mn;
     if (mx > 0 && node->bounding_box.width > mx)
         node->bounding_box.width = mx;
 
-    mn = config->sizing.height.size.min_max.min;
-    mx = config->sizing.height.size.min_max.max;
+    mn = config->size.height.size.min_max.min;
+    mx = config->size.height.size.min_max.max;
     if (mn > 0 && node->bounding_box.height < mn)
         node->bounding_box.height = mn;
     if (mx > 0 && node->bounding_box.height > mx)
@@ -721,7 +777,7 @@ static void leaf_render_node(Leaf_Node *node)
                 .color = config->color,
                 .bounding_box = node->bounding_box,
                 .text.text = node->text.text,
-                .text.font_size = config->font_size,
+                .text.font_size = node->text.resolved_font_size,
                 .text.font_id = config->font_id
             });
         break;
@@ -756,6 +812,7 @@ static Leaf_Node *leaf_wrap_text_node(Leaf_Node *parent, Leaf_Node *node, float 
     const Leaf_TextConfig *cfg  = &node->text.config;
     const char *text = node->text.text;
     uint32_t len = node->text.size;
+    float resolved_font_size = node->text.resolved_font_size;
     bool word_mode = cfg->wrap_mode == LEAF_TEXT_WRAP_MODE_WORD;
 
     Leaf_Node *last_inserted = node;
@@ -776,7 +833,7 @@ static Leaf_Node *leaf_wrap_text_node(Leaf_Node *parent, Leaf_Node *node, float 
             if (word_mode && (i == len || cp == ' '))
                 last_word_break = i;
 
-            Leaf_Dimensions d = leaf_ctx->measure_text(text + line_start, i - line_start, cfg);
+            Leaf_Dimensions d = leaf_ctx->measure_text(text + line_start, i - line_start, resolved_font_size, cfg);
 
             if (d.width > avail_width)
             {
@@ -800,7 +857,7 @@ static Leaf_Node *leaf_wrap_text_node(Leaf_Node *parent, Leaf_Node *node, float 
         const char *seg  = leaf_cache_str(text + seg_start, seg_len);
         if (!seg) return last_inserted;
 
-        Leaf_Dimensions d = leaf_ctx->measure_text(seg, seg_len, cfg);
+        Leaf_Dimensions d = leaf_ctx->measure_text(seg, seg_len, resolved_font_size, cfg);
 
         if (line_start == 0)
         {
@@ -816,6 +873,7 @@ static Leaf_Node *leaf_wrap_text_node(Leaf_Node *parent, Leaf_Node *node, float 
             line_node->text.config = *cfg;
             line_node->text.text   = seg;
             line_node->text.size = seg_len;
+            line_node->text.resolved_font_size = resolved_font_size;
             line_node->bounding_box.width  = d.width;
             line_node->bounding_box.height = d.height;
             line_node->parent = parent;
@@ -855,8 +913,8 @@ static void leaf_wrap_text_children(Leaf_Node *parent)
     const Leaf_ElementConfig *cfg = &parent->element.config;
     float avail = parent->bounding_box.width - cfg->padding.left - cfg->padding.right;
 
-    bool fit_w = cfg->sizing.width.type == LEAF_SIZING_TYPE_FIT;
-    bool fit_h = cfg->sizing.height.type == LEAF_SIZING_TYPE_FIT;
+    bool fit_w = cfg->size.width.type == LEAF_SIZE_TYPE_FIT;
+    bool fit_h = cfg->size.height.type == LEAF_SIZE_TYPE_FIT;
     if (fit_w) parent->bounding_box.width  = cfg->padding.left + cfg->padding.right;
     if (fit_h) parent->bounding_box.height = cfg->padding.top  + cfg->padding.bottom;
 
@@ -926,26 +984,26 @@ static void leaf_size_pass(Leaf_Node *parent)
 
         const Leaf_ElementConfig *cc = &child->element.config;
 
-        if (cc->sizing.width.type == LEAF_SIZING_TYPE_PERCENT)
+        if (cc->size.width.type == LEAF_SIZE_TYPE_PERCENT)
         {
             float avail = parent->bounding_box.width - config->padding.left - config->padding.right;
-            child->bounding_box.width = avail * cc->sizing.width.size.percent;
+            child->bounding_box.width = avail * cc->size.width.size.percent;
         }
-        if (cc->sizing.height.type == LEAF_SIZING_TYPE_PERCENT)
+        if (cc->size.height.type == LEAF_SIZE_TYPE_PERCENT)
         {
             float avail = parent->bounding_box.height - config->padding.top - config->padding.bottom;
-            child->bounding_box.height = avail * cc->sizing.height.size.percent;
+            child->bounding_box.height = avail * cc->size.height.size.percent;
         }
 
         if (cc->positioning != LEAF_POSITIONING_RELATIVE)
             continue;
 
-        if (cc->sizing.width.type == LEAF_SIZING_TYPE_GROW)
+        if (cc->size.width.type == LEAF_SIZE_TYPE_GROW)
             growing_width_count++;
         else if (h)
             free_width -= child->bounding_box.width;
 
-        if (cc->sizing.height.type == LEAF_SIZING_TYPE_GROW)
+        if (cc->size.height.type == LEAF_SIZE_TYPE_GROW)
             growing_height_count++;
         else if (!h)
             free_height -= child->bounding_box.height;
@@ -961,11 +1019,11 @@ static void leaf_size_pass(Leaf_Node *parent)
 
         const Leaf_ElementConfig *cc = &child->element.config;
         if (cc->positioning == LEAF_POSITIONING_RELATIVE) {
-            if (cc->sizing.width.type == LEAF_SIZING_TYPE_GROW) {
+            if (cc->size.width.type == LEAF_SIZE_TYPE_GROW) {
                 child->bounding_box.width = free_width;
                 if (h) child->bounding_box.width /= growing_width_count;
             }
-            if (cc->sizing.height.type == LEAF_SIZING_TYPE_GROW) {
+            if (cc->size.height.type == LEAF_SIZE_TYPE_GROW) {
                 child->bounding_box.height = free_height;
                 if (!h) child->bounding_box.height /= growing_height_count;
             }
@@ -975,12 +1033,28 @@ static void leaf_size_pass(Leaf_Node *parent)
     }
 
     LEAF_FOREACH_CHILD(child, parent)
+    {
+        if (child->type == LEAF_NODE_TYPE_TEXT)
+        {
+            float old_resolved = child->text.resolved_font_size;
+            float new_resolved = leaf_resolve_font_size(&child->text.config.font_size, parent, child->text.text, child->text.size, &child->text.config);
+            if (new_resolved != old_resolved)
+            {
+                child->text.resolved_font_size = new_resolved;
+                Leaf_Dimensions d = leaf_ctx->measure_text(
+                    child->text.text, child->text.size,
+                    new_resolved, &child->text.config);
+                child->bounding_box.width  = d.width;
+                child->bounding_box.height = d.height;
+            }
+        }
         leaf_size_pass(child);
+    }
 
     leaf_wrap_text_children(parent);
 
-    bool fit_w = config->sizing.width.type  == LEAF_SIZING_TYPE_FIT;
-    bool fit_h = config->sizing.height.type == LEAF_SIZING_TYPE_FIT;
+    bool fit_w = config->size.width.type  == LEAF_SIZE_TYPE_FIT;
+    bool fit_h = config->size.height.type == LEAF_SIZE_TYPE_FIT;
 
     if (fit_w || fit_h)
     {
@@ -1018,7 +1092,7 @@ static void leaf_size_pass(Leaf_Node *parent)
 
     if (config->aspect_ratio > 0.0f)
     {
-        if (config->sizing.height.type == LEAF_SIZING_TYPE_FIT)
+        if (config->size.height.type == LEAF_SIZE_TYPE_FIT)
             parent->bounding_box.height = parent->bounding_box.width / config->aspect_ratio;
         else parent->bounding_box.width = parent->bounding_box.height * config->aspect_ratio;
     }
@@ -1053,8 +1127,7 @@ static void leaf_position_render(Leaf_Node *parent)
         if (child->type == LEAF_NODE_TYPE_ELEMENT &&
             child->element.config.positioning != LEAF_POSITIONING_RELATIVE)
             continue;
-        children_total += LEAF_MAIN(h, child->bounding_box.width,
-                                       child->bounding_box.height);
+        children_total += LEAF_MAIN(h, child->bounding_box.width, child->bounding_box.height);
     }
     children_total += leaf_max(parent->child_count - 1, 0) * config->child_gap;
 
@@ -1108,7 +1181,6 @@ static void leaf_position_render(Leaf_Node *parent)
             }
         }
 
-        // relative child
         {
             float layout_w = (child->type == LEAF_NODE_TYPE_TEXT) ? 0.f : child->bounding_box.width;
             float layout_h = (child->type == LEAF_NODE_TYPE_TEXT) ? 0.f : child->bounding_box.height;
@@ -1200,7 +1272,7 @@ Leaf_RenderCmdList leaf_end_frame(void)
         leaf_push_render_cmd((Leaf_RenderCmd){
             .type = LEAF_RENDER_CMD_RECT,
             .bounding_box = leaf_debug_selected_node->bounding_box,
-            .color = leaf_solid(leaf_rgba(150, 170, 255, 100))
+            .color = leaf_rgba(150, 170, 255, 100)
         });
     }
 #endif
@@ -1247,8 +1319,8 @@ static void leaf_debug_child_tab(Leaf_Node *node, int32_t level)
         leaf_debug_selected_node = node;
     leaf({
         .id = id,
-        .sizing = {LEAF_SIZING_GROW, LEAF_SIZING_FIT},
-        .color = leaf_solid(hovered ? LEAF_DBG_SELECTED : leaf_debug_menu_secondary_tab ? LEAF_DBG_BG2 : LEAF_DBG_BG1),
+        .size = {LEAF_SIZE_GROW, LEAF_SIZE_FIT},
+        .color = hovered ? LEAF_DBG_SELECTED : leaf_debug_menu_secondary_tab ? LEAF_DBG_BG2 : LEAF_DBG_BG1,
         .padding = {16.0f + level * 24.0f, 16, 16, 16},
         .direction = LEAF_LAYOUT_HORIZONAL,
         .child_gap = 32.0f
@@ -1256,15 +1328,15 @@ static void leaf_debug_child_tab(Leaf_Node *node, int32_t level)
     {
         leaf_text((node->type == LEAF_NODE_TYPE_ELEMENT && node->element.config.id.label) ?
             node->element.config.id.label : labels[node->type], {
-            .font_size = LEAF_BASE_DEBUG_FONT_SIZE,
-            .color = leaf_solid(LEAF_DBG_TEXT_PRI)
+            .font_size = LEAF_SIZE_FIXED(LEAF_BASE_DEBUG_FONT_SIZE),
+            .color = LEAF_DBG_TEXT_PRI
         });
 
         if (node->type == LEAF_NODE_TYPE_TEXT)
         {
             leaf_text(node->text.text, {
-                .font_size = LEAF_BASE_DEBUG_FONT_SIZE,
-                .color = leaf_solid(LEAF_DBG_TEXT_SEC)
+                .font_size = LEAF_SIZE_FIXED(LEAF_BASE_DEBUG_FONT_SIZE),
+                .color = LEAF_DBG_TEXT_SEC
             });
         }
     }
@@ -1283,7 +1355,7 @@ void leaf_begin_debug_context(bool show, float delta_time, float scroll_delta)
     leaf_begin_element((Leaf_ElementConfig){
         .direction = LEAF_LAYOUT_HORIZONAL,
         .child_alignment = {LEAF_ALIGN_X_RIGHT, LEAF_ALIGN_Y_TOP},
-        .sizing = {LEAF_SIZING_GROW, LEAF_SIZING_GROW}
+        .size = {LEAF_SIZE_GROW, LEAF_SIZE_GROW}
     });
 }
 
@@ -1291,52 +1363,52 @@ void leaf_end_debug_context(float menu_width)
 {
     Leaf_Node *inner_root = leaf_stack_top();
     leaf({
-        .sizing = {LEAF_SIZING_FIXED(menu_width * leaf_debug_menu_show_factor), LEAF_SIZING_GROW},
-        .color = leaf_solid(LEAF_DBG_BG1),
-        .border = {leaf_solid(LEAF_DBG_BORDER), 1.0f}
+        .size = {LEAF_SIZE_FIXED(menu_width * leaf_debug_menu_show_factor), LEAF_SIZE_GROW},
+        .color = LEAF_DBG_BG1,
+        .border = {LEAF_DBG_BORDER, 1.0f}
     })
     {
         leaf({
             .id = leaf_id("__leaf_debug_menu"),
-            .sizing = {LEAF_SIZING_GROW, LEAF_SIZING_PERCENT(0.6f)},
-            .color = leaf_solid(LEAF_DBG_BG1),
+            .size = {LEAF_SIZE_GROW, LEAF_SIZE_PERCENT(0.6f)},
+            .color = LEAF_DBG_BG1,
             .child_offset = {0.0f, leaf_debug_scroll_offset_smooth}
         })
         {
             leaf({
-                .sizing = { LEAF_SIZING_GROW, LEAF_SIZING_FIT },
+                .size = { LEAF_SIZE_GROW, LEAF_SIZE_FIT },
                 .padding = {16, 16, 16, 16},
             })
             {
                 leaf_text("Leaf Debug Tools", {
-                    .font_size = LEAF_BASE_DEBUG_FONT_SIZE,
-                    .color = leaf_solid(LEAF_DBG_TEXT_PRI)
+                    .font_size = LEAF_SIZE_FIXED(LEAF_BASE_DEBUG_FONT_SIZE),
+                    .color = LEAF_DBG_TEXT_PRI
                 });
             }
             leaf({
-                .sizing = { LEAF_SIZING_GROW, LEAF_SIZING_FIXED(1.0f) },
-                .color = leaf_solid(LEAF_DBG_BORDER)
+                .size = { LEAF_SIZE_GROW, LEAF_SIZE_FIXED(1.0f) },
+                .color = LEAF_DBG_BORDER
             });
 
             leaf_debug_child_tab(inner_root, 0);
         }
 
         leaf({
-            .sizing = {LEAF_SIZING_GROW, LEAF_SIZING_FIXED(1.0f)},
-            .color = leaf_solid(LEAF_DBG_BG3),
+            .size = {LEAF_SIZE_GROW, LEAF_SIZE_FIXED(1.0f)},
+            .color = LEAF_DBG_BG3,
         });
 
         leaf({
-            .sizing = {LEAF_SIZING_GROW, LEAF_SIZING_GROW},
+            .size = {LEAF_SIZE_GROW, LEAF_SIZE_GROW},
             .padding = {16, 16, 16, 16},
-            .color = leaf_solid(LEAF_DBG_BG1),
+            .color = LEAF_DBG_BG1,
             .child_gap = 20.0f
         })
         {
             if (!leaf_debug_selected_node)
                 continue;
-            const Leaf_TextConfig title = { .font_size = LEAF_BASE_DEBUG_FONT_SIZE, .color = leaf_solid(LEAF_DBG_TEXT_SEC) };
-            const Leaf_TextConfig data = { .font_size = LEAF_BASE_DEBUG_FONT_SIZE, .color = leaf_solid(LEAF_DBG_TEXT_PRI) };
+            const Leaf_TextConfig title = { .font_size = LEAF_SIZE_FIXED(LEAF_BASE_DEBUG_FONT_SIZE), .color = LEAF_DBG_TEXT_SEC };
+            const Leaf_TextConfig data  = { .font_size = LEAF_SIZE_FIXED(LEAF_BASE_DEBUG_FONT_SIZE), .color = LEAF_DBG_TEXT_PRI };
 
             leaf({})
             {
@@ -1364,9 +1436,9 @@ void leaf_end_debug_context(float menu_width)
                         "Fixed"
                     };
                     static char width[16], height[16];
-                    snprintf(width, sizeof(width), "Width: %s", labels[config.sizing.width.type]);
-                    snprintf(height, sizeof(height), "Height: %s", labels[config.sizing.height.type]);
-                    leaf_text("Sizing", title);
+                    snprintf(width, sizeof(width), "Width: %s", labels[config.size.width.type]);
+                    snprintf(height, sizeof(height), "Height: %s", labels[config.size.height.type]);
+                    leaf_text("Size", title);
                     leaf_text(width, data);
                     leaf_text(height, data);
                 }
@@ -1376,6 +1448,16 @@ void leaf_end_debug_context(float menu_width)
                     snprintf(buffer, sizeof(buffer), "%d", (int)config.child_gap);
                     leaf_text("Child Gap", title);
                     leaf_text(buffer, data);
+                }
+            }
+
+            if (leaf_debug_selected_node->type == LEAF_NODE_TYPE_TEXT)
+            {
+                static char font_size_buf[64];
+                snprintf(font_size_buf, sizeof(font_size_buf), "%.1f (resolved)", leaf_debug_selected_node->text.resolved_font_size);
+                leaf({}){
+                    leaf_text("Font Size", title);
+                    leaf_text(font_size_buf, data);
                 }
             }
         }

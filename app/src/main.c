@@ -117,7 +117,7 @@ void circle_icon(const char* id)
 
 	leaf({
 		.id = circle_id,
-		.sizing = { LEAF_SIZING_FIXED(size), LEAF_SIZING_FIXED(size) },
+		.size = { LEAF_SIZE_FIXED(size), LEAF_SIZE_FIXED(size) },
 		.rounding = 999.0f,
 		.padding = LEAF_PADDING_ALL(padding),
 		.image = naui_get_image("bebe"),
@@ -131,7 +131,7 @@ void circle_icon(const char* id)
 	})
 	{
 		leaf_text("Bebe", {
-			.font_size = naui_lerp(22.0f, 26.0f, hover_anim),
+			.font_size = LEAF_SIZE_PERCENT(0.5f),
 			.color = leaf_rgb(255, 255, 255),
 			.alignment = LEAF_TEXT_ALIGN_CENTER
 		});
@@ -156,7 +156,7 @@ void square_icon(const char* id)
 
 	leaf({
 		.id = square_id,
-		.sizing = { LEAF_SIZING_FIXED(size * 1.5f), LEAF_SIZING_FIXED(size) },
+		.size = { LEAF_SIZE_FIXED(size * 1.5f), LEAF_SIZE_FIXED(size) },
 		.rounding = 20.0f,
 		.padding = LEAF_PADDING_ALL(padding),
 		.image = naui_get_image("dude"),
@@ -186,7 +186,7 @@ void title_bar(const char* title)
 		add_random_icon();
 
 	leaf({
-		.sizing = { LEAF_SIZING_GROW, LEAF_SIZING_FIXED(64) },
+		.size = { LEAF_SIZE_GROW, LEAF_SIZE_FIXED(64) },
 		.color = leaf_rgb(28, 28, 34),
 		.direction = LEAF_LAYOUT_HORIZONAL,
 		.child_alignment = { LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER },
@@ -194,7 +194,7 @@ void title_bar(const char* title)
 	})
 	{
 		leaf({
-			.sizing = { LEAF_SIZING_GROW, LEAF_SIZING_FIT },
+			.size = { LEAF_SIZE_GROW, LEAF_SIZE_FIT },
 			.child_alignment = { LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER }
 		})
 		{
@@ -207,7 +207,7 @@ void title_bar(const char* title)
 
 		leaf({
 			.id = add_id,
-			.sizing = { LEAF_SIZING_FIXED(36), LEAF_SIZING_FIXED(36) },
+			.size = { LEAF_SIZE_FIXED(36), LEAF_SIZE_FIXED(36) },
 			.rounding = 8.0f,
 			.color = hovered ? leaf_rgb(70, 70, 82) : leaf_rgb(50, 50, 60),
 			.child_alignment = { LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER }
@@ -225,7 +225,7 @@ void title_bar(const char* title)
 void main_body()
 {
 	leaf({
-		.sizing = { LEAF_SIZING_GROW, LEAF_SIZING_GROW },
+		.size = { LEAF_SIZE_GROW, LEAF_SIZE_GROW },
 		.direction = LEAF_LAYOUT_HORIZONAL,
 		.child_alignment = { LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER },
 		.child_gap = 64.0f
@@ -251,7 +251,7 @@ void naui_app_update(void)
     leaf_debug(show_debug, 400, naui_delta_time(), 0)
 	{
 		leaf({
-			.sizing = { LEAF_SIZING_GROW, LEAF_SIZING_GROW },
+			.size = { LEAF_SIZE_GROW, LEAF_SIZE_GROW },
 			.direction = LEAF_LAYOUT_VERTICAL,
 			.color = leaf_rgb(18, 18, 22)
 		})
