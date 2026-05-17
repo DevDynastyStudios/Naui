@@ -65,7 +65,7 @@ static void render_leaf_cmd_list(const Leaf_RenderCmdList *list)
             Naui_Vec2 size = (Naui_Vec2){cmd.bounding_box.width, cmd.bounding_box.height};
             Naui_Color color1 = (Naui_Color){cmd.color.color1.r, cmd.color.color1.g, cmd.color.color1.b, cmd.color.color1.a};
             if (cmd.color.type == LEAF_GRADIENT_LINEAR_COLOR_FILL)
-                naui_draw_gradient_image(image, position, size, (Naui_Gradient){ color1, (Naui_Color){cmd.color.color2.r, cmd.color.color2.g, cmd.color.color2.b, cmd.color.color2.a}, cmd.color.angle }, cmd.rect.rounding);
+                naui_draw_gradient_image(image, position, size, (Naui_Gradient){ color1, (Naui_Color){cmd.color.color2.r, cmd.color.color2.g, cmd.color.color2.b, cmd.color.color2.a}, cmd.color.angle }, cmd.image.rounding);
             else naui_draw_image(image, position, size, color1, cmd.image.rounding);
             break;
         }

@@ -654,21 +654,6 @@ static inline void leaf_element_clamp_min_max(Leaf_Node *node, const Leaf_Elemen
         node->bounding_box.height = mx;
 }
 
-static inline void leaf_apply_aspect_ratio(Leaf_Node *node)
-{
-    const Leaf_ElementConfig *config = &node->element.config;
-    if (config->aspect_ratio <= 0.0f)
-        return;
-
-    float *w = &node->bounding_box.width;
-    float *h = &node->bounding_box.height;
-
-    if (*w == 0.0f && *h != 0.0f)
-        *w = *h * config->aspect_ratio;
-    else if (*w != 0.0f && *h == 0.0f)
-        *h = *w / config->aspect_ratio;
-}
-
 static inline bool leaf_is_color_fill_empty(Leaf_ColorFill fill)
 {
     return fill.color1.a == 0 && fill.color2.a == 0;
@@ -987,7 +972,6 @@ static void leaf_size_pass(Leaf_Node *parent)
         }
 
         leaf_element_clamp_min_max(child, cc);
-        leaf_apply_aspect_ratio(child);
     }
 
     LEAF_FOREACH_CHILD(child, parent)
@@ -1030,6 +1014,13 @@ static void leaf_size_pass(Leaf_Node *parent)
             parent->bounding_box.height += gap;
         if (fit_w && config->direction == LEAF_LAYOUT_HORIZONAL)
             parent->bounding_box.width  += gap;
+    }
+
+    if (config->aspect_ratio > 0.0f)
+    {
+        if (config->sizing.height.type == LEAF_SIZING_TYPE_FIT)
+            parent->bounding_box.height = parent->bounding_box.width / config->aspect_ratio;
+        else parent->bounding_box.width = parent->bounding_box.height * config->aspect_ratio;
     }
 }
 
