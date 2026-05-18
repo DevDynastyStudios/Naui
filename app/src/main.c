@@ -68,6 +68,7 @@ void naui_app_start(void)
 	{
 		g_anim_states[i].id = 0;
 	}
+	NAUI_ATTACH_PANEL(test);
 }
 
 void naui_app_end(void)
