@@ -97,7 +97,7 @@ void circle_icon(const char* id)
 	hover_state->timer = naui_lerp(hover_state->timer, hovered ? 1.0f : 0.0f, naui_delta_time() * 12.0f);
 	float hover_anim = hover_state->timer;
 
-	float size = naui_lerp(220.0f, 240.0f, hover_anim);
+	float size = naui_lerp(0.9f, 1.0f, hover_anim);
 	float border_width = naui_lerp(5.0f, 10.0f, hover_anim);
 	float padding = naui_lerp(6.0f, 10.0f, hover_anim);
 	uint8_t background = (uint8_t)naui_lerp(35.0f, 55.0f, hover_anim);
@@ -115,26 +115,33 @@ void circle_icon(const char* id)
 	);
 
 	leaf({
-		.id = circle_id,
-		.size = { LEAF_SIZE_FIXED(size), LEAF_SIZE_FIXED(size) },
-		.rounding = 999.0f,
-		.padding = LEAF_PADDING_ALL(padding),
-		.image = naui_get_image("bebe"),
-		.border = {
-			leaf_gradient(color1, color2, gradient_anim * 1.5f),
-			hovered ? 10.0f : 5.0f
-		},
-
-		.color = leaf_rgb(background, background, background + 10),
+		.size = { LEAF_SIZE_FIXED(240.0f), LEAF_SIZE_FIXED(240.0f) },
 		.child_alignment = { LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER }
 	})
 	{
-		leaf_text("Bebe", {
-			.font_size = LEAF_SIZE_PERCENT(0.5f),
-			.color = leaf_rgb(255, 255, 255),
-			.alignment = LEAF_TEXT_ALIGN_CENTER
-		});
+		leaf({
+			.id = circle_id,
+			.size = { LEAF_SIZE_PERCENT(size), LEAF_SIZE_PERCENT(size) },
+			.rounding = 999.0f,
+			.padding = LEAF_PADDING_ALL(padding),
+			.image = naui_get_image("bebe"),
+			.border = {
+				leaf_gradient(color1, color2, gradient_anim * 1.5f),
+				hovered ? 10.0f : 5.0f
+			},
+
+			.color = leaf_rgb(background, background, background + 10),
+			.child_alignment = { LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER }
+		})
+		{
+			leaf_text("Bebe", {
+				.font_size = LEAF_SIZE_PERCENT(0.5f),
+				.color = leaf_rgb(255, 255, 255),
+				.alignment = LEAF_TEXT_ALIGN_CENTER
+			});
+		}
 	}
+
 }
 
 void square_icon(const char* id)
@@ -227,7 +234,7 @@ void main_body()
 		.size = { LEAF_SIZE_GROW, LEAF_SIZE_GROW },
 		.direction = LEAF_LAYOUT_HORIZONAL,
 		.child_alignment = { LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER },
-		.child_gap = 64.0f
+		.child_gap = 0.0f
 	})
 	{
 		for(int i = 0; i < naui_list_len(g_icons); i++)

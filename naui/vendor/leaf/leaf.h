@@ -208,6 +208,8 @@ typedef struct
 
     Leaf_LayoutDirection direction;
     Leaf_Positioning positioning;
+
+    bool clip_children;
 }
 Leaf_ElementConfig;
 
@@ -947,19 +949,19 @@ static void leaf_size_pass(Leaf_Node *parent)
     if (parent->type != LEAF_NODE_TYPE_ELEMENT)
         return;
 
-    const Leaf_ElementConfig *config = &parent->element.config;
-    bool h = config->direction == LEAF_LAYOUT_HORIZONAL;
+    const Leaf_ElementConfig *parent_config = &parent->element.config;
+    bool h = parent_config->direction == LEAF_LAYOUT_HORIZONAL;
 
     int32_t growing_width_count  = 0;
     int32_t growing_height_count = 0;
     float   free_width  = parent->bounding_box.width;
     float   free_height = parent->bounding_box.height;
 
-    const float child_gap = leaf_max(parent->child_count - 1, 0) * config->child_gap;
+    const float child_gap = leaf_max(parent->child_count - 1, 0) * parent_config->child_gap;
     if (h)  free_width  -= child_gap;
     else    free_height -= child_gap;
-    free_width  -= config->padding.left + config->padding.right;
-    free_height -= config->padding.top  + config->padding.bottom;
+    free_width  -= parent_config->padding.left + parent_config->padding.right;
+    free_height -= parent_config->padding.top  + parent_config->padding.bottom;
 
     LEAF_FOREACH_CHILD(child, parent)
     {
@@ -970,28 +972,28 @@ static void leaf_size_pass(Leaf_Node *parent)
             continue;
         }
 
-        const Leaf_ElementConfig *cc = &child->element.config;
+        const Leaf_ElementConfig *child_config = &child->element.config;
 
-        if (cc->size.width.type == LEAF_SIZE_TYPE_PERCENT)
+        if (child_config->size.width.type == LEAF_SIZE_TYPE_PERCENT)
         {
-            float avail = parent->bounding_box.width - config->padding.left - config->padding.right;
-            child->bounding_box.width = avail * cc->size.width.size.percent;
+            float avail = parent->bounding_box.width - parent_config->padding.left - parent_config->padding.right;
+            child->bounding_box.width = avail * child_config->size.width.size.percent;
         }
-        if (cc->size.height.type == LEAF_SIZE_TYPE_PERCENT)
+        if (child_config->size.height.type == LEAF_SIZE_TYPE_PERCENT)
         {
-            float avail = parent->bounding_box.height - config->padding.top - config->padding.bottom;
-            child->bounding_box.height = avail * cc->size.height.size.percent;
+            float avail = parent->bounding_box.height - parent_config->padding.top - parent_config->padding.bottom;
+            child->bounding_box.height = avail * child_config->size.height.size.percent;
         }
 
-        if (cc->positioning != LEAF_POSITIONING_RELATIVE)
+        if (child_config->positioning != LEAF_POSITIONING_RELATIVE)
             continue;
 
-        if (cc->size.width.type == LEAF_SIZE_TYPE_GROW)
+        if (child_config->size.width.type == LEAF_SIZE_TYPE_GROW)
             growing_width_count++;
         else if (h)
             free_width -= child->bounding_box.width;
 
-        if (cc->size.height.type == LEAF_SIZE_TYPE_GROW)
+        if (child_config->size.height.type == LEAF_SIZE_TYPE_GROW)
             growing_height_count++;
         else if (!h)
             free_height -= child->bounding_box.height;
@@ -1005,19 +1007,19 @@ static void leaf_size_pass(Leaf_Node *parent)
         if (child->type != LEAF_NODE_TYPE_ELEMENT)
             continue;
 
-        const Leaf_ElementConfig *cc = &child->element.config;
-        if (cc->positioning == LEAF_POSITIONING_RELATIVE) {
-            if (cc->size.width.type == LEAF_SIZE_TYPE_GROW) {
+        const Leaf_ElementConfig *child_config = &child->element.config;
+        if (child_config->positioning == LEAF_POSITIONING_RELATIVE) {
+            if (child_config->size.width.type == LEAF_SIZE_TYPE_GROW) {
                 child->bounding_box.width = free_width;
                 if (h) child->bounding_box.width /= growing_width_count;
             }
-            if (cc->size.height.type == LEAF_SIZE_TYPE_GROW) {
+            if (child_config->size.height.type == LEAF_SIZE_TYPE_GROW) {
                 child->bounding_box.height = free_height;
                 if (!h) child->bounding_box.height /= growing_height_count;
             }
         }
 
-        leaf_element_clamp_min_max(child, cc);
+        leaf_element_clamp_min_max(child, child_config);
     }
 
     LEAF_FOREACH_CHILD(child, parent)
@@ -1041,48 +1043,48 @@ static void leaf_size_pass(Leaf_Node *parent)
 
     leaf_wrap_text_children(parent);
 
-    bool fit_w = config->size.width.type  == LEAF_SIZE_TYPE_FIT;
-    bool fit_h = config->size.height.type == LEAF_SIZE_TYPE_FIT;
+    bool fit_w = parent_config->size.width.type  == LEAF_SIZE_TYPE_FIT;
+    bool fit_h = parent_config->size.height.type == LEAF_SIZE_TYPE_FIT;
 
     if (fit_w || fit_h)
     {
-        if (fit_w) parent->bounding_box.width  = config->padding.left + config->padding.right;
-        if (fit_h) parent->bounding_box.height = config->padding.top  + config->padding.bottom;
+        if (fit_w) parent->bounding_box.width  = parent_config->padding.left + parent_config->padding.right;
+        if (fit_h) parent->bounding_box.height = parent_config->padding.top  + parent_config->padding.bottom;
 
         LEAF_FOREACH_CHILD(child, parent)
         {
             if (fit_w)
             {
-                if (config->direction == LEAF_LAYOUT_HORIZONAL)
+                if (parent_config->direction == LEAF_LAYOUT_HORIZONAL)
                     parent->bounding_box.width += child->bounding_box.width;
                 else
                     parent->bounding_box.width = leaf_maxf(
-                        child->bounding_box.width + config->padding.left + config->padding.right,
+                        child->bounding_box.width + parent_config->padding.left + parent_config->padding.right,
                         parent->bounding_box.width);
             }
             if (fit_h)
             {
-                if (config->direction == LEAF_LAYOUT_HORIZONAL)
+                if (parent_config->direction == LEAF_LAYOUT_HORIZONAL)
                     parent->bounding_box.height = leaf_maxf(
-                        child->bounding_box.height + config->padding.top + config->padding.bottom,
+                        child->bounding_box.height + parent_config->padding.top + parent_config->padding.bottom,
                         parent->bounding_box.height);
                 else
                     parent->bounding_box.height += child->bounding_box.height;
             }
         }
 
-        float gap = leaf_max(parent->child_count - 1, 0) * config->child_gap;
-        if (fit_h && config->direction == LEAF_LAYOUT_VERTICAL)
+        float gap = leaf_max(parent->child_count - 1, 0) * parent_config->child_gap;
+        if (fit_h && parent_config->direction == LEAF_LAYOUT_VERTICAL)
             parent->bounding_box.height += gap;
-        if (fit_w && config->direction == LEAF_LAYOUT_HORIZONAL)
+        if (fit_w && parent_config->direction == LEAF_LAYOUT_HORIZONAL)
             parent->bounding_box.width  += gap;
     }
 
-    if (config->aspect_ratio > 0.0f)
+    if (parent_config->aspect_ratio > 0.0f)
     {
-        if (config->size.height.type == LEAF_SIZE_TYPE_FIT)
-            parent->bounding_box.height = parent->bounding_box.width / config->aspect_ratio;
-        else parent->bounding_box.width = parent->bounding_box.height * config->aspect_ratio;
+        if (parent_config->size.height.type == LEAF_SIZE_TYPE_FIT)
+            parent->bounding_box.height = parent->bounding_box.width / parent_config->aspect_ratio;
+        else parent->bounding_box.width = parent->bounding_box.height * parent_config->aspect_ratio;
     }
 }
 
@@ -1097,17 +1099,17 @@ static void leaf_position_render(Leaf_Node *parent)
     ((align) == (end_val)    ? (free) :                     \
      (align) == (center_val) ? (free) * 0.5f : 0)
 
-    const Leaf_ElementConfig *config = &parent->element.config;
-    bool h = config->direction == LEAF_LAYOUT_HORIZONAL;
+    const Leaf_ElementConfig *parent_config = &parent->element.config;
+    bool h = parent_config->direction == LEAF_LAYOUT_HORIZONAL;
 
     float available_main  =
         LEAF_MAIN (h, parent->bounding_box.width,  parent->bounding_box.height) -
-        LEAF_MAIN (h, config->padding.left + config->padding.right,
-                      config->padding.top  + config->padding.bottom);
+        LEAF_MAIN (h, parent_config->padding.left + parent_config->padding.right,
+                      parent_config->padding.top  + parent_config->padding.bottom);
     float available_cross =
         LEAF_CROSS(h, parent->bounding_box.width,  parent->bounding_box.height) -
-        LEAF_CROSS(h, config->padding.left + config->padding.right,
-                      config->padding.top  + config->padding.bottom);
+        LEAF_CROSS(h, parent_config->padding.left + parent_config->padding.right,
+                      parent_config->padding.top  + parent_config->padding.bottom);
 
     float children_total = 0;
     LEAF_FOREACH_CHILD(child, parent)
@@ -1117,14 +1119,14 @@ static void leaf_position_render(Leaf_Node *parent)
             continue;
         children_total += LEAF_MAIN(h, child->bounding_box.width, child->bounding_box.height);
     }
-    children_total += leaf_max(parent->child_count - 1, 0) * config->child_gap;
+    children_total += leaf_max(parent->child_count - 1, 0) * parent_config->child_gap;
 
     float free_main = available_main - children_total;
 
     float main_offset =
-        LEAF_MAIN(h, config->padding.left, config->padding.top) +
+        LEAF_MAIN(h, parent_config->padding.left, parent_config->padding.top) +
         LEAF_ALIGN_OFFSET(
-            LEAF_MAIN(h, config->child_alignment.x, config->child_alignment.y),
+            LEAF_MAIN(h, parent_config->child_alignment.x, parent_config->child_alignment.y),
             LEAF_MAIN(h, LEAF_ALIGN_X_RIGHT,   LEAF_ALIGN_Y_BOTTOM),
             LEAF_MAIN(h, LEAF_ALIGN_X_CENTER,  LEAF_ALIGN_Y_CENTER),
             free_main);
@@ -1133,38 +1135,35 @@ static void leaf_position_render(Leaf_Node *parent)
     {
         if (child->type == LEAF_NODE_TYPE_ELEMENT)
         {
-            const Leaf_ElementConfig *cc = &child->element.config;
+            const Leaf_ElementConfig *child_config = &child->element.config;
 
-            if (cc->positioning != LEAF_POSITIONING_RELATIVE)
+            if (child_config->positioning != LEAF_POSITIONING_RELATIVE)
             {
                 Leaf_BoundingBox anchor;
-                if (cc->positioning == LEAF_POSITIONING_FLOATING_TO_PARENT)
+                if (child_config->positioning == LEAF_POSITIONING_FLOATING_TO_PARENT)
                     anchor = parent->bounding_box;
                 else
                     anchor = leaf_ctx->stack[0]->bounding_box;
 
                 float align_x = 0.f, align_y = 0.f;
-                if (cc->floating_alignment.x == LEAF_ALIGN_X_RIGHT)
+                if (child_config->floating_alignment.x == LEAF_ALIGN_X_RIGHT)
                     align_x = anchor.width  - child->bounding_box.width;
-                else if (cc->floating_alignment.x == LEAF_ALIGN_X_CENTER)
+                else if (child_config->floating_alignment.x == LEAF_ALIGN_X_CENTER)
                     align_x = (anchor.width  - child->bounding_box.width)  * 0.5f;
-                if (cc->floating_alignment.y == LEAF_ALIGN_Y_BOTTOM)
+                if (child_config->floating_alignment.y == LEAF_ALIGN_Y_BOTTOM)
                     align_y = anchor.height - child->bounding_box.height;
-                else if (cc->floating_alignment.y == LEAF_ALIGN_Y_CENTER)
+                else if (child_config->floating_alignment.y == LEAF_ALIGN_Y_CENTER)
                     align_y = (anchor.height - child->bounding_box.height) * 0.5f;
 
-                child->bounding_box.x = anchor.x + align_x + cc->floating_offset.x;
-                child->bounding_box.y = anchor.y + align_y + cc->floating_offset.y;
+                child->bounding_box.x = anchor.x + align_x + child_config->floating_offset.x;
+                child->bounding_box.y = anchor.y + align_y + child_config->floating_offset.y;
 
                 leaf_render_node(child);
-                leaf_push_render_cmd((Leaf_RenderCmd){
-                    .type = LEAF_RENDER_CMD_SCISSOR_PUSH,
-                    .bounding_box = child->bounding_box
-                });
+                if (child_config->clip_children)
+                    leaf_push_render_cmd((Leaf_RenderCmd){ .type = LEAF_RENDER_CMD_SCISSOR_PUSH, .bounding_box = child->bounding_box });
                 leaf_position_render(child);
-                leaf_push_render_cmd((Leaf_RenderCmd){
-                    .type = LEAF_RENDER_CMD_SCISSOR_POP
-                });
+                if (child_config->clip_children)
+                    leaf_push_render_cmd((Leaf_RenderCmd){ .type = LEAF_RENDER_CMD_SCISSOR_POP });
                 continue;
             }
         }
@@ -1176,19 +1175,19 @@ static void leaf_position_render(Leaf_Node *parent)
             float child_cross = LEAF_CROSS(h, layout_w, layout_h);
             float free_cross  = available_cross - child_cross;
             float cross_offset =
-                LEAF_CROSS(h, config->padding.left, config->padding.top) +
+                LEAF_CROSS(h, parent_config->padding.left, parent_config->padding.top) +
                 LEAF_ALIGN_OFFSET(
-                    LEAF_CROSS(h, config->child_alignment.x, config->child_alignment.y),
+                    LEAF_CROSS(h, parent_config->child_alignment.x, parent_config->child_alignment.y),
                     LEAF_CROSS(h, LEAF_ALIGN_X_RIGHT,  LEAF_ALIGN_Y_BOTTOM),
                     LEAF_CROSS(h, LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER),
                     free_cross);
 
             child->bounding_box.x = parent->bounding_box.x
                 + LEAF_MAIN (h, main_offset,  cross_offset)
-                - config->child_offset.x;
+                - parent_config->child_offset.x;
             child->bounding_box.y = parent->bounding_box.y
                 + LEAF_CROSS(h, main_offset,  cross_offset)
-                - config->child_offset.y;
+                - parent_config->child_offset.y;
 
             if (child->type == LEAF_NODE_TYPE_TEXT) {
                 const Leaf_TextConfig *tc = &child->text.config;
@@ -1200,23 +1199,21 @@ static void leaf_position_render(Leaf_Node *parent)
 
             leaf_render_node(child);
 
-            main_offset += LEAF_MAIN(h, child->bounding_box.width, child->bounding_box.height) + config->child_gap;
+            main_offset += LEAF_MAIN(h, child->bounding_box.width, child->bounding_box.height) + parent_config->child_gap;
 
             if (child->type == LEAF_NODE_TYPE_ELEMENT)
             {
-                leaf_push_render_cmd((Leaf_RenderCmd){
-                    .type = LEAF_RENDER_CMD_SCISSOR_PUSH,
-                    .bounding_box = child->bounding_box
-                });
+                const Leaf_ElementConfig *child_config = &child->element.config;
+                if (child_config->clip_children)
+                    leaf_push_render_cmd((Leaf_RenderCmd){ .type = LEAF_RENDER_CMD_SCISSOR_PUSH, .bounding_box = child->bounding_box });
                 leaf_position_render(child);
-                leaf_push_render_cmd((Leaf_RenderCmd){
-                    .type = LEAF_RENDER_CMD_SCISSOR_POP
-                });
+                if (child_config->clip_children)
+                    leaf_push_render_cmd((Leaf_RenderCmd){ .type = LEAF_RENDER_CMD_SCISSOR_POP });
             }
         }
     }
 
-    Leaf_ID id = config->id;
+    Leaf_ID id = parent_config->id;
     if (id.value)
         leaf_set_layout_entry(id, (Leaf_LayoutFrameEntry){ parent->bounding_box });
 
