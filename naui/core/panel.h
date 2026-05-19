@@ -14,7 +14,7 @@ typedef struct
 }
 Naui_PanelTypeEvents;
 
-#define NAUI_PANEL_STACK_SIZE 1 << 13
+#define NAUI_PANEL_STACK_SIZE (1 << 12)
 typedef struct
 {
     Naui_PanelUID uid;
