@@ -453,7 +453,7 @@ void naui_renderer_resize(int32_t width, int32_t height)
 
 void naui_renderer_begin(void)
 {
-    rdata->geometry_count   = 0;
+    rdata->geometry_count = 0;
     rdata->geometry_offset = 0;
     rdata->clip_stack_depth = 0;
     rdata->font_current_index = -1;

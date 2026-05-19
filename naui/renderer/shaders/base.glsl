@@ -28,6 +28,11 @@ void main()
 layout(binding = 0) uniform sampler2D texture0;
 layout(binding = 1) uniform sampler2D texture1;
 
+layout(binding = 0) uniform ViewData
+{
+    vec2 u_resolution;
+};
+
 in vec4 frag_color;
 in vec2 frag_uv;
 in float frag_texture_id;
