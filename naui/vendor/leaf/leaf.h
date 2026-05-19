@@ -56,6 +56,7 @@ typedef struct
 }
 Leaf_ColorFill;
 
+#define leaf_solid(color) (Leaf_ColorFill){ color }
 #define leaf_gradient(c1, c2, angle) (Leaf_ColorFill){ (c1), (c2), angle, LEAF_GRADIENT_LINEAR_COLOR_FILL }
 
 #define leaf_deg(v) ((v) * 0.0174532925f)
@@ -141,7 +142,8 @@ enum
     LEAF_SIZE_TYPE_FIT,
     LEAF_SIZE_TYPE_GROW,
     LEAF_SIZE_TYPE_PERCENT,
-    LEAF_SIZE_TYPE_FIXED
+    LEAF_SIZE_TYPE_FIXED,
+    LEAF_SIZE_TYPE_DERIVED
 };
 
 typedef struct
@@ -307,14 +309,20 @@ Leaf_RenderCmdList;
 
 typedef Leaf_Dimensions (*Leaf_MeasureTextFn)(const char *text, uint32_t length, float resolved_font_size, const Leaf_TextConfig *config);
 
-#define LEAF_SIZE_GROW            (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_GROW }
-#define LEAF_SIZE_GROW_MIN(v)     (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_GROW, .size.min_max.min = (v) }
-#define LEAF_SIZE_GROW_MAX(v)     (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_GROW, .size.min_max.max = (v) }
-#define LEAF_SIZE_FIT             (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_FIT  }
-#define LEAF_SIZE_FIT_MIN(v)      (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_FIT,     .size.min_max.min = (v) }
-#define LEAF_SIZE_FIXED(v)        (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_FIXED,   .size.min_max.min = (v) }
-#define LEAF_SIZE_PERCENT(v)      (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_PERCENT, .size.percent     = (v) }
-#define LEAF_SIZE_PERCENT_MIN(p, m)   (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_PERCENT, .size.percent     = (p), .size.min_max.min = (m) }
+// All the avaliable space in the parent (IMPORTANT: Does NOT apply to floating elements. Consider using LEAF_SIZE_FULL)
+#define LEAF_SIZE_GROW              (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_GROW }
+#define LEAF_SIZE_GROW_MIN(v)       (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_GROW, .size.min_max.min = (v) }
+#define LEAF_SIZE_GROW_MAX(v)       (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_GROW, .size.min_max.max = (v) }
+#define LEAF_SIZE_FIT               (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_FIT  }
+#define LEAF_SIZE_FIT_MIN(v)        (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_FIT,     .size.min_max.min = (v) }
+#define LEAF_SIZE_FIXED(v)          (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_FIXED,   .size.min_max.min = (v) }
+#define LEAF_SIZE_PERCENT(v)        (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_PERCENT, .size.percent     = (v) }
+// Full size of the parent (Regardless of how much free space it has)
+#define LEAF_SIZE_FULL              (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_PERCENT, .size.percent     = (1.0f) }
+#define LEAF_SIZE_PERCENT_MIN(p, m) (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_PERCENT, .size.percent     = (p), .size.min_max.min = (m) }
+#define LEAF_SIZE_PERCENT_MAX(p, m) (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_PERCENT, .size.percent = (p), .size.min_max.max = (m) }
+#define LEAF_SIZE_PERCENT_MIN_MAX(p, mn, mx) (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_PERCENT, .size.percent = (p), .size.min_max.min = (mn), .size.min_max.max = (mx) }
+#define LEAF_SIZE_DERIVED           (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_DERIVED }
 
 #define leaf(...) \
     for (int leaf__i_ = (leaf_begin_element((Leaf_ElementConfig)__VA_ARGS__), 1); \
@@ -944,12 +952,30 @@ static void leaf_wrap_text_children(Leaf_Node *parent)
         parent->bounding_box.width  += gap;
 }
 
+static void leaf_resolve_aspect_ratio(Leaf_Node *node)
+{
+    if (node->type != LEAF_NODE_TYPE_ELEMENT) return;
+    const Leaf_ElementConfig *cfg = &node->element.config;
+    if (cfg->aspect_ratio <= 0.0f) return;
+
+    bool ar_w = cfg->size.width.type  == LEAF_SIZE_TYPE_DERIVED;
+    bool ar_h = cfg->size.height.type == LEAF_SIZE_TYPE_DERIVED;
+
+    if (ar_w && !ar_h)
+        node->bounding_box.width  = node->bounding_box.height * cfg->aspect_ratio;
+    else if (ar_h && !ar_w)
+        node->bounding_box.height = node->bounding_box.width  / cfg->aspect_ratio;
+}
+
 static void leaf_size_pass(Leaf_Node *parent)
 {
     if (parent->type != LEAF_NODE_TYPE_ELEMENT)
         return;
 
     const Leaf_ElementConfig *parent_config = &parent->element.config;
+
+    leaf_resolve_aspect_ratio(parent);
+
     bool h = parent_config->direction == LEAF_LAYOUT_HORIZONAL;
 
     int32_t growing_width_count  = 0;
@@ -1080,12 +1106,7 @@ static void leaf_size_pass(Leaf_Node *parent)
             parent->bounding_box.width  += gap;
     }
 
-    if (parent_config->aspect_ratio > 0.0f)
-    {
-        if (parent_config->size.height.type == LEAF_SIZE_TYPE_FIT)
-            parent->bounding_box.height = parent->bounding_box.width / parent_config->aspect_ratio;
-        else parent->bounding_box.width = parent->bounding_box.height * parent_config->aspect_ratio;
-    }
+    leaf_resolve_aspect_ratio(parent);
 }
 
 static void leaf_position_render(Leaf_Node *parent)
