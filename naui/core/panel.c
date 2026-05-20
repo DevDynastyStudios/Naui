@@ -214,7 +214,7 @@ void naui_panel_manager_render(void)
             {
                 if (panel->type.on_update)
                     panel->type.on_update((Naui_PanelID)panel, (void*)panel->_stack);
-                naui_docking_guide((Naui_PanelID)panel);
+                //naui_docking_guide((Naui_PanelID)panel);
             }
 
             leaf({
