@@ -1,4 +1,6 @@
 #pragma once
 
-float naui_time(void);
-float naui_delta_time(void);
+#include "base.h"
+
+NAUI_API float naui_time(void);
+NAUI_API float naui_delta_time(void);

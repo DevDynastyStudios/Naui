@@ -12,6 +12,7 @@
 #define NAUI_MACOS 1
 #endif
 
+#ifdef NAUI_DLL
 #ifdef NAUI_EXPORT
 #ifdef _MSC_VER
 #define NAUI_API __declspec(dllexport)
@@ -24,4 +25,7 @@
 #else
 #define NAUI_API
 #endif
+#endif
+#else
+#define NAUI_API
 #endif

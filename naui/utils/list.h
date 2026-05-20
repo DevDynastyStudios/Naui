@@ -11,3 +11,4 @@
 #define naui_list_insert(arr, data, i)  arrins(arr, i, data)
 #define naui_list_remove(arr, i)        arrdel(arr, i)
 #define naui_list_uremove(arr, i)       arrdelswap(arr, i)
+#define naui_list_clear(arr)            arrsetlen(arr, 0)

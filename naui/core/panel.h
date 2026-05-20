@@ -1,10 +1,9 @@
 #pragma once
-
 #include "base.h"
 #include "math/vec2.h"
 
-typedef uint64_t Naui_PanelUID;
-typedef void(*NauiPanelEvent)(Naui_PanelUID uid, void *data);
+typedef uint64_t Naui_PanelID;
+typedef void(*NauiPanelEvent)(Naui_PanelID panel_id, void *data);
 
 typedef struct
 {
@@ -12,27 +11,30 @@ typedef struct
     NauiPanelEvent on_detach;
     NauiPanelEvent on_update;
 }
-Naui_PanelTypeEvents;
+Naui_PanelType;
 
 #define NAUI_PANEL_STACK_SIZE (1 << 12)
+
 typedef struct
 {
-    Naui_PanelUID uid;
-    Naui_PanelTypeEvents events;
-    Naui_Vec2 position;
-    Naui_Vec2 size;
-    uint8_t _stack[NAUI_PANEL_STACK_SIZE];
-    bool docked;
+    char           title[64];
+    Naui_PanelType type;
+    Naui_Vec2      position;
+    Naui_Vec2      size;
+    uint8_t        _stack[NAUI_PANEL_STACK_SIZE];
+    bool           docked;
 }
 Naui_Panel;
 
 #define NAUI_ATTACH_PANEL(type_name) naui_attach_panel(#type_name);
-Naui_PanelUID naui_attach_panel(const char *type_name);
-void naui_detach_panel(Naui_PanelUID uid);
-Naui_Panel *naui_get_panel(Naui_PanelUID uid);
 
-void naui_register_panel_type(const char *name, Naui_PanelTypeEvents type_events);
-void naui_unregister_panel_type(const char *name);
+NAUI_API Naui_PanelID naui_attach_panel(const char *type_name);
+NAUI_API void         naui_detach_panel(Naui_PanelID id);
+NAUI_API void         naui_register_panel_type(const char *name, Naui_PanelType type);
+NAUI_API void         naui_panel_set_title(Naui_PanelID panel_id, const char *title);
+NAUI_API void         naui_dock_panel(Naui_PanelID id);
+NAUI_API void         naui_undock_panel(Naui_PanelID id);
+NAUI_API void         naui_dock_set_root_rect(Naui_Vec2 position, Naui_Vec2 size);
 
 #ifdef _MSC_VER
   #pragma section(".CRT$XCU", read)
@@ -46,11 +48,11 @@ void naui_unregister_panel_type(const char *name);
 #endif
 
 #define NAUI_DEFINE_PANEL_TYPE(name) \
-    Naui_PanelTypeEvents name##_events = { \
-        (NauiPanelEvent)name##_on_attach, \
-        (NauiPanelEvent)name##_on_detach, \
-        (NauiPanelEvent)name##_on_update \
+    static Naui_PanelType _events = { \
+        (NauiPanelEvent)on_attach, \
+        (NauiPanelEvent)on_detach, \
+        (NauiPanelEvent)on_update \
     }; \
-    NAUI_CONSTRUCTOR(name##_register) { \
-        naui_register_panel_type(#name, name##_events); \
+    NAUI_CONSTRUCTOR(_register) { \
+        naui_register_panel_type(#name, _events); \
     }

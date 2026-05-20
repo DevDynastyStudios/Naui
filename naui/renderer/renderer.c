@@ -714,25 +714,25 @@ void naui_draw_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color, float
 
     if (rounding <= 0.0f)
     {
-        naui_push_rect((Naui_Vec2){x0,    y0    }, (Naui_Vec2){x1,    y0+lw }, c, -1);
-        naui_push_rect((Naui_Vec2){x0,    y1-lw }, (Naui_Vec2){x1,    y1    }, c, -1);
-        naui_push_rect((Naui_Vec2){x0,    y0+lw }, (Naui_Vec2){x0+lw, y1-lw }, c, -1);
-        naui_push_rect((Naui_Vec2){x1-lw, y0+lw }, (Naui_Vec2){x1,    y1-lw }, c, -1);
+        naui_push_rect((Naui_Vec2){x0-lw, y0-lw}, (Naui_Vec2){x1+lw, y0    }, c, -1);
+        naui_push_rect((Naui_Vec2){x0-lw, y1    }, (Naui_Vec2){x1+lw, y1+lw}, c, -1);
+        naui_push_rect((Naui_Vec2){x0-lw, y0    }, (Naui_Vec2){x0,    y1    }, c, -1);
+        naui_push_rect((Naui_Vec2){x1,    y0    }, (Naui_Vec2){x1+lw, y1    }, c, -1);
         return;
     }
 
     float r = naui_min(rounding, naui_min(scale.x, scale.y) * 0.5f);
-    float inner_r = fmaxf(r - lw, 0.0f);
+    float outer_r = r + lw;
 
-    naui_push_rect((Naui_Vec2){x0+r,  y0    }, (Naui_Vec2){x1-r,  y0+lw }, c, -1);
-    naui_push_rect((Naui_Vec2){x0+r,  y1-lw }, (Naui_Vec2){x1-r,  y1    }, c, -1);
-    naui_push_rect((Naui_Vec2){x0,    y0+r  }, (Naui_Vec2){x0+lw, y1-r  }, c, -1);
-    naui_push_rect((Naui_Vec2){x1-lw, y0+r  }, (Naui_Vec2){x1,    y1-r  }, c, -1);
+    naui_push_rect((Naui_Vec2){x0+r,  y0-lw }, (Naui_Vec2){x1-r,  y0    }, c, -1);
+    naui_push_rect((Naui_Vec2){x0+r,  y1    }, (Naui_Vec2){x1-r,  y1+lw }, c, -1);
+    naui_push_rect((Naui_Vec2){x0-lw, y0+r  }, (Naui_Vec2){x0,    y1-r  }, c, -1);
+    naui_push_rect((Naui_Vec2){x1,    y0+r  }, (Naui_Vec2){x1+lw, y1-r  }, c, -1);
 
-    naui_push_corner_ring((Naui_Vec2){x0+r, y0+r}, inner_r, r, -1, -1, c);
-    naui_push_corner_ring((Naui_Vec2){x1-r, y0+r}, inner_r, r, +1, -1, c);
-    naui_push_corner_ring((Naui_Vec2){x1-r, y1-r}, inner_r, r, +1, +1, c);
-    naui_push_corner_ring((Naui_Vec2){x0+r, y1-r}, inner_r, r, -1, +1, c);
+    naui_push_corner_ring((Naui_Vec2){x0+r, y0+r}, r, outer_r, -1, -1, c);
+    naui_push_corner_ring((Naui_Vec2){x1-r, y0+r}, r, outer_r, +1, -1, c);
+    naui_push_corner_ring((Naui_Vec2){x1-r, y1-r}, r, outer_r, +1, +1, c);
+    naui_push_corner_ring((Naui_Vec2){x0+r, y1-r}, r, outer_r, -1, +1, c);
 }
 
 void naui_fill_gradient_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Gradient gradient, float rounding)
@@ -768,20 +768,20 @@ void naui_draw_gradient_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Gradient 
 
     if (rounding <= 0.0f)
     {
-        naui_push_gradient_rect((Naui_Vec2){x0,    y0    }, (Naui_Vec2){x1,    y0+lw }, &gradient, &axis, -1);
-        naui_push_gradient_rect((Naui_Vec2){x0,    y1-lw }, (Naui_Vec2){x1,    y1    }, &gradient, &axis, -1);
-        naui_push_gradient_rect((Naui_Vec2){x0,    y0+lw }, (Naui_Vec2){x0+lw, y1-lw }, &gradient, &axis, -1);
-        naui_push_gradient_rect((Naui_Vec2){x1-lw, y0+lw }, (Naui_Vec2){x1,    y1-lw }, &gradient, &axis, -1);
+        naui_push_gradient_rect((Naui_Vec2){x0-lw, y0-lw}, (Naui_Vec2){x1+lw, y0    }, &gradient, &axis, -1); // top
+        naui_push_gradient_rect((Naui_Vec2){x0-lw, y1    }, (Naui_Vec2){x1+lw, y1+lw}, &gradient, &axis, -1); // bottom
+        naui_push_gradient_rect((Naui_Vec2){x0-lw, y0    }, (Naui_Vec2){x0,    y1    }, &gradient, &axis, -1); // left
+        naui_push_gradient_rect((Naui_Vec2){x1,    y0    }, (Naui_Vec2){x1+lw, y1    }, &gradient, &axis, -1); // right
         return;
     }
 
     float r = naui_min(rounding, naui_min(scale.x, scale.y) * 0.5f);
-    float inner_r = fmaxf(r - lw, 0.0f);
+    float outer_r = r + lw;
 
-    naui_push_gradient_rect((Naui_Vec2){x0+r,  y0    }, (Naui_Vec2){x1-r,  y0+lw }, &gradient, &axis, -1);
-    naui_push_gradient_rect((Naui_Vec2){x0+r,  y1-lw }, (Naui_Vec2){x1-r,  y1    }, &gradient, &axis, -1);
-    naui_push_gradient_rect((Naui_Vec2){x0,    y0+r  }, (Naui_Vec2){x0+lw, y1-r  }, &gradient, &axis, -1);
-    naui_push_gradient_rect((Naui_Vec2){x1-lw, y0+r  }, (Naui_Vec2){x1,    y1-r  }, &gradient, &axis, -1);
+    naui_push_gradient_rect((Naui_Vec2){x0+r,  y0-lw }, (Naui_Vec2){x1-r,  y0    }, &gradient, &axis, -1); // top
+    naui_push_gradient_rect((Naui_Vec2){x0+r,  y1    }, (Naui_Vec2){x1-r,  y1+lw }, &gradient, &axis, -1); // bottom
+    naui_push_gradient_rect((Naui_Vec2){x0-lw, y0+r  }, (Naui_Vec2){x0,    y1-r  }, &gradient, &axis, -1); // left
+    naui_push_gradient_rect((Naui_Vec2){x1,    y0+r  }, (Naui_Vec2){x1+lw, y1-r  }, &gradient, &axis, -1); // right
 
     for (int s = 0; s < NAUI_RENDERER_CORNER_SEGMENTS; s++)
     {
@@ -802,10 +802,10 @@ void naui_draw_gradient_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Gradient 
             float ax = ax_vals[corner], ay = ay_vals[corner];
             Naui_Vec2 center = centers[corner];
 
-            Naui_Vec2 o0 = { center.x + ax * cx * r,       center.y + ay * cy * r       };
-            Naui_Vec2 o1 = { center.x + ax * nx * r,       center.y + ay * ny * r       };
-            Naui_Vec2 i0 = { center.x + ax * cx * inner_r, center.y + ay * cy * inner_r };
-            Naui_Vec2 i1 = { center.x + ax * nx * inner_r, center.y + ay * ny * inner_r };
+            Naui_Vec2 o0 = { center.x + ax * cx * outer_r, center.y + ay * cy * outer_r };
+            Naui_Vec2 o1 = { center.x + ax * nx * outer_r, center.y + ay * ny * outer_r };
+            Naui_Vec2 i0 = { center.x + ax * cx * r,       center.y + ay * cy * r       };
+            Naui_Vec2 i1 = { center.x + ax * nx * r,       center.y + ay * ny * r       };
 
             naui_push_gradient_quad4(o0, o1, i1, i0,
                 naui_gradient_color_at(&gradient, &axis, o0.x, o0.y),
