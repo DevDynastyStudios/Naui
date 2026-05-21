@@ -56,7 +56,6 @@ typedef struct
 }
 Leaf_ColorFill;
 
-#define leaf_solid(color) (Leaf_ColorFill){ color }
 #define leaf_gradient(c1, c2, angle) (Leaf_ColorFill){ (c1), (c2), angle, LEAF_GRADIENT_LINEAR_COLOR_FILL }
 
 #define leaf_deg(v) ((v) * 0.0174532925f)
@@ -174,8 +173,8 @@ Leaf_Padding;
 
 typedef struct
 {
-    Leaf_ColorFill color;
     float width;
+    Leaf_ColorFill color;
 }
 Leaf_Border;
 

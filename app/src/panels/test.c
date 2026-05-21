@@ -3,6 +3,7 @@
 typedef struct
 {
     float time;
+    char buff[32];
 }
 TestData;
 
@@ -24,8 +25,9 @@ static void on_update(Naui_PanelID panel_id, TestData *data)
         .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER}
     })
     {
-        leaf_text("Hello World! :3", {
-            .color = leaf_rgb(255, 0, 0),
+
+        leaf_text(itoa(panel_id, data->buff, 10), {
+            .color = LEAF_COLOR_WHITE,
             .font_size = LEAF_SIZE_GROW,
             .alignment = LEAF_TEXT_ALIGN_CENTER
         });

@@ -1,13 +1,18 @@
 #pragma once
 
+#include "base.h"
+
 typedef void (*Naui_AppEvent)(void);
 
-void naui_app_run(
+NAUI_API void naui_app_run(
     const char *title,
     Naui_AppEvent start,
     Naui_AppEvent end,
     Naui_AppEvent update
 );
+
+NAUI_API int32_t naui_app_width(void);
+NAUI_API int32_t naui_app_height(void);
 
 #define NAUI_APP(title) \
 void naui_app_start(void); \

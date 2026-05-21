@@ -131,6 +131,16 @@ static void __naui_app_update(void)
     render();
 }
 
+int32_t naui_app_width(void)
+{
+    return mg_app_width();
+}
+
+int32_t naui_app_height(void)
+{
+    return mg_app_height();
+}
+
 void naui_app_run(
     const char *title,
     Naui_AppEvent start,

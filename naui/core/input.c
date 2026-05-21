@@ -20,6 +20,11 @@ bool naui_mouse_clicked(Naui_MouseButton button)
     return mg_app_mouse_clicked((mg_mouse_button)button);
 }
 
+bool naui_mouse_released(Naui_MouseButton button)
+{
+    return mg_app_mouse_released((mg_mouse_button)button);
+}
+
 int8_t naui_mouse_scroll_delta(void)
 {
     return mg_app_mouse_scroll_delta();

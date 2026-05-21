@@ -243,6 +243,7 @@ MG_APP_API bool mg_app_key_down(mg_key key);
 MG_APP_API bool mg_app_key_pressed(mg_key key);
 MG_APP_API bool mg_app_mouse_down(mg_mouse_button button);
 MG_APP_API bool mg_app_mouse_clicked(mg_mouse_button button);
+MG_APP_API bool mg_app_mouse_released(mg_mouse_button button);
 MG_APP_API int8_t mg_app_mouse_scroll_delta(void);
 MG_APP_API int32_t mg_app_mouse_x(void);
 MG_APP_API int32_t mg_app_mouse_y(void);
@@ -285,7 +286,8 @@ typedef struct
         int16_t y;
         int8_t delta;
         bool buttons[4];
-        bool buttons_pressed[4];   
+        bool buttons_pressed[4];
+        bool buttons_released[4];
     }
     mouse;
 }
@@ -304,6 +306,8 @@ static inline void mg_app_input_process_mouse_button(mg_mouse_button button, boo
 {
     if (pressed && !input_state.mouse.buttons[button])
         input_state.mouse.buttons_pressed[button] = true;
+    if (!pressed && input_state.mouse.buttons[button])
+        input_state.mouse.buttons_released[button] = true;
     input_state.mouse.buttons[button] = pressed;
 }
 
@@ -312,6 +316,7 @@ static inline void mg_app_input_reset(void)
     input_state.mouse.delta = 0;
     memset(input_state.keyboard.keys_pressed, 0, sizeof(input_state.keyboard.keys_pressed));
     memset(input_state.mouse.buttons_pressed, 0, sizeof(input_state.mouse.buttons_pressed));
+    memset(input_state.mouse.buttons_released, 0, sizeof(input_state.mouse.buttons_released));
 }
 
 bool mg_app_key_down(mg_key key)
@@ -332,6 +337,11 @@ bool mg_app_mouse_down(mg_mouse_button button)
 bool mg_app_mouse_clicked(mg_mouse_button button)
 {
     return input_state.mouse.buttons_pressed[button];
+}
+
+bool mg_app_mouse_released(mg_mouse_button button)
+{
+    return input_state.mouse.buttons_released[button];
 }
 
 int8_t mg_app_mouse_scroll_delta(void)

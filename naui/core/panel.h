@@ -13,28 +13,12 @@ typedef struct
 }
 Naui_PanelType;
 
-#define NAUI_PANEL_STACK_SIZE (1 << 12)
-
-typedef struct
-{
-    char           title[64];
-    Naui_PanelType type;
-    Naui_Vec2      position;
-    Naui_Vec2      size;
-    uint8_t        _stack[NAUI_PANEL_STACK_SIZE];
-    bool           docked;
-}
-Naui_Panel;
-
 #define NAUI_ATTACH_PANEL(type_name) naui_attach_panel(#type_name);
 
 NAUI_API Naui_PanelID naui_attach_panel(const char *type_name);
 NAUI_API void         naui_detach_panel(Naui_PanelID id);
 NAUI_API void         naui_register_panel_type(const char *name, Naui_PanelType type);
 NAUI_API void         naui_panel_set_title(Naui_PanelID panel_id, const char *title);
-NAUI_API void         naui_dock_panel(Naui_PanelID id);
-NAUI_API void         naui_undock_panel(Naui_PanelID id);
-NAUI_API void         naui_dock_set_root_rect(Naui_Vec2 position, Naui_Vec2 size);
 
 #ifdef _MSC_VER
   #pragma section(".CRT$XCU", read)

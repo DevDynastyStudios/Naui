@@ -170,6 +170,7 @@ NAUI_API bool naui_key_down(Naui_Key key);
 NAUI_API bool naui_key_pressed(Naui_Key key);
 NAUI_API bool naui_mouse_down(Naui_MouseButton button);
 NAUI_API bool naui_mouse_clicked(Naui_MouseButton button);
+NAUI_API bool naui_mouse_released(Naui_MouseButton button);
 NAUI_API int8_t naui_mouse_scroll_delta(void);
 NAUI_API int32_t naui_mouse_x(void);
 NAUI_API int32_t naui_mouse_y(void);
