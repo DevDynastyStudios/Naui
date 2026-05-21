@@ -1,21 +1,16 @@
 #include <naui.h>
-#include <stdio.h>
 
 typedef struct
 {
     float time;
-    char buff[32];
 }
 TestData;
 
+#include <stdio.h>
+
 static void on_attach(Naui_PanelID panel_id, TestData *data)
 {
-    naui_panel_set_title(panel_id, "Panel");
-    Naui_PanelID child_panel = NAUI_ATTACH_PANEL(test2);
-    Naui_PanelID panel_slot  = naui_dock_panel(panel_id, child_panel, NAUI_DOCK_DIRECTION_RIGHT);
-    Naui_PanelID child_panel_2 = NAUI_ATTACH_PANEL(test2);
-    naui_dock_panel(panel_slot, child_panel_2, NAUI_DOCK_DIRECTION_TOP);
-    naui_undock_panel(panel_id);
+    naui_panel_set_title(panel_id, "grguahergaefg");
 }
 
 static void on_detach(Naui_PanelID panel_id, TestData *data)
@@ -26,8 +21,6 @@ static void on_detach(Naui_PanelID panel_id, TestData *data)
 static void on_update(Naui_PanelID panel_id, TestData *data)
 {
     data->time = naui_time();
-    printf("%f\n", data->time);
-    naui_panel_set_size(panel_id, (Naui_Vec2){data->time * 100.0f, data->time * 100.0f});
 }
 
 static void on_render(Naui_PanelID panel_id, TestData *data)
@@ -38,7 +31,7 @@ static void on_render(Naui_PanelID panel_id, TestData *data)
     })
     {
 
-        leaf_text(itoa(panel_id, data->buff, 10), {
+        leaf_text("Yipeee :3", {
             .color = LEAF_COLOR_WHITE,
             .font_size = LEAF_SIZE_GROW,
             .alignment = LEAF_TEXT_ALIGN_CENTER
@@ -46,4 +39,4 @@ static void on_render(Naui_PanelID panel_id, TestData *data)
     }
 }
 
-NAUI_DEFINE_PANEL_TYPE(test);
+NAUI_DEFINE_PANEL_TYPE(test2);

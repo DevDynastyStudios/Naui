@@ -5,8 +5,6 @@ NAUI_APP("Sandbox")
 void naui_app_start(void)
 {
 	NAUI_ATTACH_PANEL(test);
-	NAUI_ATTACH_PANEL(test);
-	NAUI_ATTACH_PANEL(test);
 }
 
 void naui_app_end(void)
