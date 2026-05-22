@@ -6,4 +6,5 @@ int main(void)
 	filesystem_test();
 	archive_test();
 	math_test();
+	string_test();
 }
