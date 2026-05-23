@@ -218,6 +218,7 @@ typedef struct
 {
     Leaf_BoundingBox bounding_box;
     uint64_t id;
+    uint32_t frame;
 }
 Leaf_LayoutFrameEntry;
 
@@ -430,6 +431,8 @@ typedef struct
 
     Leaf_Vec2 pointer_pos;
     Leaf_MeasureTextFn measure_text;
+
+    uint32_t frame;
 }
 Leaf_Context;
 
@@ -502,6 +505,7 @@ void leaf_set_pointer_pos(float x, float y)
 static void leaf_set_layout_entry(Leaf_ID id, Leaf_LayoutFrameEntry entry)
 {
     entry.id = id.value;
+    entry.frame = leaf_ctx->frame;
     uint32_t i = id.value % LEAF_CONFIG_MAX_NODES;
     while (leaf_ctx->layout_entires[i].id != 0 && leaf_ctx->layout_entires[i].id != id.value)
         i = (i + 1) % LEAF_CONFIG_MAX_NODES;
@@ -513,7 +517,11 @@ static Leaf_LayoutFrameEntry leaf_get_layout_entry(Leaf_ID id)
     uint32_t i = id.value % LEAF_CONFIG_MAX_NODES;
     while (leaf_ctx->layout_entires[i].id != 0 && leaf_ctx->layout_entires[i].id != id.value)
         i = (i + 1) % LEAF_CONFIG_MAX_NODES;
-    return leaf_ctx->layout_entires[i];
+    
+    Leaf_LayoutFrameEntry *entry = &leaf_ctx->layout_entires[i];
+    if (entry->frame != leaf_ctx->frame - 1)
+        return (Leaf_LayoutFrameEntry){0};
+    return *entry;
 }
 
 static inline bool leaf_point_in_box(float px, float py, Leaf_BoundingBox bb)
@@ -1248,6 +1256,7 @@ void leaf_begin_frame(int32_t width, int32_t height)
     leaf_ctx->node_count = 0;
     leaf_ctx->render_cmd_count = 0;
     leaf_ctx->wrap_cache_cursor = 0;
+    leaf_ctx->frame++;
 
     Leaf_Node *root = leaf_alloc_node();
     root->bounding_box.width = (float)width;
