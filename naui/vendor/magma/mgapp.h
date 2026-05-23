@@ -642,22 +642,22 @@ int32_t mg_app_run(const mg_app_init_info *info)
 
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE);
 
-    static const LPCSTR mg_win32_cursor_map[MG_CURSOR_MAX] = {
-        [MG_CURSOR_ARROW]       = IDC_ARROW,
-        [MG_CURSOR_IBEAM]       = IDC_IBEAM,
-        [MG_CURSOR_CROSSHAIR]   = IDC_CROSS,
-        [MG_CURSOR_HAND]        = IDC_HAND,
-        [MG_CURSOR_RESIZE_NS]   = IDC_SIZENS,
-        [MG_CURSOR_RESIZE_EW]   = IDC_SIZEWE,
-        [MG_CURSOR_RESIZE_NESW] = IDC_SIZENESW,
-        [MG_CURSOR_RESIZE_NWSE] = IDC_SIZENWSE,
-        [MG_CURSOR_RESIZE_ALL]  = IDC_SIZEALL,
-        [MG_CURSOR_NOT_ALLOWED] = IDC_NO,
+    const LPCSTR win32_cursor_map[MG_CURSOR_MAX] = {
+        [MG_CURSOR_ARROW]       = (LPCSTR)IDC_ARROW,
+        [MG_CURSOR_IBEAM]       = (LPCSTR)IDC_IBEAM,
+        [MG_CURSOR_CROSSHAIR]   = (LPCSTR)IDC_CROSS,
+        [MG_CURSOR_HAND]        = (LPCSTR)IDC_HAND,
+        [MG_CURSOR_RESIZE_NS]   = (LPCSTR)IDC_SIZENS,
+        [MG_CURSOR_RESIZE_EW]   = (LPCSTR)IDC_SIZEWE,
+        [MG_CURSOR_RESIZE_NESW] = (LPCSTR)IDC_SIZENESW,
+        [MG_CURSOR_RESIZE_NWSE] = (LPCSTR)IDC_SIZENWSE,
+        [MG_CURSOR_RESIZE_ALL]  = (LPCSTR)IDC_SIZEALL,
+        [MG_CURSOR_NOT_ALLOWED] = (LPCSTR)IDC_NO,
         [MG_CURSOR_HIDDEN]      = NULL,
     };
 
     for (uint8_t i = 0; i < MG_CURSOR_MAX; i++)
-        platform.cursors[i] = mg_win32_cursor_map[i] ? LoadCursor(NULL, mg_win32_cursor_map[i]) : NULL;
+        platform.cursors[i] = win32_cursor_map[i] ? LoadCursorA(NULL, win32_cursor_map[i]) : NULL;
 
     WNDCLASSA wc = {0};
     wc.lpfnWndProc = mg_win32_process_message;
@@ -712,7 +712,7 @@ int32_t mg_app_run(const mg_app_init_info *info)
                 continue;
             }
             TranslateMessage(&msg);
-            DispatchMessageW(&msg);
+            DispatchMessageA(&msg);
         }
 
         if (IsIconic(platform.hwnd))
