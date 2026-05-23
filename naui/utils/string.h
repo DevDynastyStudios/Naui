@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 int naui_str_to_lower(const char* src, char* dest, size_t dest_size);
