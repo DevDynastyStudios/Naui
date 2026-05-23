@@ -29,6 +29,8 @@ typedef struct Naui_PanelNode
     struct Naui_PanelNode *children[2];
     struct Naui_PanelNode *parent;
     struct Naui_PanelNode *root;
+    Naui_List(Naui_PanelNode*) tabs;
+    int32_t active_tab;
     Naui_PanelData *panel_data;
     Naui_Vec2 position;
     Naui_Vec2 size;

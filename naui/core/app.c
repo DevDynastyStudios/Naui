@@ -26,6 +26,7 @@ extern void naui_renderer_begin(void);
 extern void naui_renderer_end(void);
 
 extern void naui_panel_manager_render(void);
+extern void naui_input_update(void);
 
 static Leaf_Dimensions measure_text_bridge(const char *text, uint32_t length, float resolved_font_size, const Leaf_TextConfig *config)
 {
@@ -128,6 +129,7 @@ static void __naui_app_end(void)
 
 static void __naui_app_update(void)
 {
+    naui_input_update();
     render();
 }
 
