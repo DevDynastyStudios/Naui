@@ -32,7 +32,7 @@ NAUI_API void         naui_register_panel_type(const char *name, Naui_PanelType 
 NAUI_API void         naui_panel_set_title  (Naui_PanelID panel_id, const char *title);
 NAUI_API void         naui_panel_set_size   (Naui_PanelID panel_id, Naui_Vec2 size);
 
-NAUI_API Naui_PanelID naui_dock_panel   (Naui_PanelID target_id, Naui_PanelID guest_id, Naui_DockDirection direction);
+NAUI_API Naui_PanelID naui_dock_panel   (Naui_PanelID target_id, Naui_PanelID guest_id, Naui_DockDirection direction, float split_ratio);
 NAUI_API void         naui_undock_panel (Naui_PanelID id);
 
 #ifdef _MSC_VER

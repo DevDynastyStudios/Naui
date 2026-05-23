@@ -181,6 +181,23 @@ enum
     MG_KEY_MAX = 0xFF
 };
 
+typedef uint8_t mg_cursor;
+enum
+{
+    MG_CURSOR_ARROW,
+    MG_CURSOR_IBEAM,
+    MG_CURSOR_CROSSHAIR,
+    MG_CURSOR_HAND,
+    MG_CURSOR_RESIZE_NS,
+    MG_CURSOR_RESIZE_EW,
+    MG_CURSOR_RESIZE_NESW,
+    MG_CURSOR_RESIZE_NWSE,
+    MG_CURSOR_RESIZE_ALL,
+    MG_CURSOR_NOT_ALLOWED,
+    MG_CURSOR_HIDDEN,
+    MG_CURSOR_MAX
+};
+
 typedef uint8_t mg_app_event_type;
 enum
 {
@@ -238,6 +255,7 @@ MG_APP_API float mg_app_time(void);
 MG_APP_API float mg_app_delta_time(void);
 MG_APP_API int32_t mg_app_width(void);
 MG_APP_API int32_t mg_app_height(void);
+MG_APP_API void mg_app_set_cursor(mg_cursor cursor);
 
 MG_APP_API bool mg_app_key_down(mg_key key);
 MG_APP_API bool mg_app_key_pressed(mg_key key);
@@ -444,6 +462,11 @@ void mg_app_close(void)
         platform.info->events.end();
 }
 
+void mg_app_set_cursor(mg_cursor cursor)
+{
+    // TODO (box): Implement this
+}
+
 float mg_app_time(void)
 {
     return platform.time;
@@ -483,6 +506,8 @@ typedef struct mg_win32_platform
 
     void (*on_event_call)(const mg_app_event *event);
     float time, delta_time;
+
+    HCURSOR cursors[MG_CURSOR_MAX];
 }
 mg_win32_platform;
 
@@ -617,11 +642,28 @@ int32_t mg_app_run(const mg_app_init_info *info)
 
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE);
 
+    static const LPCSTR mg_win32_cursor_map[MG_CURSOR_MAX] = {
+        [MG_CURSOR_ARROW]       = IDC_ARROW,
+        [MG_CURSOR_IBEAM]       = IDC_IBEAM,
+        [MG_CURSOR_CROSSHAIR]   = IDC_CROSS,
+        [MG_CURSOR_HAND]        = IDC_HAND,
+        [MG_CURSOR_RESIZE_NS]   = IDC_SIZENS,
+        [MG_CURSOR_RESIZE_EW]   = IDC_SIZEWE,
+        [MG_CURSOR_RESIZE_NESW] = IDC_SIZENESW,
+        [MG_CURSOR_RESIZE_NWSE] = IDC_SIZENWSE,
+        [MG_CURSOR_RESIZE_ALL]  = IDC_SIZEALL,
+        [MG_CURSOR_NOT_ALLOWED] = IDC_NO,
+        [MG_CURSOR_HIDDEN]      = NULL,
+    };
+
+    for (uint8_t i = 0; i < MG_CURSOR_MAX; i++)
+        platform.cursors[i] = mg_win32_cursor_map[i] ? LoadCursor(NULL, mg_win32_cursor_map[i]) : NULL;
+
     WNDCLASSA wc = {0};
     wc.lpfnWndProc = mg_win32_process_message;
     wc.hInstance = platform.instace;
     wc.lpszClassName = CLASS_NAME;
-    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wc.hCursor = platform.cursors[MG_CURSOR_ARROW];
 
     if (!RegisterClassA(&wc))
     {
@@ -702,6 +744,11 @@ int32_t mg_app_run(const mg_app_init_info *info)
 void mg_app_close(void)
 {
     PostMessage(platform.hwnd, WM_CLOSE, 0, 0);
+}
+
+void mg_app_set_cursor(mg_cursor cursor)
+{
+    SetCursor(platform.cursors[cursor]);
 }
 
 float mg_app_time(void)
@@ -1061,6 +1108,11 @@ int32_t mg_app_run(const mg_app_init_info *info)
 void mg_app_close(void)
 {
     platform.running = false;
+}
+
+void mg_app_set_cursor(mg_cursor cursor)
+{
+    // TODO (box): Implement this
 }
  
 float mg_app_time(void)

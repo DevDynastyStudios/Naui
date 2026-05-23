@@ -1,5 +1,7 @@
 #include "panel.h"
 #include "input.h"
+#include "time.h"
+#include "math/math.h"
 #include "utils/map.h"
 #include "utils/list.h"
 #include "utils/uuid.h"
@@ -73,6 +75,9 @@ typedef struct
 Naui_PanelTypeMapEntry;
 static Naui_Map(Naui_PanelTypeMapEntry) panel_type_map = NULL;
 
+static float docking_guides_show_amount = 0.0f;
+static bool docking_guides_showing  = false;
+
 static void naui_docking_guide(Naui_PanelID id)
 {
     Leaf_ID guide_left_id   = leaf_id_indexed("__naui_dock_guide_left",   id);
@@ -96,7 +101,7 @@ static void naui_docking_guide(Naui_PanelID id)
         .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER}
     })
     leaf({
-        .size         = {LEAF_SIZE_DERIVED, LEAF_SIZE_PERCENT_MIN_MAX(0.8f, 32.0f, 400.0f)},
+        .size         = {LEAF_SIZE_DERIVED, LEAF_SIZE_PERCENT_MIN_MAX(0.6f * docking_guides_show_amount, 32.0f, 500.0f)},
         .aspect_ratio = 1.0f
     })
     {
@@ -131,7 +136,7 @@ static void naui_docking_guide(Naui_PanelID id)
     }
 }
 
-Naui_PanelID naui_dock_panel(Naui_PanelID target_id, Naui_PanelID guest_id, Naui_DockDirection direction)
+Naui_PanelID naui_dock_panel(Naui_PanelID target_id, Naui_PanelID guest_id, Naui_DockDirection direction, float split_ratio)
 {
     Naui_PanelNode *target_node = (Naui_PanelNode*)target_id;
     Naui_PanelNode *guest_node  = (Naui_PanelNode*)guest_id;
@@ -157,7 +162,7 @@ Naui_PanelID naui_dock_panel(Naui_PanelID target_id, Naui_PanelID guest_id, Naui
     target_node->children[0] = guest_first ? guest_root  : target_copy;
     target_node->children[1] = guest_first ? target_copy : guest_root;
 
-    target_node->split_ratio = 0.5f;
+    target_node->split_ratio = split_ratio;
     target_node->split_axis  =
         (direction == NAUI_DOCK_DIRECTION_LEFT ||
          direction == NAUI_DOCK_DIRECTION_RIGHT)
@@ -213,8 +218,8 @@ static const Leaf_Color LEAF_DBG_TEXT     = {237, 226, 231, 255};
 static const Leaf_Color LEAF_DBG_BORDER   = {90,  88,  85,  255};
 static const Leaf_Color RESIZE_HANDLE_CLR = {120, 118, 115, 255};
 
-static Naui_PanelNode *dragged_node  = NULL;
-static bool dragging_titlebar        = false;
+static Naui_PanelNode *dragged_node = NULL;
+static bool dragging_titlebar       = false;
 
 static void naui_render_leaf_panel_node(Naui_PanelNode *node)
 {
@@ -273,8 +278,12 @@ static void naui_render_leaf_panel_node(Naui_PanelNode *node)
     {
         if (panel_data->type.on_render)
             panel_data->type.on_render((Naui_PanelID)node, (void*)panel_data->_stack);
-        if (dragged_node && dragged_node != node && dragging_titlebar)
+        if (dragged_node && dragged_node != node && dragging_titlebar
+            && node->root != dragged_node->root)
+        {
+            docking_guides_showing = true;
             naui_docking_guide((Naui_PanelID)node);
+        }
     }
 }
 
@@ -304,22 +313,22 @@ static void naui_update_leaf_panel_node(Naui_PanelNode *node)
     {
         if (guide_left_hovered)
         {
-            naui_dock_panel((Naui_PanelID)node, (Naui_PanelID)dragged_node, NAUI_DOCK_DIRECTION_LEFT);
+            naui_dock_panel((Naui_PanelID)node, (Naui_PanelID)dragged_node, NAUI_DOCK_DIRECTION_LEFT, 0.5f);
             dragged_node = NULL;
         }
         else if (guide_right_hovered)
         {
-            naui_dock_panel((Naui_PanelID)node, (Naui_PanelID)dragged_node, NAUI_DOCK_DIRECTION_RIGHT);
+            naui_dock_panel((Naui_PanelID)node, (Naui_PanelID)dragged_node, NAUI_DOCK_DIRECTION_RIGHT, 0.5f);
             dragged_node = NULL;
         }
         else if (guide_top_hovered)
         {
-            naui_dock_panel((Naui_PanelID)node, (Naui_PanelID)dragged_node, NAUI_DOCK_DIRECTION_TOP);
+            naui_dock_panel((Naui_PanelID)node, (Naui_PanelID)dragged_node, NAUI_DOCK_DIRECTION_TOP, 0.5f);
             dragged_node = NULL;
         }
         else if (guide_bottom_hovered)
         {
-            naui_dock_panel((Naui_PanelID)node, (Naui_PanelID)dragged_node, NAUI_DOCK_DIRECTION_BOTTOM);
+            naui_dock_panel((Naui_PanelID)node, (Naui_PanelID)dragged_node, NAUI_DOCK_DIRECTION_BOTTOM, 0.5f);
             dragged_node = NULL;
         }
     }
@@ -424,9 +433,19 @@ static void naui_render_panel_node(Naui_PanelNode *node)
     }
 }
 
-void naui_panel_manager_render(void)
+void naui_panel_manager_update_front(void)
 {
     static Naui_PanelNode *pending_front = NULL;
+    if (pending_front)
+    {
+        naui_panel_bring_to_front((Naui_PanelID)pending_front);
+        pending_front = NULL;
+    }
+}
+
+void naui_panel_manager_render(void)
+{
+    docking_guides_showing = false;
 
     for (int32_t i = naui_list_len(root_panel_node_list) - 1; i >= 0; i--)
     {
@@ -434,11 +453,7 @@ void naui_panel_manager_render(void)
         naui_update_panel_node(node);
     }
 
-    if (pending_front)
-    {
-        naui_panel_bring_to_front((Naui_PanelID)pending_front);
-        pending_front = NULL;
-    }
+    naui_panel_manager_update_front();
 
     for (int32_t i = 0; i < naui_list_len(root_panel_node_list); i++)
     {
@@ -454,6 +469,9 @@ void naui_panel_manager_render(void)
             naui_render_panel_node(node);
         }
     }
+
+    if (docking_guides_showing) docking_guides_show_amount = naui_lerp(docking_guides_show_amount, 1.0f, naui_delta_time() * 16.0f);
+    else docking_guides_show_amount = 0.0f;
 
     if (!naui_mouse_down(NAUI_MOUSE_BUTTON_LEFT))
         dragged_node = NULL;
