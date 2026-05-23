@@ -166,6 +166,23 @@ enum
     NAUI_KEY_MAX = 0xFF
 };
 
+typedef uint8_t Naui_Cursor;
+enum
+{
+    NAUI_CURSOR_ARROW,
+    NAUI_CURSOR_IBEAM,
+    NAUI_CURSOR_CROSSHAIR,
+    NAUI_CURSOR_HAND,
+    NAUI_CURSOR_RESIZE_NS,
+    NAUI_CURSOR_RESIZE_EW,
+    NAUI_CURSOR_RESIZE_NESW,
+    NAUI_CURSOR_RESIZE_NWSE,
+    NAUI_CURSOR_RESIZE_ALL,
+    NAUI_CURSOR_NOT_ALLOWED,
+    NAUI_CURSOR_HIDDEN,
+    NAUI_CURSOR_MAX
+};
+
 NAUI_API bool naui_key_down(Naui_Key key);
 NAUI_API bool naui_key_pressed(Naui_Key key);
 NAUI_API bool naui_mouse_down(Naui_MouseButton button);
@@ -175,3 +192,4 @@ NAUI_API int8_t naui_mouse_scroll_delta(void);
 NAUI_API int32_t naui_mouse_x(void);
 NAUI_API int32_t naui_mouse_y(void);
 NAUI_API bool naui_mouse_dragging(Naui_MouseButton button);
+NAUI_API void naui_set_cursor(Naui_Cursor cursor);

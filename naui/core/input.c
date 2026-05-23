@@ -40,6 +40,11 @@ int32_t naui_mouse_y(void)
     return mg_app_mouse_y();
 }
 
+void naui_set_cursor(Naui_Cursor cursor)
+{
+    mg_app_set_cursor((mg_cursor)cursor);
+}
+
 static bool s_dragging[MG_MOUSE_BUTTON_MAX];
 void naui_input_update(void)
 {
