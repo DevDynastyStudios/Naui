@@ -57,3 +57,4 @@ NAUI_API void         naui_undock_panel (Naui_PanelID id);
     NAUI_CONSTRUCTOR_NAMED(_register_##name) { \
         naui_register_panel_type(#name, _##name##_events); \
     }
+
