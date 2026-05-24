@@ -15,6 +15,7 @@ static void on_attach(Naui_PanelID panel_id, TestData *data)
     //Naui_PanelID panel_slot  = naui_dock_panel(panel_id, child_panel, NAUI_DOCK_DIRECTION_RIGHT);
     Naui_PanelID child_panel_2 = NAUI_ATTACH_PANEL(test2);
     //naui_dock_panel(panel_slot, child_panel_2, NAUI_DOCK_DIRECTION_TOP);
+    for (uint32_t i = 0; i < 36; i ++)
     NAUI_ATTACH_PANEL(test2);
 }
 
@@ -26,6 +27,7 @@ static void on_detach(Naui_PanelID panel_id, TestData *data)
 static void on_update(Naui_PanelID panel_id, TestData *data)
 {
     data->time = naui_time();
+    //printf("A");
 }
 
 static void on_render(Naui_PanelID panel_id, TestData *data)

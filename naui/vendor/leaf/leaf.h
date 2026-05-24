@@ -170,6 +170,7 @@ typedef struct
 }
 Leaf_Padding;
 #define LEAF_PADDING_ALL(v) (Leaf_Padding) { v, v, v, v }
+#define LEAF_PADDING_AXES(h, v) (Leaf_Padding) { h, h, v, v }
 
 typedef struct
 {
@@ -371,6 +372,8 @@ struct Leaf_Node
         struct
         {
             Leaf_ElementConfig config;
+            int32_t child_count;
+            int32_t relative_child_count;
         }
         element;
 
@@ -391,7 +394,6 @@ struct Leaf_Node
     Leaf_Node *first_child;
     Leaf_Node *last_child;
     Leaf_Node *next_sibling;
-    int32_t child_count;
 };
 
 #define LEAF_ASSERT(x, msg) if (!(x)) {fprintf(stderr, "[Leaf]: %s", msg); return;}
@@ -571,7 +573,11 @@ static inline void leaf_append_child(Leaf_Node *parent, Leaf_Node *child)
 {
     child->parent = parent;
     child->next_sibling = NULL;
-    parent->child_count++;
+    parent->element.child_count++;
+
+    if (child->type == LEAF_NODE_TYPE_TEXT ||
+        child->element.config.positioning == LEAF_POSITIONING_RELATIVE)
+        parent->element.relative_child_count++;
 
     if (!parent->first_child)
     {
@@ -676,7 +682,7 @@ void leaf_end_element(void)
     node->bounding_box.width += child_config->padding.left + child_config->padding.right;
     node->bounding_box.height += child_config->padding.top + child_config->padding.bottom;
 
-    const float child_gap = leaf_max(node->child_count - 1, 0) * child_config->child_gap;
+    const float child_gap = leaf_max(node->element.relative_child_count - 1, 0) * child_config->child_gap;
     if (child_config->size.width.type == LEAF_SIZE_TYPE_FIT && child_config->direction == LEAF_LAYOUT_HORIZONAL)
         node->bounding_box.width += child_gap;
     else if (child_config->size.height.type == LEAF_SIZE_TYPE_FIT && child_config->direction == LEAF_LAYOUT_VERTICAL)
@@ -887,7 +893,8 @@ static Leaf_Node *leaf_wrap_text_node(Leaf_Node *parent, Leaf_Node *node, float 
             last_inserted->next_sibling = line_node;
             if (parent->last_child == last_inserted)
                 parent->last_child = line_node;
-            parent->child_count++;
+            parent->element.child_count++;
+            parent->element.relative_child_count++;
 
             last_inserted = line_node;
         }
@@ -952,7 +959,7 @@ static void leaf_wrap_text_children(Leaf_Node *parent)
         child = child->next_sibling;
     }
 
-    float gap = leaf_max(parent->child_count - 1, 0) * cfg->child_gap;
+    float gap = leaf_max(parent->element.relative_child_count - 1, 0) * cfg->child_gap;
     if (fit_h && cfg->direction == LEAF_LAYOUT_VERTICAL)
         parent->bounding_box.height += gap;
     if (fit_w && cfg->direction == LEAF_LAYOUT_HORIZONAL)
@@ -990,7 +997,7 @@ static void leaf_size_pass(Leaf_Node *parent)
     float   free_width  = parent->bounding_box.width;
     float   free_height = parent->bounding_box.height;
 
-    const float child_gap = leaf_max(parent->child_count - 1, 0) * parent_config->child_gap;
+    const float child_gap = leaf_max(parent->element.relative_child_count - 1, 0) * parent_config->child_gap;
     if (h)  free_width  -= child_gap;
     else    free_height -= child_gap;
     free_width  -= parent_config->padding.left + parent_config->padding.right;
@@ -1086,6 +1093,10 @@ static void leaf_size_pass(Leaf_Node *parent)
 
         LEAF_FOREACH_CHILD(child, parent)
         {
+            if (child->type == LEAF_NODE_TYPE_ELEMENT &&
+                child->element.config.positioning != LEAF_POSITIONING_RELATIVE)
+                continue;
+
             if (fit_w)
             {
                 if (parent_config->direction == LEAF_LAYOUT_HORIZONAL)
@@ -1106,7 +1117,7 @@ static void leaf_size_pass(Leaf_Node *parent)
             }
         }
 
-        float gap = leaf_max(parent->child_count - 1, 0) * parent_config->child_gap;
+        float gap = leaf_max(parent->element.relative_child_count - 1, 0) * parent_config->child_gap;
         if (fit_h && parent_config->direction == LEAF_LAYOUT_VERTICAL)
             parent->bounding_box.height += gap;
         if (fit_w && parent_config->direction == LEAF_LAYOUT_HORIZONAL)
@@ -1147,7 +1158,7 @@ static void leaf_position_render(Leaf_Node *parent)
             continue;
         children_total += LEAF_MAIN(h, child->bounding_box.width, child->bounding_box.height);
     }
-    children_total += leaf_max(parent->child_count - 1, 0) * parent_config->child_gap;
+    children_total += leaf_max(parent->element.relative_child_count - 1, 0) * parent_config->child_gap;
 
     float free_main = available_main - children_total;
 
