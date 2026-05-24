@@ -257,7 +257,7 @@ Naui_PanelID naui_dock_panel(Naui_PanelID target_id, Naui_PanelID guest_id, Naui
     naui_set_root(target_copy, target_node->root);
     naui_set_root(guest_root,  target_node->root);
 
-    return target_copy;
+    return (Naui_PanelID)target_copy;
 }
 
 void naui_undock_panel(Naui_PanelID id)
@@ -502,7 +502,7 @@ static void naui_update_panel_node(Naui_PanelNode *node)
     {
         if (leaf_hovered(titlebar_tab_id))
         {
-            naui_undock_panel(node);
+            naui_undock_panel((Naui_PanelID)node);
             Leaf_BoundingBox bbox = leaf_get_bounding_box(body_id);
             node->position.x = bbox.x;
             node->position.y = bbox.y - 30.0f;
