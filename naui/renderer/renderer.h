@@ -24,6 +24,11 @@ typedef struct
 }
 Naui_Image;
 
+static inline Naui_Color naui_color_rgba(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+{
+    return (Naui_Color){ r, g, b, a };
+}
+
 NAUI_API void naui_fill_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color, float rounding);
 NAUI_API void naui_draw_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color, float line_width, float rounding);
 NAUI_API void naui_fill_gradient_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Gradient gradient, float rounding);

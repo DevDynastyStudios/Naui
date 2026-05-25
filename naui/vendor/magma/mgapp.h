@@ -781,6 +781,7 @@ void *mg_app_handle(void)
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/keysym.h>
+#include <X11/cursorfont.h>
 #include <time.h>
 #include <stdio.h>
  
@@ -788,9 +789,10 @@ typedef struct mg_xlib_platform
 {
     Window window;
     Display *display;
-    int screen;
     Atom wm_delete_window;
+    Cursor cursors[MG_CURSOR_MAX];
     void (*on_event_call)(const mg_app_event *event);
+    int screen;
     int32_t window_width, window_height;
     float time, delta_time;
     bool running;
@@ -963,7 +965,34 @@ int32_t mg_app_run(const mg_app_init_info *info)
  
     XMapWindow(platform.display, platform.window);
     XFlush(platform.display);
- 
+
+    // creating the hidden cursor
+    {
+        const Pixmap cursor_pixmap    = XCreatePixmap(platform.display, platform.window, 1, 1, 1);
+        GC gfx_ctx = XCreateGC(platform.display, cursor_pixmap, 0, nullptr);
+        XDrawPoint(platform.display, cursor_pixmap, gfx_ctx, 0, 0);
+        XFreeGC(platform.display, gfx_ctx);
+
+        XColor color;
+        color.flags = DoRed | DoGreen | DoBlue;
+        color.red = color.blue = color.green = 0;
+        platform.cursors[MG_CURSOR_HIDDEN] = XCreatePixmapCursor(platform.display, cursor_pixmap, cursor_pixmap, &color, &color, 0, 0);
+
+        XFreePixmap(platform.display, cursor_pixmap);
+    }
+
+    platform.cursors[MG_CURSOR_ARROW] = XCreateFontCursor(platform.display, XC_left_ptr);
+    platform.cursors[MG_CURSOR_IBEAM] = XCreateFontCursor(platform.display, XC_xterm);
+    platform.cursors[MG_CURSOR_CROSSHAIR] = XCreateFontCursor(platform.display, XC_crosshair);
+    platform.cursors[MG_CURSOR_HAND] = XCreateFontCursor(platform.display, XC_hand2);
+    platform.cursors[MG_CURSOR_RESIZE_ALL] = XCreateFontCursor(platform.display, XC_fleur);
+    platform.cursors[MG_CURSOR_RESIZE_NS] = XCreateFontCursor(platform.display, XC_sb_v_double_arrow);
+    platform.cursors[MG_CURSOR_RESIZE_EW] = XCreateFontCursor(platform.display, XC_sb_h_double_arrow);
+    platform.cursors[MG_CURSOR_RESIZE_NESW] = XCreateFontCursor(platform.display, XC_fleur);
+    platform.cursors[MG_CURSOR_RESIZE_NWSE] = XCreateFontCursor(platform.display, XC_fleur);
+    platform.cursors[MG_CURSOR_NOT_ALLOWED] = XCreateFontCursor(platform.display, XC_pirate);
+    XDefineCursor(platform.display, platform.window, platform.cursors[MG_CURSOR_ARROW]);
+
     platform.on_event_call = info->events.event;
     platform.running = true;
  
@@ -1112,7 +1141,7 @@ void mg_app_close(void)
 
 void mg_app_set_cursor(mg_cursor cursor)
 {
-    // TODO (box): Implement this
+    XDefineCursor(platform.display, platform.window, platform.cursors[cursor]);
 }
  
 float mg_app_time(void)
