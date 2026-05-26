@@ -170,6 +170,4 @@ void string_test()
     test_substring();
     test_replace();
     test_split_once();
-
-    test_summary();
 }

@@ -4,3 +4,5 @@
 	void archive_test();
 	void math_test();
 	void string_test();
+	void iterator_test();
+	void json_test();

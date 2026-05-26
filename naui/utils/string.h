@@ -7,6 +7,9 @@
 int naui_str_to_lower(const char* src, char* dest, size_t dest_size);
 int naui_str_to_upper(const char* src, char* dest, size_t dest_size);
 
+int naui_strcmp(const char* str1, const char* str2, bool case_sensitive);
+int naui_strncmp(const char* str1, const char* str2, size_t len, bool case_sensitive);
+
 bool naui_str_starts_with(const char* s, const char* prefix);
 bool naui_str_ends_with(const char* s, const char* suffix);
 const char* naui_str_find(const char* s, const char* needle);

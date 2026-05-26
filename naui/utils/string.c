@@ -36,6 +36,30 @@ int naui_str_to_upper(const char* src, char* dest, size_t dest_size)
 	return (int)i;
 }
 
+int naui_strcmp(const char* str1, const char* str2, bool case_sensitive)
+{
+	if(case_sensitive)
+		return strcmp(str1, str2);
+
+#if defined(_WIN32) || defined(_WIN64)
+	return _stricmp(str1, str2);
+#else
+	return strcasecmp(str1, str2);
+#endif
+}
+
+int naui_strncmp(const char* str1, const char* str2, size_t len, bool case_sensitive)
+{
+	if(case_sensitive)
+		return strncmp(str1, str2, len);
+
+#if defined(_WIN32) || defined(_WIN64)
+	return _strnicmp(str1, str2, len);
+#else
+	return strncasecmp(str1, str2, len);
+#endif
+}
+
 bool naui_str_starts_with(const char* s, const char* prefix)
 {
 	if (!s || !prefix)
