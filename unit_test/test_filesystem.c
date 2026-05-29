@@ -869,5 +869,4 @@ void filesystem_test()
 	test_path_lock();
 	test_path_lock_independent();
 	test_current_directory_all();
-	test_summary();
 }

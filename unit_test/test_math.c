@@ -179,5 +179,4 @@ void math_test(void)
     test_vec3();
     test_vec4();
 	test_scalar_math();
-	test_summary();
 }

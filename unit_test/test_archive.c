@@ -333,5 +333,4 @@ void archive_test()
 	test_archive_custom_bad_magic();
 
 	naui_directory_remove_all(&root);
-	test_summary();
 }

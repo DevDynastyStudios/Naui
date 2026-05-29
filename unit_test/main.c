@@ -7,4 +7,7 @@ int main(void)
 	archive_test();
 	math_test();
 	string_test();
+	iterator_test();
+	//json_test();
+	TEST_CONCLUSION();
 }
