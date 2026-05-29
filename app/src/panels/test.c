@@ -46,4 +46,4 @@ static void on_render(Naui_PanelID panel_id, TestData *data)
     }
 }
 
-NAUI_DEFINE_PANEL_TYPE(test);
+NAUI_DEFINE_PANEL_TYPE(test, TestData);

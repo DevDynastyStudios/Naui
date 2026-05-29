@@ -21,6 +21,7 @@ typedef struct
     NauiPanelEvent on_detach;
     NauiPanelEvent on_update;
     NauiPanelEvent on_render;
+    size_t user_data_size;
 }
 Naui_PanelType;
 
@@ -47,12 +48,13 @@ NAUI_API void         naui_undock_panel (Naui_PanelID id);
       __attribute__((constructor)) static void fn(void)
 #endif
 
-#define NAUI_DEFINE_PANEL_TYPE(name) \
+#define NAUI_DEFINE_PANEL_TYPE(name, data_type) \
     static Naui_PanelType _##name##_events = { \
         (NauiPanelEvent)on_attach, \
         (NauiPanelEvent)on_detach, \
         (NauiPanelEvent)on_update, \
-        (NauiPanelEvent)on_render \
+        (NauiPanelEvent)on_render, \
+        sizeof(data_type) \
     }; \
     NAUI_CONSTRUCTOR_NAMED(_register_##name) { \
         naui_register_panel_type(#name, _##name##_events); \

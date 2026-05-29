@@ -484,7 +484,7 @@ static void naui_update_leaf_panel_node(Naui_PanelNode *node)
     bool guide_top_hovered    = leaf_hovered(guide_top_id);
     bool guide_bottom_hovered = leaf_hovered(guide_bottom_id);
 
-    if (!naui_mouse_released(NAUI_MOUSE_BUTTON_LEFT))
+    if (!naui_mouse_released(NAUI_MOUSE_LEFT))
         return;
 
     if (guide_left_hovered)
@@ -513,12 +513,12 @@ static void naui_update_panel_node(Naui_PanelNode *node)
                 ? NAUI_CURSOR_RESIZE_NS
                 : NAUI_CURSOR_RESIZE_EW);
 
-        if (leaf_hovered(resize_hitarea_id) && naui_mouse_clicked(NAUI_MOUSE_BUTTON_LEFT))
+        if (leaf_hovered(resize_hitarea_id) && naui_mouse_clicked(NAUI_MOUSE_LEFT))
             pm.resizing_split_node = node;
 
         if (pm.resizing_split_node == node)
         {
-            if (!naui_mouse_down(NAUI_MOUSE_BUTTON_LEFT))
+            if (!naui_mouse_down(NAUI_MOUSE_LEFT))
             {
                 pm.resizing_split_node = NULL;
             }
@@ -545,7 +545,7 @@ static void naui_update_panel_node(Naui_PanelNode *node)
     Leaf_ID body_id = leaf_id_indexed("__naui_panel_body", (Naui_PanelID)node);
     Leaf_ID close_id = leaf_id_indexed("__naui_panel_close", (Naui_PanelID)node);
 
-    if (leaf_hovered(close_id) && naui_mouse_clicked(NAUI_MOUSE_BUTTON_LEFT))
+    if (leaf_hovered(close_id) && naui_mouse_clicked(NAUI_MOUSE_LEFT))
     {
         naui_update_leaf_panel_node(node);
         naui_detach_panel(node);
@@ -554,7 +554,7 @@ static void naui_update_panel_node(Naui_PanelNode *node)
 
     bool hovered_titlebar = leaf_hovered(titlebar_id);
 
-    if (!pm.dragged_node && !pm.resizing_root_node && !pm.resizing_split_node && hovered_titlebar && naui_mouse_clicked(NAUI_MOUSE_BUTTON_LEFT))
+    if (!pm.dragged_node && !pm.resizing_root_node && !pm.resizing_split_node && hovered_titlebar && naui_mouse_clicked(NAUI_MOUSE_LEFT))
     {
         if (leaf_hovered(titlebar_tab_id))
         {
@@ -653,7 +653,7 @@ void naui_panel_manager_render(void)
         if (!node->parent && !pm.dragged_node)
         {
             if (node == resize_candidate && !pm.resizing_root_node
-                && naui_mouse_clicked(NAUI_MOUSE_BUTTON_LEFT))
+                && naui_mouse_clicked(NAUI_MOUSE_LEFT))
             {
                 pm.resizing_root_node  = node;
                 pm.resizing_edge       = resize_candidate_edge;
@@ -679,7 +679,7 @@ void naui_panel_manager_render(void)
                 if (nw >= NAUI_MIN_PANEL_SIZE) { node->position.x = nx; node->size.x = nw; }
                 if (nh >= NAUI_MIN_PANEL_SIZE) { node->position.y = ny; node->size.y = nh; }
 
-                if (!naui_mouse_down(NAUI_MOUSE_BUTTON_LEFT))
+                if (!naui_mouse_down(NAUI_MOUSE_LEFT))
                     pm.resizing_root_node = NULL;
             }
         }
@@ -698,7 +698,7 @@ void naui_panel_manager_render(void)
             i = new_len;
     }
 
-    if (!naui_mouse_down(NAUI_MOUSE_BUTTON_LEFT))
+    if (!naui_mouse_down(NAUI_MOUSE_LEFT))
         pm.dragged_node = NULL;
 
     int32_t tick_len = naui_list_len(pm.root_nodes);

@@ -11,6 +11,7 @@ TestData;
 static void on_attach(Naui_PanelID panel_id, TestData *data)
 {
     naui_panel_set_title(panel_id, "grguahergaefg");
+    naui_panel_set_size(panel_id, (Naui_Vec2){ 128, 128 });
 }
 
 static void on_detach(Naui_PanelID panel_id, TestData *data)
@@ -39,4 +40,4 @@ static void on_render(Naui_PanelID panel_id, TestData *data)
     }
 }
 
-NAUI_DEFINE_PANEL_TYPE(test2);
+NAUI_DEFINE_PANEL_TYPE(test2, TestData);

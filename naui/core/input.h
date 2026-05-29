@@ -5,10 +5,10 @@
 typedef uint8_t Naui_MouseButton;
 enum 
 {
-    NAUI_MOUSE_BUTTON_LEFT,
-    NAUI_MOUSE_BUTTON_RIGHT,
-    NAUI_MOUSE_BUTTON_MIDDLE,
-    NAUI_MOUSE_BUTTON_MAX
+    NAUI_MOUSE_LEFT,
+    NAUI_MOUSE_RIGHT,
+    NAUI_MOUSE_MIDDLE,
+    NAUI_MOUSE_MAX
 };
 
 typedef uint8_t Naui_Key;
