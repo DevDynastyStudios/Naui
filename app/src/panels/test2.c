@@ -11,7 +11,7 @@ TestData;
 static void on_attach(Naui_PanelID panel_id, TestData *data)
 {
     naui_panel_set_title(panel_id, "grguahergaefg");
-    naui_panel_set_size(panel_id, (Naui_Vec2){ 128, 128 });
+    naui_panel_set_size(panel_id, (Naui_Vec2){ 256, 256 });
 }
 
 static void on_detach(Naui_PanelID panel_id, TestData *data)
@@ -28,7 +28,7 @@ static void on_render(Naui_PanelID panel_id, TestData *data)
 {
     leaf({
         .size = {LEAF_SIZE_FULL, LEAF_SIZE_FULL},
-        .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER}
+        .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_TOP}
     })
     {
 

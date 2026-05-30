@@ -12,7 +12,7 @@ enum
     NAUI_DOCK_DIRECTION_RIGHT,
     NAUI_DOCK_DIRECTION_TOP,
     NAUI_DOCK_DIRECTION_BOTTOM,
-    NAUI_DOCK_DIRECTION_CENTER // For tabs
+    NAUI_DOCK_DIRECTION_CENTER // For tabs (don't use it for now)
 };
 
 typedef struct
@@ -48,15 +48,17 @@ NAUI_API void         naui_undock_panel (Naui_PanelID id);
       __attribute__((constructor)) static void fn(void)
 #endif
 
-#define NAUI_DEFINE_PANEL_TYPE(name, data_type) \
+#define __NAUI_DEFINE_PANEL_TYPE(name, data_size) \
     static Naui_PanelType _##name##_events = { \
         (NauiPanelEvent)on_attach, \
         (NauiPanelEvent)on_detach, \
         (NauiPanelEvent)on_update, \
         (NauiPanelEvent)on_render, \
-        sizeof(data_type) \
+        data_size \
     }; \
     NAUI_CONSTRUCTOR_NAMED(_register_##name) { \
         naui_register_panel_type(#name, _##name##_events); \
     }
 
+#define NAUI_DEFINE_PANEL_TYPE(name, data_type) __NAUI_DEFINE_PANEL_TYPE(name, sizeof(data_type))
+#define NAUI_DEFINE_PANEL_TYPE_NO_DATA(name) __NAUI_DEFINE_PANEL_TYPE(name, 0)

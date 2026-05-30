@@ -19,8 +19,10 @@ void naui_load_theme(const char *file_name)
     // Fuck we need jsons CHIMPCHI HURRY TF UP
 
     // Anyway here are some hardcoded values for now :3
-    naui_strmap_put(data.color_map, "naui_panel_bg_color", naui_color_rgba(255, 100, 100, 255));
-    naui_strmap_put(data.color_map, "naui_panel_title_bg_color", naui_color_rgba(255, 150, 150, 255));
+    naui_strmap_put(data.color_map, "naui_panel_border_color", naui_color_rgba(74, 79, 121, 255));
+    naui_strmap_put(data.color_map, "naui_panel_bg_color", naui_color_rgba(25, 28, 47, 255));
+    naui_strmap_put(data.color_map, "naui_panel_tab_bg_color", naui_color_rgba(25, 28, 47, 255));
+    naui_strmap_put(data.color_map, "naui_panel_title_bg_color", naui_color_rgba(41, 45, 71, 255));
     naui_strmap_put(data.color_map, "naui_panel_title_text_color", naui_color_rgba(255, 255, 255, 255));
     naui_strmap_put(data.color_map, "naui_panel_text_color", naui_color_rgba(255, 255, 255, 255));
     naui_strmap_put(data.color_map, "naui_panel_text_disabled_color", naui_color_rgba(150, 150, 150, 255));
@@ -29,7 +31,8 @@ void naui_load_theme(const char *file_name)
     naui_strmap_put(data.vec2_map, "naui_panel_title_padding", padding);
     naui_strmap_put(data.vec2_map, "naui_panel_padding", padding);
 
-    naui_strmap_put(data.float_map, "naui_font_size", 24.0f);
+    naui_strmap_put(data.float_map, "naui_font_size", 20.0f);
+    naui_strmap_put(data.float_map, "naui_panel_border_width", 1.0f);
 }
 
 Naui_Color naui_theme_color(const char *name)
