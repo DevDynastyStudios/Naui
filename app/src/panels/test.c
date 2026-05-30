@@ -49,16 +49,17 @@ static void on_update(Naui_PanelID panel_id, TestData *data)
 static void on_render(Naui_PanelID panel_id, TestData *data)
 {
     leaf({
-        .size = {LEAF_SIZE_FULL, LEAF_SIZE_FULL},
+        .size = {LEAF_SIZE_FULL, LEAF_SIZE_GROW},
         .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER}
     })
     {
-
-        leaf_text("ahguprephauger", {
-            .color = LEAF_COLOR_WHITE,
-            .font_size = LEAF_SIZE_GROW,
-            .alignment = LEAF_TEXT_ALIGN_CENTER
+        leaf({
+            .size = {LEAF_SIZE_FIXED(32.0f), LEAF_SIZE_DERIVED},
+            .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER},
+            .color = leaf_rgb(255, 0, 0),
+            .aspect_ratio = 1.0f
         });
+
     }
 }
 

@@ -147,7 +147,8 @@ static inline void naui_render_panel_body(Naui_PanelNode *node)
         .id = leaf_id_indexed(NAUI_PANEL_BODY_ID, (Naui_PanelID)node),
         .size = {LEAF_SIZE_FULL, LEAF_SIZE_GROW},
         .padding = LEAF_PADDING_AXES(padding.x, padding.y),
-        .color = bg_color
+        .color = bg_color,
+        .clip_children = true
     })
     {
         if (node->type.on_render)

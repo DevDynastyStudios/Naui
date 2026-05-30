@@ -569,6 +569,40 @@ static inline Leaf_Node *leaf_stack_top(void)
     return leaf_ctx->stack[leaf_ctx->stack_top - 1];
 }
 
+static inline void leaf_accumulate_fit(Leaf_Node *parent, Leaf_Node *child)
+{
+    const Leaf_ElementConfig *cfg = &parent->element.config;
+    bool fit_w = cfg->size.width.type  == LEAF_SIZE_TYPE_FIT;
+    bool fit_h = cfg->size.height.type == LEAF_SIZE_TYPE_FIT;
+    if (!fit_w && !fit_h) return;
+
+    if (child->type == LEAF_NODE_TYPE_ELEMENT &&
+        child->element.config.positioning != LEAF_POSITIONING_RELATIVE)
+        return;
+
+    float cw = child->bounding_box.width;
+    float ch = child->bounding_box.height;
+
+    if (fit_w)
+    {
+        if (cfg->direction == LEAF_LAYOUT_HORIZONAL)
+            parent->bounding_box.width += cw;
+        else
+            parent->bounding_box.width = leaf_maxf(
+                cw + cfg->padding.left + cfg->padding.right,
+                parent->bounding_box.width);
+    }
+    if (fit_h)
+    {
+        if (cfg->direction == LEAF_LAYOUT_HORIZONAL)
+            parent->bounding_box.height = leaf_maxf(
+                ch + cfg->padding.top + cfg->padding.bottom,
+                parent->bounding_box.height);
+        else
+            parent->bounding_box.height += ch;
+    }
+}
+
 static inline void leaf_append_child(Leaf_Node *parent, Leaf_Node *child)
 {
     child->parent = parent;
@@ -589,6 +623,8 @@ static inline void leaf_append_child(Leaf_Node *parent, Leaf_Node *child)
         parent->last_child->next_sibling = child;
         parent->last_child = child;
     }
+
+    leaf_accumulate_fit(parent, child);
 }
 
 static float leaf_resolve_font_size(const Leaf_SizeAxis *axis, Leaf_Node *parent, const char *text, uint32_t text_len, const Leaf_TextConfig *cfg)
@@ -675,17 +711,15 @@ void leaf_begin_element(Leaf_ElementConfig config)
 void leaf_end_element(void)
 {
     Leaf_Node *node = leaf_stack_top();
-    Leaf_Node *parent = node->parent;
+    const Leaf_ElementConfig *config = &node->element.config;
 
-    const Leaf_ElementConfig *child_config = &node->element.config;
+    node->bounding_box.width += config->padding.left + config->padding.right;
+    node->bounding_box.height += config->padding.top + config->padding.bottom;
 
-    node->bounding_box.width += child_config->padding.left + child_config->padding.right;
-    node->bounding_box.height += child_config->padding.top + child_config->padding.bottom;
-
-    const float child_gap = leaf_max(node->element.relative_child_count - 1, 0) * child_config->child_gap;
-    if (child_config->size.width.type == LEAF_SIZE_TYPE_FIT && child_config->direction == LEAF_LAYOUT_HORIZONAL)
+    const float child_gap = leaf_max(node->element.relative_child_count - 1, 0) * config->child_gap;
+    if (config->size.width.type == LEAF_SIZE_TYPE_FIT && config->direction == LEAF_LAYOUT_HORIZONAL)
         node->bounding_box.width += child_gap;
-    else if (child_config->size.height.type == LEAF_SIZE_TYPE_FIT && child_config->direction == LEAF_LAYOUT_VERTICAL)
+    else if (config->size.height.type == LEAF_SIZE_TYPE_FIT && config->direction == LEAF_LAYOUT_VERTICAL)
         node->bounding_box.height += child_gap;
 
     if (node->parent)
@@ -918,17 +952,13 @@ static Leaf_Node *leaf_wrap_text_node(Leaf_Node *parent, Leaf_Node *node, float 
     return last_inserted;
 }
 
+
 static void leaf_wrap_text_children(Leaf_Node *parent)
 {
     if (parent->type != LEAF_NODE_TYPE_ELEMENT) return;
 
     const Leaf_ElementConfig *cfg = &parent->element.config;
     float avail = parent->bounding_box.width - cfg->padding.left - cfg->padding.right;
-
-    bool fit_w = cfg->size.width.type == LEAF_SIZE_TYPE_FIT;
-    bool fit_h = cfg->size.height.type == LEAF_SIZE_TYPE_FIT;
-    if (fit_w) parent->bounding_box.width  = cfg->padding.left + cfg->padding.right;
-    if (fit_h) parent->bounding_box.height = cfg->padding.top  + cfg->padding.bottom;
 
     Leaf_Node *child = parent->first_child;
     while (child)
@@ -938,32 +968,8 @@ static void leaf_wrap_text_children(Leaf_Node *parent)
             child->bounding_box.width > avail)
             child = leaf_wrap_text_node(parent, child, avail);
 
-        if (fit_w)
-        {
-            if (cfg->direction == LEAF_LAYOUT_HORIZONAL)
-                parent->bounding_box.width += child->bounding_box.width;
-            else parent->bounding_box.width = leaf_maxf(
-                    child->bounding_box.width  + cfg->padding.left + cfg->padding.right,
-                    parent->bounding_box.width);
-        }
-        if (fit_h)
-        {
-            if (cfg->direction == LEAF_LAYOUT_HORIZONAL)
-                parent->bounding_box.height = leaf_maxf(
-                    child->bounding_box.height + cfg->padding.top + cfg->padding.bottom,
-                    parent->bounding_box.height);
-            else
-                parent->bounding_box.height += child->bounding_box.height;
-        }
-
         child = child->next_sibling;
     }
-
-    float gap = leaf_max(parent->element.relative_child_count - 1, 0) * cfg->child_gap;
-    if (fit_h && cfg->direction == LEAF_LAYOUT_VERTICAL)
-        parent->bounding_box.height += gap;
-    if (fit_w && cfg->direction == LEAF_LAYOUT_HORIZONAL)
-        parent->bounding_box.width  += gap;
 }
 
 static void leaf_resolve_aspect_ratio(Leaf_Node *node)
@@ -1082,48 +1088,6 @@ static void leaf_size_pass(Leaf_Node *parent)
     }
 
     leaf_wrap_text_children(parent);
-
-    bool fit_w = parent_config->size.width.type  == LEAF_SIZE_TYPE_FIT;
-    bool fit_h = parent_config->size.height.type == LEAF_SIZE_TYPE_FIT;
-
-    if (fit_w || fit_h)
-    {
-        if (fit_w) parent->bounding_box.width  = parent_config->padding.left + parent_config->padding.right;
-        if (fit_h) parent->bounding_box.height = parent_config->padding.top  + parent_config->padding.bottom;
-
-        LEAF_FOREACH_CHILD(child, parent)
-        {
-            if (child->type == LEAF_NODE_TYPE_ELEMENT &&
-                child->element.config.positioning != LEAF_POSITIONING_RELATIVE)
-                continue;
-
-            if (fit_w)
-            {
-                if (parent_config->direction == LEAF_LAYOUT_HORIZONAL)
-                    parent->bounding_box.width += child->bounding_box.width;
-                else
-                    parent->bounding_box.width = leaf_maxf(
-                        child->bounding_box.width + parent_config->padding.left + parent_config->padding.right,
-                        parent->bounding_box.width);
-            }
-            if (fit_h)
-            {
-                if (parent_config->direction == LEAF_LAYOUT_HORIZONAL)
-                    parent->bounding_box.height = leaf_maxf(
-                        child->bounding_box.height + parent_config->padding.top + parent_config->padding.bottom,
-                        parent->bounding_box.height);
-                else
-                    parent->bounding_box.height += child->bounding_box.height;
-            }
-        }
-
-        float gap = leaf_max(parent->element.relative_child_count - 1, 0) * parent_config->child_gap;
-        if (fit_h && parent_config->direction == LEAF_LAYOUT_VERTICAL)
-            parent->bounding_box.height += gap;
-        if (fit_w && parent_config->direction == LEAF_LAYOUT_HORIZONAL)
-            parent->bounding_box.width  += gap;
-    }
-
     leaf_resolve_aspect_ratio(parent);
 }
 
