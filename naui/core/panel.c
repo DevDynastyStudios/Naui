@@ -395,8 +395,14 @@ static void naui_undock_panel_immediate(Naui_PanelNode *node)
 
     naui_free_panel_node(sibling);
 
+    Leaf_BoundingBox title_box = leaf_get_bounding_box(leaf_id_indexed(NAUI_PANEL_TITLEBAR_ID, (Naui_PanelID)node));
+    Leaf_BoundingBox body_box = leaf_get_bounding_box(leaf_id_indexed(NAUI_PANEL_BODY_ID, (Naui_PanelID)node));
+    node->position = (Naui_Vec2){title_box.x, title_box.y};
+    node->size = (Naui_Vec2){body_box.width, body_box.height + title_box.height};
+
     node->parent = NULL;
     node->root = node;
+
     naui_list_push(pm.root_nodes, node);
 }
 
