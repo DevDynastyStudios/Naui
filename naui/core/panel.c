@@ -106,7 +106,7 @@ static inline void naui_render_panel_titlebar(Naui_PanelNode *node)
             Leaf_Color tab_color = naui_theme_leaf_color("naui_panel_tab_bg_color");
             leaf({
                 .size = {LEAF_SIZE_FIT, LEAF_SIZE_FIXED(font_size)},
-                .child_alignment = {LEAF_ALIGN_X_LEFT, LEAF_ALIGN_Y_CENTER},
+                .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER},
                 .padding = LEAF_PADDING_AXES(padding.x, padding.y),
                 .color = tab_color
             })
@@ -114,7 +114,7 @@ static inline void naui_render_panel_titlebar(Naui_PanelNode *node)
                 leaf_text(node->title, {
                     .font_size = font_size,
                     .color = text_color,
-                    .alignment = LEAF_TEXT_ALIGN_LEFT
+                    .alignment = LEAF_TEXT_ALIGN_CENTER
                 });
             }
         }
