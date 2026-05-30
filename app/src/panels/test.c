@@ -14,8 +14,6 @@ Naui_PanelID panel_slot;
 static void on_attach(Naui_PanelID panel_id, TestData *data)
 {
     naui_panel_set_title(panel_id, "Panel");
-    for (uint32_t i = 0; i < 100; i++)
-    child_panel = NAUI_ATTACH_PANEL(test2);
     // panel_id and child_panel are now sibling panels docked horizonatly next to eachother
 
     //Naui_PanelID child_panel_2 = NAUI_ATTACH_PANEL(test2);
@@ -32,8 +30,7 @@ static void on_update(Naui_PanelID panel_id, TestData *data)
     data->time = naui_time();
     if (naui_key_pressed(NAUI_KEY_W))
     {
-        if (!panel_slot)
-        panel_slot = naui_dock_panel(panel_id, child_panel, NAUI_DOCK_DIRECTION_LEFT, 0.5f);
+        panel_slot = naui_dock_panel(panel_id, NAUI_ATTACH_PANEL(test2), NAUI_DOCK_DIRECTION_BOTTOM, 0.5f);
 
     }
     if (naui_key_pressed(NAUI_KEY_S))

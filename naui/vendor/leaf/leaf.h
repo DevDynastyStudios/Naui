@@ -185,6 +185,24 @@ typedef struct
 }
 Leaf_Image;
 
+typedef uint8_t Leaf_RoundingCorners;
+enum
+{
+    LEAF_CORNER_NONE = 0,
+    LEAF_CORNER_TL = 1 << 0,
+    LEAF_CORNER_TR = 1 << 1,
+    LEAF_CORNER_BR = 1 << 2,
+    LEAF_CORNER_BL = 1 << 3,
+    LEAF_CORNER_ALL = LEAF_CORNER_TL | LEAF_CORNER_TR | LEAF_CORNER_BR | LEAF_CORNER_BL,
+};
+
+typedef struct
+{
+    float value;
+    Leaf_RoundingCorners corners;
+}
+Leaf_Rounding;
+
 typedef void (*Leaf_CustomDrawFn)(Leaf_BoundingBox box, void *user_data);
 
 typedef struct
@@ -204,8 +222,9 @@ typedef struct
     Leaf_Alignment child_alignment;
     Leaf_Alignment floating_alignment;
 
+    Leaf_Rounding rounding;
+
     float child_gap;
-    float rounding;
     float aspect_ratio;
 
     Leaf_LayoutDirection direction;
@@ -267,7 +286,7 @@ typedef struct
     {
         struct
         {
-            float rounding;
+            Leaf_Rounding rounding;
             float line_width;
         }
         rect;
@@ -283,7 +302,7 @@ typedef struct
         struct
         {
             void *handle;
-            float rounding;
+            Leaf_Rounding rounding;
         }
         image;
 

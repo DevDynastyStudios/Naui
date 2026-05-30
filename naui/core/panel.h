@@ -25,7 +25,7 @@ typedef struct
 }
 Naui_PanelType;
 
-#define NAUI_ATTACH_PANEL(type_name) naui_attach_panel(#type_name);
+#define NAUI_ATTACH_PANEL(type_name) naui_attach_panel(#type_name)
 
 NAUI_API Naui_PanelID naui_attach_panel(const char *type_name);
 NAUI_API void         naui_detach_panel(Naui_PanelID id);

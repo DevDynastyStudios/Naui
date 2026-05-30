@@ -64,9 +64,13 @@ typedef struct
     Naui_PanelNode *dragged_node;
     Naui_PanelNode *resizing_node;
 
+    Naui_PanelNode *splitting_node;
+    float split_drag_start_ratio;
+
     Naui_Vec2 resize_drag_start_mouse;
     Naui_Vec2 resize_drag_start_pos;
     Naui_Vec2 resize_drag_start_size;
+
     Naui_ResizeHandle resize_handle;
 }
 Naui_PanelManager;
@@ -135,7 +139,6 @@ static inline void naui_render_panel_titlebar(Naui_PanelNode *node)
             }
         }
     }
-
 }
 
 static inline void naui_render_panel_body(Naui_PanelNode *node)
@@ -222,7 +225,7 @@ static void naui_panel_bring_to_front(Naui_PanelNode *node)
 
 static void naui_update_panel_movement(Naui_PanelNode *node)
 {
-    if (pm.resizing_node)
+    if (pm.resizing_node || pm.splitting_node)
         return;
 
     static Naui_Vec2 first_position;
@@ -251,6 +254,62 @@ static void naui_update_panel_movement(Naui_PanelNode *node)
     root->position.y = naui_mouse_y() - first_position.y;
 }
 
+static void naui_update_panel_split(Naui_PanelNode *node, Naui_Vec2 rect_pos, Naui_Vec2 rect_size)
+{
+    if (!naui_panel_has_children(node))
+        return;
+
+    if (pm.dragged_node || pm.resizing_node)
+        return;
+
+    float half = NAUI_RESIZE_BORDER_WIDTH * 0.5f;
+    float mx   = naui_mouse_x();
+    float my   = naui_mouse_y();
+
+    bool vertical = (node->split_axis == NAUI_SPLIT_AXIS_VERTICAL);
+
+    float sep = vertical
+        ? rect_pos.y + rect_size.y * node->split_ratio
+        : rect_pos.x + rect_size.x * node->split_ratio;
+
+    bool on_sep;
+    if (vertical)
+        on_sep = my >= sep - half && my <= sep + half
+              && mx >= rect_pos.x  && mx <= rect_pos.x + rect_size.x;
+    else
+        on_sep = mx >= sep - half && mx <= sep + half
+              && my >= rect_pos.y  && my <= rect_pos.y + rect_size.y;
+
+    if (!pm.splitting_node)
+    {
+        if (on_sep)
+        {
+            naui_set_cursor(vertical ? NAUI_CURSOR_RESIZE_NS : NAUI_CURSOR_RESIZE_EW);
+            if (naui_mouse_clicked(NAUI_MOUSE_LEFT))
+            {
+                pm.splitting_node         = node;
+                pm.split_drag_start_ratio = node->split_ratio;
+            }
+        }
+        return;
+    }
+
+    if (pm.splitting_node != node)
+        return;
+
+    naui_set_cursor(vertical ? NAUI_CURSOR_RESIZE_NS : NAUI_CURSOR_RESIZE_EW);
+
+    float span = vertical ? rect_size.y : rect_size.x;
+    float mouse_pos = vertical ? my : mx;
+    float origin = vertical ? rect_pos.y : rect_pos.x;
+
+    float min_ratio = NAUI_MIN_PANEL_SIZE / span;
+    float max_ratio = 1.0f - min_ratio;
+
+    float new_ratio = (mouse_pos - origin) / span;
+    node->split_ratio = fmaxf(min_ratio, fminf(max_ratio, new_ratio));
+}
+
 static void naui_set_cursor_for_handle(Naui_ResizeHandle handle)
 {
     switch (handle)
@@ -277,10 +336,10 @@ static Naui_ResizeHandle naui_get_resize_handle(Naui_PanelNode *root)
     float h  = root->size.y;
     float hb = NAUI_RESIZE_BORDER_WIDTH * 0.5f;
 
-    bool on_left   = mx >= x - hb         && mx <= x + hb;
-    bool on_right  = mx >= x + w - hb     && mx <= x + w + hb;
-    bool on_top    = my >= y - hb         && my <= y + hb;
-    bool on_bottom = my >= y + h - hb     && my <= y + h + hb;
+    bool on_left   = mx >= x - hb       && mx <= x + hb;
+    bool on_right  = mx >= x + w - hb   && mx <= x + w + hb;
+    bool on_top    = my >= y - hb       && my <= y + hb;
+    bool on_bottom = my >= y + h - hb   && my <= y + h + hb;
 
     bool in_x = mx >= x - hb && mx <= x + w + hb;
     bool in_y = my >= y - hb && my <= y + h + hb;
@@ -353,7 +412,7 @@ static void naui_update_panel_resize(Naui_PanelNode *node)
     root->size = new_size;
 }
 
-static void naui_update_panel(Naui_PanelNode *node)
+static void naui_update_panel(Naui_PanelNode *node, Naui_Vec2 rect_pos, Naui_Vec2 rect_size)
 {
     if (!naui_panel_has_children(node))
     {
@@ -364,8 +423,30 @@ static void naui_update_panel(Naui_PanelNode *node)
         return;
     }
 
-    naui_update_panel(node->children[0]);
-    naui_update_panel(node->children[1]);
+    naui_update_panel_split(node, rect_pos, rect_size);
+
+    bool vertical = (node->split_axis == NAUI_SPLIT_AXIS_VERTICAL);
+
+    Naui_Vec2 c0_pos  = rect_pos;
+    Naui_Vec2 c0_size = rect_size;
+    Naui_Vec2 c1_pos  = rect_pos;
+    Naui_Vec2 c1_size = rect_size;
+
+    if (vertical)
+    {
+        c0_size.y = rect_size.y * node->split_ratio;
+        c1_pos.y  = rect_pos.y  + c0_size.y;
+        c1_size.y = rect_size.y - c0_size.y;
+    }
+    else
+    {
+        c0_size.x = rect_size.x * node->split_ratio;
+        c1_pos.x  = rect_pos.x  + c0_size.x;
+        c1_size.x = rect_size.x - c0_size.x;
+    }
+
+    naui_update_panel(node->children[0], c0_pos, c0_size);
+    naui_update_panel(node->children[1], c1_pos, c1_size);
 }
 
 static void naui_undock_panel_immediate(Naui_PanelNode *node)
@@ -412,10 +493,14 @@ void naui_panel_manager_frame(void)
     {
         pm.dragged_node = NULL;
         pm.resizing_node = NULL;
+        pm.splitting_node = NULL;
     }
 
     for (size_t i = naui_list_len(pm.root_nodes); i-- > 0;)
-        naui_update_panel(pm.root_nodes[i]);
+    {
+        Naui_PanelNode *root = pm.root_nodes[i];
+        naui_update_panel(root, root->position, root->size);
+    }
 
     for (size_t i = 0; i < naui_list_len(pm.pending_undocks); i++)
         naui_undock_panel_immediate(pm.pending_undocks[i]);
