@@ -254,6 +254,7 @@ static void naui_render_docking_guide(Naui_PanelNode *node)
         .aspect_ratio = 1.0f
     })
     {
+        Leaf_Rounding rounding = {6.0f, LEAF_CORNER_ALL};
         leaf({
             .positioning     = LEAF_POSITIONING_FLOATING_TO_PARENT,
             .size            = {LEAF_SIZE_FULL, LEAF_SIZE_FULL},
@@ -262,11 +263,11 @@ static void naui_render_docking_guide(Naui_PanelNode *node)
         })
         {
             leaf({ .id = guide_top_id,    .size = {LEAF_SIZE_PERCENT(0.3f), LEAF_SIZE_PERCENT(0.3f)},
-                   .color = guide_top_hovered    ? hovered_color : bg_color, .rounding = 6.0f });
+                   .color = guide_top_hovered    ? hovered_color : bg_color, .rounding = rounding });
             leaf({ .id = guide_center_id, .size = {LEAF_SIZE_PERCENT(0.3f), LEAF_SIZE_PERCENT(0.3f)},
-                   .color = guide_center_hovered ? hovered_color : bg_color, .rounding = 6.0f });
+                   .color = guide_center_hovered ? hovered_color : bg_color, .rounding = rounding });
             leaf({ .id = guide_bottom_id, .size = {LEAF_SIZE_PERCENT(0.3f), LEAF_SIZE_PERCENT(0.3f)},
-                   .color = guide_bottom_hovered ? hovered_color : bg_color, .rounding = 6.0f });
+                   .color = guide_bottom_hovered ? hovered_color : bg_color, .rounding = rounding });
         }
         leaf({
             .positioning     = LEAF_POSITIONING_FLOATING_TO_PARENT,
@@ -277,10 +278,10 @@ static void naui_render_docking_guide(Naui_PanelNode *node)
         })
         {
             leaf({ .id = guide_left_id,  .size = {LEAF_SIZE_PERCENT(0.3f), LEAF_SIZE_PERCENT(0.3f)},
-                   .color = guide_left_hovered  ? hovered_color : bg_color, .rounding = 6.0f });
+                   .color = guide_left_hovered  ? hovered_color : bg_color, .rounding = rounding });
             leaf({ .size = {LEAF_SIZE_PERCENT(0.3f), LEAF_SIZE_PERCENT(0.3f)} });
             leaf({ .id = guide_right_id, .size = {LEAF_SIZE_PERCENT(0.3f), LEAF_SIZE_PERCENT(0.3f)},
-                   .color = guide_right_hovered ? hovered_color : bg_color, .rounding = 6.0f });
+                   .color = guide_right_hovered ? hovered_color : bg_color, .rounding = rounding });
         }
     }
 }
