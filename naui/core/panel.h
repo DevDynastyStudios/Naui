@@ -25,14 +25,26 @@ typedef struct
 }
 Naui_PanelType;
 
+typedef uint32_t Naui_PanelFlags;
+enum
+{
+    NAUI_PANEL_FLAG_NONE = 0,
+    NAUI_PANEL_FLAG_NO_CLOSE = 1 << 0,
+    NAUI_PANEL_FLAG_NO_DOCKING = 1 << 1,
+    NAUI_PANEL_FLAG_NO_MOVE = 1 << 2,
+    NAUI_PANEL_FLAG_NO_RESIZE = 1 << 3
+};
+
 #define NAUI_ATTACH_PANEL(type_name) naui_attach_panel(#type_name)
 
 NAUI_API Naui_PanelID naui_attach_panel(const char *type_name);
 NAUI_API void         naui_detach_panel(Naui_PanelID id);
 NAUI_API void         naui_register_panel_type(const char *name, Naui_PanelType type);
 
-NAUI_API void         naui_panel_set_title  (Naui_PanelID panel_id, const char *title);
-NAUI_API void         naui_panel_set_size   (Naui_PanelID panel_id, Naui_Vec2 size);
+NAUI_API void         naui_panel_set_title      (Naui_PanelID panel_id, const char *title);
+NAUI_API void         naui_panel_set_size       (Naui_PanelID panel_id, Naui_Vec2 size);
+NAUI_API void         naui_panel_enable_flags   (Naui_PanelID panel_id, Naui_PanelFlags flags);
+NAUI_API void         naui_panel_disable_flags  (Naui_PanelID panel_id, Naui_PanelFlags flags);
 
 NAUI_API Naui_PanelID naui_dock_panel   (Naui_PanelID target_id, Naui_PanelID guest_id, Naui_DockDirection direction, float split_ratio);
 NAUI_API void         naui_undock_panel (Naui_PanelID id);
