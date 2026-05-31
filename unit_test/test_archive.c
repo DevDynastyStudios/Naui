@@ -24,20 +24,20 @@ static Naui_Path temp_root(void)
 	return p;
 }
 
-static Naui_Path* tp(const char* sub)
+static Naui_Path tp(const char* sub)
 {
 	enum { TP_POOL_SIZE = 32 };
 	static Naui_Path pool[TP_POOL_SIZE];
 	static size_t    idx = 0;
 	idx = (idx + 1) % TP_POOL_SIZE;
 
-	Naui_Path* p = &pool[idx];
+	Naui_Path p = pool[idx];
 	Naui_Path  root = temp_root();
-	snprintf(p->data, NAUI_PATH_MAX, "%s" SEP "%s", root.data, sub);
+	snprintf(p.data, NAUI_PATH_MAX, "%s" SEP "%s", root.data, sub);
 	return p;
 }
 
-static void write_text(const Naui_Path* path, const char* text)
+static void write_text(const Naui_Path path, const char* text)
 {
 	naui_file_write_all(path, text, strlen(text));
 }
@@ -51,20 +51,20 @@ static void write_text(const Naui_Path* path, const char* text)
  *     sub/
  *       nested.txt    "Nested"
  */
-static void build_src_tree(const Naui_Path* root)
+static void build_src_tree(const Naui_Path root)
 {
 	naui_directory_create(root);
 
 	Naui_Path sub, hello, world, nested;
-	snprintf(sub.data,    NAUI_PATH_MAX, "%s" SEP "sub",             root->data);
-	snprintf(hello.data,  NAUI_PATH_MAX, "%s" SEP "hello.txt",       root->data);
-	snprintf(world.data,  NAUI_PATH_MAX, "%s" SEP "world.txt",       root->data);
-	snprintf(nested.data, NAUI_PATH_MAX, "%s" SEP "sub" SEP "nested.txt", root->data);
+	snprintf(sub.data,    NAUI_PATH_MAX, "%s" SEP "sub",             root.data);
+	snprintf(hello.data,  NAUI_PATH_MAX, "%s" SEP "hello.txt",       root.data);
+	snprintf(world.data,  NAUI_PATH_MAX, "%s" SEP "world.txt",       root.data);
+	snprintf(nested.data, NAUI_PATH_MAX, "%s" SEP "sub" SEP "nested.txt", root.data);
 
-	naui_directory_create(&sub);
-	write_text(&hello,  "Hello");
-	write_text(&world,  "World");
-	write_text(&nested, "Nested");
+	naui_directory_create(sub);
+	write_text(hello,  "Hello");
+	write_text(world,  "World");
+	write_text(nested, "Nested");
 }
 
 /* -------------------------------------------------------------------------
@@ -103,14 +103,14 @@ static void test_archive_add_extract_file(void)
 
 		Naui_Path dest_name;
 		snprintf(dest_name.data, NAUI_PATH_MAX, "single_src.txt");
-		ASSERT(naui_archive_add_file(&w, tp("single_src.txt"), &dest_name));
+		ASSERT(naui_archive_add_file(&w, tp("single_src.txt"), dest_name));
 		naui_archive_close(&w);
 		ASSERT(naui_path_exists(tp("single.zip")));
 
 		Naui_Archive r = NAUI_ARCHIVE_INIT;
 		naui_archive_open(&r, tp("single.zip"), NAUI_ARCHIVE_READ);
 		ASSERT(naui_archive_is_valid(&r));
-		ASSERT(naui_archive_extract_file(&r, &dest_name, tp("extracted_single.txt")));
+		ASSERT(naui_archive_extract_file(&r, dest_name, tp("extracted_single.txt")));
 		naui_archive_close(&r);
 
 		size_t sz;
@@ -136,7 +136,7 @@ static void test_archive_add_folder_extract_to(void)
 
 		Naui_Path no_prefix;
 		no_prefix.data[0] = '\0';
-		ASSERT(naui_archive_add_folder(&w, tp("src_folder"), &no_prefix));
+		ASSERT(naui_archive_add_folder(&w, tp("src_folder"), no_prefix));
 		naui_archive_close(&w);
 		ASSERT(naui_path_exists(tp("folder.zip")));
 
@@ -175,7 +175,7 @@ static void test_archive_list_entries(void)
 		ASSERT(naui_archive_is_valid(&w));
 		Naui_Path no_prefix;
 		no_prefix.data[0] = '\0';
-		ASSERT(naui_archive_add_folder(&w, tp("src_list"), &no_prefix));
+		ASSERT(naui_archive_add_folder(&w, tp("src_list"), no_prefix));
 		naui_archive_close(&w);
 
 		Naui_Archive r = NAUI_ARCHIVE_INIT;
@@ -217,7 +217,7 @@ static void test_archive_move(void)
 		ASSERT(naui_archive_is_valid(&w));
 		Naui_Path dest_name;
 		snprintf(dest_name.data, NAUI_PATH_MAX, "move_src.txt");
-		ASSERT(naui_archive_add_file(&w, tp("move_src.txt"), &dest_name));
+		ASSERT(naui_archive_add_file(&w, tp("move_src.txt"), dest_name));
 		naui_archive_close(&w);
 
 		Naui_Archive src = NAUI_ARCHIVE_INIT;
@@ -250,14 +250,14 @@ static void test_archive_mode_guard(void)
 		ASSERT(naui_archive_is_valid(&w));
 		Naui_Path dest_name;
 		snprintf(dest_name.data, NAUI_PATH_MAX, "guard_src.txt");
-		ASSERT(naui_archive_add_file(&w, tp("guard_src.txt"), &dest_name));
+		ASSERT(naui_archive_add_file(&w, tp("guard_src.txt"), dest_name));
 		naui_archive_close(&w);
 
 		/* Adding to a read archive must fail */
 		Naui_Archive r = NAUI_ARCHIVE_INIT;
 		naui_archive_open(&r, tp("guard.zip"), NAUI_ARCHIVE_READ);
 		ASSERT(naui_archive_is_valid(&r));
-		ASSERT(!naui_archive_add_file(&r, tp("guard_src.txt"), &dest_name));
+		ASSERT(!naui_archive_add_file(&r, tp("guard_src.txt"), dest_name));
 		naui_archive_close(&r);
 
 		/* Listing from a write archive must fail */
@@ -321,7 +321,7 @@ static void test_archive_custom_bad_magic(void)
 void archive_test()
 {
 	Naui_Path root = temp_root();
-	naui_directory_create(&root);
+	naui_directory_create(root);
 
 	test_archive_open_invalid();
 	test_archive_add_extract_file();
@@ -332,5 +332,5 @@ void archive_test()
 	test_archive_custom_create_extract();
 	test_archive_custom_bad_magic();
 
-	naui_directory_remove_all(&root);
+	naui_directory_remove_all(root);
 }

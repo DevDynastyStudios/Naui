@@ -125,7 +125,7 @@ static void iterator_advance(Naui_DirIterator* it)
 	}
 }
 
-Naui_DirIterator naui_dir_iterator_open(const Naui_Path* path, const char* filter, const char** extensions, bool case_sensitive)
+Naui_DirIterator naui_dir_iterator_open(const Naui_Path path, const char* filter, const char** extensions, bool case_sensitive)
 {
 	Naui_DirIterator it;
 	memset(&it, 0, sizeof(it));
@@ -136,7 +136,7 @@ Naui_DirIterator naui_dir_iterator_open(const Naui_Path* path, const char* filte
 	wchar_t wsearch[NAUI_PATH_MAX];
 	{
 		wchar_t wpath[NAUI_PATH_MAX];
-		if (!to_wide(path->data, wpath))
+		if (!to_wide(path.data, wpath))
 			return it;
 
 		_snwprintf(wsearch, NAUI_PATH_MAX, L"%s\\*", wpath);
@@ -146,7 +146,7 @@ Naui_DirIterator naui_dir_iterator_open(const Naui_Path* path, const char* filte
 	if (internal->find_handle == INVALID_HANDLE_VALUE)
 		return it;
 
-	snprintf(internal->root, NAUI_PATH_MAX, "%s", path->data);
+	snprintf(internal->root, NAUI_PATH_MAX, "%s", path.data);
 	if (filter)
 		snprintf(it._filter, sizeof(it._filter), "%s", filter);
 

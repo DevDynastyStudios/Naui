@@ -103,6 +103,16 @@ const char* naui_str_find_char(const char* s, char c)
 	return strchr(s, c);
 }
 
+bool naui_str_is_whitespace(char c)
+{
+	return c == ' ' || c == '\t' || c == '\r' || c == '\n';
+}
+
+bool naui_str_is_digit(char c)
+{
+	return c >= '0' && c <= '9';
+}
+
 bool naui_str_to_int(const char* s, int* out)
 {
 	if (!s || !out || s[0] == '\0')

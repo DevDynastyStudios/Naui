@@ -157,7 +157,7 @@ static void resolve_lock_target(const char* path, char* out)
 		snprintf(out, NAUI_PATH_MAX, "%s", path);
 }
 
-bool naui_file_open(Naui_FileHandle* handle, const Naui_Path* path, Naui_FileMode mode)
+bool naui_file_open(Naui_FileHandle* handle, const Naui_Path path, Naui_FileMode mode)
 {
 	if (!handle)
 		return false;
@@ -182,7 +182,7 @@ bool naui_file_open(Naui_FileHandle* handle, const Naui_Path* path, Naui_FileMod
 	}
 
 	Naui_FileInternal* fi = file_internal(handle);
-	fi->fp = fopen(path->data, m);
+	fi->fp = fopen(path.data, m);
 	return fi->fp != NULL;
 }
 
@@ -243,18 +243,18 @@ void naui_file_close(Naui_FileHandle* handle)
 	}
 }
 
-size_t naui_file_size(const Naui_Path* path)
+size_t naui_file_size(const Naui_Path path)
 {
 	struct stat st;
-	if (stat(path->data, &st) != 0)
+	if (stat(path.data, &st) != 0)
 		return 0;
 
 	return (size_t)st.st_size;
 }
 
-char* naui_file_read_all(const Naui_Path* path, size_t* out_size)
+char* naui_file_read_all(const Naui_Path path, size_t* out_size)
 {
-	FILE* fp = fopen(path->data, "rb");
+	FILE* fp = fopen(path.data, "rb");
 	if (!fp)
 		return NULL;
 
@@ -285,12 +285,12 @@ char* naui_file_read_all(const Naui_Path* path, size_t* out_size)
 	return buf;
 }
 
-bool naui_file_write_all(const Naui_Path* path, const void* data, size_t size)
+bool naui_file_write_all(const Naui_Path path, const void* data, size_t size)
 {
 	if (!data)
 		return false;
 
-	FILE* fp = fopen(path->data, "wb");
+	FILE* fp = fopen(path.data, "wb");
 	if (!fp)
 		return false;
 
@@ -299,22 +299,22 @@ bool naui_file_write_all(const Naui_Path* path, const void* data, size_t size)
 	return written == size;
 }
 
-bool naui_file_delete(const Naui_Path* path)
+bool naui_file_delete(const Naui_Path path)
 {
-	return remove(path->data) == 0;
+	return remove(path.data) == 0;
 }
 
-bool naui_file_rename(const Naui_Path* old_path, const Naui_Path* new_path)
+bool naui_file_rename(const Naui_Path old_path, const Naui_Path new_path)
 {
-	return rename(old_path->data, new_path->data) == 0;
+	return rename(old_path.data, new_path.data) == 0;
 }
 
-Naui_Path naui_file_hide(const Naui_Path* path, bool hidden)
+Naui_Path naui_file_hide(const Naui_Path path, bool hidden)
 {
 	const char* filename = naui_file_filename(path);
 	bool currently_hidden = (filename[0] == '.');
 	if (currently_hidden == hidden)
-		return *path;
+		return path;
 
 	Naui_Path parent = naui_path_parent(path);
 	Naui_Path renamed;
@@ -323,21 +323,21 @@ Naui_Path naui_file_hide(const Naui_Path* path, bool hidden)
 	else
 		snprintf(renamed.data, NAUI_PATH_MAX, "%s/%s", parent.data, filename + 1);
 
-	if (rename(path->data, renamed.data) != 0)
-		return *path;
+	if (rename(path.data, renamed.data) != 0)
+		return path;
 
 	return renamed;
 }
 
-bool naui_file_is_hidden(const Naui_Path* path)
+bool naui_file_is_hidden(const Naui_Path path)
 {
 	const char* filename = naui_file_filename(path);
 	return filename[0] == '.';
 }
 
-const char* naui_file_filename(const Naui_Path* path)
+const char* naui_file_filename(const Naui_Path path)
 {
-	const char* data = path->data;
+	const char* data = path.data;
 	const char* last = NULL;
 	for (const char* p = data; *p; ++p)
 	{
@@ -348,7 +348,7 @@ const char* naui_file_filename(const Naui_Path* path)
 	return last ? last + 1 : data;
 }
 
-Naui_Path naui_file_stem(const Naui_Path* path)
+Naui_Path naui_file_stem(const Naui_Path path)
 {
 	const char* filename = naui_file_filename(path);
 	const char* dot = strrchr(filename, '.');
@@ -365,7 +365,7 @@ Naui_Path naui_file_stem(const Naui_Path* path)
 	return result;
 }
 
-Naui_Path naui_file_extension(const Naui_Path* path)
+Naui_Path naui_file_extension(const Naui_Path path)
 {
 	const char* filename = naui_file_filename(path);
 	const char* dot = strrchr(filename, '.');
@@ -375,14 +375,14 @@ Naui_Path naui_file_extension(const Naui_Path* path)
 	return path_from(dot);
 }
 
-bool naui_directory_create(const Naui_Path* path)
+bool naui_directory_create(const Naui_Path path)
 {
-	return mkdir(path->data, 0755) == 0 || errno == EEXIST;
+	return mkdir(path.data, 0755) == 0 || errno == EEXIST;
 }
 
-bool naui_directory_remove(const Naui_Path* path)
+bool naui_directory_remove(const Naui_Path path)
 {
-	return rmdir(path->data) == 0;
+	return rmdir(path.data) == 0;
 }
 
 static bool remove_all_recursive(const char* path)
@@ -401,10 +401,7 @@ static bool remove_all_recursive(const char* path)
 		char child[NAUI_PATH_MAX];
 		snprintf(child, sizeof(child), "%s/%s", path, entry->d_name);
 		struct stat st;
-		if (stat(child, &st) == 0 && S_ISDIR(st.st_mode))
-			ok &= remove_all_recursive(child);
-		else
-			ok &= (remove(child) == 0);
+		ok &= (stat(child, &st) == 0 && S_ISDIR(st.st_mode)) ? remove_all_recursive(child) : (remove(child) == 0);
 	}
 
 	closedir(dir);
@@ -412,26 +409,26 @@ static bool remove_all_recursive(const char* path)
 	return ok;
 }
 
-bool naui_directory_remove_all(const Naui_Path* path)
+bool naui_directory_remove_all(const Naui_Path path)
 {
-	if (path->data[0] == '\0')
+	if (path.data[0] == '\0')
 		return false;
 
-	return remove_all_recursive(path->data);
+	return remove_all_recursive(path.data);
 }
 
-Naui_List(Naui_DirEntry) naui_directory_filter_recursive(const Naui_Path* path, const char* filter, const char** extensions, int ext_count)
+Naui_List(Naui_DirEntry) naui_directory_filter_recursive(const Naui_Path path, const char* filter, const char** extensions, int ext_count)
 {
 	Naui_List(Naui_DirEntry) list = NULL;
 
-	if (path->data[0] == '\0')
+	if (path.data[0] == '\0')
 		return list;
 
-	filter_recursive_impl(path->data, filter, extensions, ext_count, &list);
+	filter_recursive_impl(path.data, filter, extensions, ext_count, &list);
 	return list;
 }
 
-bool naui_directory_rename(const Naui_Path* old_path, const Naui_Path* new_path)
+bool naui_directory_rename(const Naui_Path old_path, const Naui_Path new_path)
 {
 	return naui_file_rename(old_path, new_path);
 }
@@ -443,6 +440,7 @@ Naui_Path naui_directory_get(const Naui_Dir directory)
 	static char s_bin[NAUI_PATH_MAX] = {0};
 	static char s_appdata[NAUI_PATH_MAX] = {0};
 	static char s_downloads[NAUI_PATH_MAX] = {0};
+	static char s_temp[NAUI_PATH_MAX] = {0};
 
 	switch (directory)
 	{
@@ -523,19 +521,31 @@ Naui_Path naui_directory_get(const Naui_Dir directory)
 
 			return path_from(s_downloads);
 		}
+		case NAUI_DIR_TEMP:
+		{
+			if(s_temp[0])
+				return path_from(s_temp);
+
+			const char* temp = getenv("TMPDIR");
+			if(!tmp || !tmp[0])
+				tmp = "/tmp";
+
+			snprintf(s_temp, sizeof(s_temp), "%s", tmp);
+			return path_from(s_temp);
+		}
 	}
 
 	return path_empty();
 }
 
-Naui_List(Naui_DirEntry) naui_directory_filter(const Naui_Path* path, const char* filter, const char** extensions, int ext_count)
+Naui_List(Naui_DirEntry) naui_directory_filter(const Naui_Path path, const char* filter, const char** extensions, int ext_count)
 {
 	Naui_List(Naui_DirEntry) list = NULL;
 
-	if (path->data[0] == '\0')
+	if (path.data[0] == '\0')
 		return list;
 
-	DIR* dir = opendir(path->data);
+	DIR* dir = opendir(path.data);
 	if (!dir)
 		return list;
 
@@ -552,7 +562,7 @@ Naui_List(Naui_DirEntry) naui_directory_filter(const Naui_Path* path, const char
 			continue;
 
 		char child[NAUI_PATH_MAX];
-		snprintf(child, sizeof(child), "%s/%s", path->data, entry->d_name);
+		snprintf(child, sizeof(child), "%s/%s", path.data, entry->d_name);
 		struct stat st;
 		if (stat(child, &st) != 0)
 			continue;
@@ -574,33 +584,46 @@ void naui_directory_filter_free(Naui_List(Naui_DirEntry) list)
 		naui_list_free(list);
 }
 
-bool naui_path_set_current(const Naui_Path* path)
+bool naui_path_set_current(const Naui_Path path)
 {
-	if (path->data[0] == '\0')
+	if (path.data[0] == '\0')
 		return false;
 
-	if (chdir(path->data) != 0)
+	if (chdir(path.data) != 0)
 		return false;
 
-	memcpy(s_working, path->data, NAUI_PATH_MAX);
+	memcpy(s_working, path.data, NAUI_PATH_MAX);
 	return true;
 }
 
-bool naui_path_exists(const Naui_Path* path)
+bool naui_path_exists(const Naui_Path path)
 {
 	struct stat st;
-	return stat(path->data, &st) == 0;
+	return stat(path.data, &st) == 0;
 }
 
-bool naui_path_is_empty(const Naui_Path* path)
+bool naui_path_is_empty(const Naui_Path path)
 {
-	return path->data[0] == '\0';
+	return path.data[0] == '\0';
 }
 
-Naui_Path naui_path_parent(const Naui_Path* path)
+Naui_Path naui_path_from_cstr(const char* str)
 {
-	size_t len = strlen(path->data);
-	while (len > 1 && is_separator(path->data[len - 1]))
+	Naui_Path p;
+	if (!str)
+	{
+		p.data[0] = '\0';
+		return p;
+	}
+
+	snprintf(p.data, NAUI_PATH_MAX, "%s", str);
+	return p;
+}
+
+Naui_Path naui_path_parent(const Naui_Path path)
+{
+	size_t len = strlen(path.data);
+	while (len > 1 && is_separator(path.data[len - 1]))
 	{
 		--len;
 	}
@@ -608,46 +631,46 @@ Naui_Path naui_path_parent(const Naui_Path* path)
 	const char* last = NULL;
 	for (size_t i = len; i > 0; --i)
 	{
-		if (!is_separator(path->data[i - 1]))
+		if (!is_separator(path.data[i - 1]))
 			continue;
 
-		last = path->data + i - 1;
+		last = path.data + i - 1;
 		break;
 	}
 
 	if (!last)
 		return path_from(".");
 
-	if (last == path->data)
+	if (last == path.data)
 		return path_from("/");
 
-	size_t parent_len = (size_t)(last - path->data);
+	size_t parent_len = (size_t)(last - path.data);
 	Naui_Path result;
-	memcpy(result.data, path->data, parent_len);
+	memcpy(result.data, path.data, parent_len);
 	result.data[parent_len] = '\0';
 	return result;
 }
 
-Naui_Path naui_path_join(const Naui_Path* a, const Naui_Path* b)
+Naui_Path naui_path_join(const Naui_Path a, const Naui_Path b)
 {
-	if (b->data[0] == '/')
-		return *b;
+	if (b.data[0] == '/')
+		return b;
 
 	Naui_Path result;
-	size_t a_len = strlen(a->data);
+	size_t a_len = strlen(a.data);
 
 	if (a_len == 0)
-		return *b;
+		return b;
 
-	const char* expr = is_separator(a->data[a_len - 1]) ? "%s%s" : "%s/%s";
-	snprintf(result.data, NAUI_PATH_MAX, expr, a->data, b->data);
+	const char* expr = is_separator(a.data[a_len - 1]) ? "%s%s" : "%s/%s";
+	snprintf(result.data, NAUI_PATH_MAX, expr, a.data, b.data);
 	return result;
 }
 
-Naui_Path naui_path_normalize(const Naui_Path* path)
+Naui_Path naui_path_normalize(const Naui_Path path)
 {
 	char buf[NAUI_PATH_MAX];
-	snprintf(buf, sizeof(buf), "%s", path->data);
+	snprintf(buf, sizeof(buf), "%s", path.data);
 	bool is_absolute = (buf[0] == '/');
 	const char* parts[NAUI_PATH_MAX >> 1];
 	int n = 0;
@@ -684,32 +707,32 @@ Naui_Path naui_path_normalize(const Naui_Path* path)
 	return result;
 }
 
-Naui_Path naui_path_absolute(const Naui_Path* path)
+Naui_Path naui_path_absolute(const Naui_Path path)
 {
-	if (path->data[0] == '/')
-		return *path;
+	if (path.data[0] == '/')
+		return path;
 
 	Naui_Path cwd = naui_directory_get(NAUI_DIR_WORKING);
-	return naui_path_join(&cwd, path);
+	return naui_path_join(cwd, path);
 }
 
-Naui_Path naui_path_canonical(const Naui_Path* path)
+Naui_Path naui_path_canonical(const Naui_Path path)
 {
 	char resolved[NAUI_PATH_MAX];
-	if (!realpath(path->data, resolved))
+	if (!realpath(path.data, resolved))
 		return path_empty();
 
 	return path_from(resolved);
 }
 
-Naui_Path naui_path_weakly_canonical(const Naui_Path* path)
+Naui_Path naui_path_weakly_canonical(const Naui_Path path)
 {
-	Naui_Path existing = *path;
+	Naui_Path existing = path;
 	Naui_Path tail = path_empty();
-	while (existing.data[0] != '\0' && !naui_path_exists(&existing))
+	while (existing.data[0] != '\0' && !naui_path_exists(existing))
 	{
-		Naui_Path parent = naui_path_parent(&existing);
-		Naui_Path segment = path_from(naui_file_filename(&existing));
+		Naui_Path parent = naui_path_parent(existing);
+		Naui_Path segment = path_from(naui_file_filename(existing));
 
 		if (tail.data[0] != '\0')
 		{
@@ -723,21 +746,21 @@ Naui_Path naui_path_weakly_canonical(const Naui_Path* path)
 		existing = parent;
 	}
 
-	Naui_Path base = (existing.data[0] != '\0') ? naui_path_canonical(&existing) : path_from(".");
+	Naui_Path base = (existing.data[0] != '\0') ? naui_path_canonical(existing) : path_from(".");
 	if (tail.data[0] == '\0')
 		return base;
 
-	Naui_Path joined = naui_path_join(&base, &tail);
-	return naui_path_normalize(&joined);
+	Naui_Path joined = naui_path_join(base, tail);
+	return naui_path_normalize(joined);
 }
 
-bool naui_path_lock(const Naui_Path* path)
+bool naui_path_lock(const Naui_Path path)
 {
-	if (path->data[0] == '\0' || s_lock_count >= NAUI_LOCK_MAX)
+	if (path.data[0] == '\0' || s_lock_count >= NAUI_LOCK_MAX)
 		return false;
 
 	char target[NAUI_PATH_MAX];
-	resolve_lock_target(path->data, target);
+	resolve_lock_target(path.data, target);
 
 	for (int i = 0; i < s_lock_count; ++i)
 	{
@@ -776,13 +799,13 @@ bool naui_path_lock(const Naui_Path* path)
 	return true;
 }
 
-bool naui_path_is_locked(const Naui_Path* path)
+bool naui_path_is_locked(const Naui_Path path)
 {
-	if (path->data[0] == '\0')
+	if (path.data[0] == '\0')
 		return false;
 
 	char target[NAUI_PATH_MAX];
-	resolve_lock_target(path->data, target);
+	resolve_lock_target(path.data, target);
 	for (int i = 0; i < s_lock_count; ++i)
 	{
 		if (strcmp(s_locks[i].path, target) == 0)
@@ -805,13 +828,13 @@ bool naui_path_is_locked(const Naui_Path* path)
 	return locked;
 }
 
-void naui_path_unlock(const Naui_Path* path)
+void naui_path_unlock(const Naui_Path path)
 {
-	if (path->data[0] == '\0')
+	if (path.data[0] == '\0')
 		return;
 
 	char target[NAUI_PATH_MAX];
-	resolve_lock_target(path->data, target);
+	resolve_lock_target(path.data, target);
 	for (int i = 0; i < s_lock_count; ++i)
 	{
 		if (strcmp(s_locks[i].path, target) != 0)

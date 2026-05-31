@@ -84,17 +84,17 @@ static void iterator_advance(Naui_DirIterator* it)
 	}
 }
 
-Naui_DirIterator naui_dir_iter_open(const Naui_Path* path, const char* filter, const char** extensions, bool case_sensitive)
+Naui_DirIterator naui_dir_iter_open(const Naui_Path path, const char* filter, const char** extensions, bool case_sensitive)
 {
 	Naui_DirIterator it;
 	memset(&it, 0, sizeof(it));
 
 	Naui_DirIterInternal* internal = iterator_internal(&it);
-	internal->dir = opendir(path->data);
+	internal->dir = opendir(path.data);
 	if (!internal->dir)
 		return it;
 
-	snprintf(internal->root, NAUI_PATH_MAX, "%s", path->data);
+	snprintf(internal->root, NAUI_PATH_MAX, "%s", path.data);
 	if (filter)
 		snprintf(it._filter, sizeof(it._filter), "%s", filter);
 

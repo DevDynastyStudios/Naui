@@ -64,19 +64,19 @@ static bool zip_extract_entry_to_file(mz_zip_archive* zip, const char* entry, co
 	return mz_zip_reader_extract_file_to_file(zip, entry, dest, 0) != 0;
 }
 
-bool naui_archive_open(Naui_Archive* archive, const Naui_Path* path, Naui_ArchiveMode mode)
+bool naui_archive_open(Naui_Archive* archive, const Naui_Path path, Naui_ArchiveMode mode)
 {
 	memset(&archive->zip, 0, sizeof(archive->zip));
 	archive->mode = mode;
 	archive->is_valid = false;
 
 	if (mode == NAUI_ARCHIVE_READ)
-		archive->is_valid = zip_open_read(&archive->zip, path->data);
+		archive->is_valid = zip_open_read(&archive->zip, path.data);
 	else
-		archive->is_valid = zip_open_write(&archive->zip, path->data);
+		archive->is_valid = zip_open_write(&archive->zip, path.data);
 
 	if (!archive->is_valid)
-		fprintf(stderr, "[Naui] Failed to open archive: %s\n", path->data);
+		fprintf(stderr, "[Naui] Failed to open archive: %s\n", path.data);
 
 	return archive->is_valid;
 }
@@ -107,15 +107,15 @@ bool naui_archive_is_valid(const Naui_Archive* archive)
 	return archive->is_valid;
 }
 
-bool naui_archive_add_file(Naui_Archive* archive, const Naui_Path* source, const Naui_Path* dest_in_archive)
+bool naui_archive_add_file(Naui_Archive* archive, const Naui_Path source, const Naui_Path dest_in_archive)
 {
 	if (!archive->is_valid || archive->mode != NAUI_ARCHIVE_WRITE)
 		return false;
 
-	return zip_add_file(&archive->zip, dest_in_archive->data, source->data);
+	return zip_add_file(&archive->zip, dest_in_archive.data, source.data);
 }
 
-bool naui_archive_add_folder(Naui_Archive* archive, const Naui_Path* folder, const Naui_Path* root_in_archive)
+bool naui_archive_add_folder(Naui_Archive* archive, const Naui_Path folder, const Naui_Path root_in_archive)
 {
 	if (!archive->is_valid || archive->mode != NAUI_ARCHIVE_WRITE)
 		return false;
@@ -131,17 +131,17 @@ bool naui_archive_add_folder(Naui_Archive* archive, const Naui_Path* folder, con
 			continue;
 
 		const char* full = entries[i].path.data;
-		const char* rel = full + strlen(folder->data);
+		const char* rel = full + strlen(folder.data);
 		if (*rel == '/' || *rel == '\\')
 			++rel;
 
 		Naui_Path dest;
-		if (root_in_archive->data[0] != '\0')
-			snprintf(dest.data, NAUI_PATH_MAX, "%s/%s", root_in_archive->data, rel);
+		if (root_in_archive.data[0] != '\0')
+			snprintf(dest.data, NAUI_PATH_MAX, "%s/%s", root_in_archive.data, rel);
 		else
 			snprintf(dest.data, NAUI_PATH_MAX, "%s", rel);
 
-		if (!naui_archive_add_file(archive, &entries[i].path, &dest))
+		if (!naui_archive_add_file(archive, entries[i].path, dest))
 		{
 			ok = false;
 			break;
@@ -152,7 +152,7 @@ bool naui_archive_add_folder(Naui_Archive* archive, const Naui_Path* folder, con
 	return ok;
 }
 
-bool naui_archive_extract_to(Naui_Archive* archive, const Naui_Path* output_folder)
+bool naui_archive_extract_to(Naui_Archive* archive, const Naui_Path output_folder)
 {
 	if (!archive->is_valid || archive->mode != NAUI_ARCHIVE_READ)
 		return false;
@@ -165,15 +165,15 @@ bool naui_archive_extract_to(Naui_Archive* archive, const Naui_Path* output_fold
 			continue;
 
 		Naui_Path out;
-		snprintf(out.data, NAUI_PATH_MAX, "%s/%s", output_folder->data, st.name);
+		snprintf(out.data, NAUI_PATH_MAX, "%s/%s", output_folder.data, st.name);
 		if (st.is_directory)
 		{
-			naui_directory_create(&out);
+			naui_directory_create(out);
 			continue;
 		}
 
-		Naui_Path parent = naui_path_parent(&out);
-		naui_directory_create(&parent);
+		Naui_Path parent = naui_path_parent(out);
+		naui_directory_create(parent);
 		if (!zip_extract_to_file(&archive->zip, i, out.data))
 			return false;
 	}
@@ -181,12 +181,12 @@ bool naui_archive_extract_to(Naui_Archive* archive, const Naui_Path* output_fold
 	return true;
 }
 
-bool naui_archive_extract_file(Naui_Archive* archive, const Naui_Path* entry, const Naui_Path* dest)
+bool naui_archive_extract_file(Naui_Archive* archive, const Naui_Path entry, const Naui_Path dest)
 {
 	if (!archive->is_valid || archive->mode != NAUI_ARCHIVE_READ)
 		return false;
 
-	return zip_extract_entry_to_file(&archive->zip, entry->data, dest->data);
+	return zip_extract_entry_to_file(&archive->zip, entry.data, dest.data);
 }
 
 Naui_List(Naui_ArchiveEntry) naui_archive_list_entries(Naui_Archive* archive)
@@ -219,7 +219,7 @@ void naui_archive_list_free(Naui_List(Naui_ArchiveEntry) list)
 		naui_list_free(list);
 }
 
-bool naui_archive_create_custom(const Naui_Path* folder, const Naui_Path* archive_path)
+bool naui_archive_create_custom(const Naui_Path folder, const Naui_Path archive_path)
 {
 	Naui_List(Naui_DirEntry) entries = naui_directory_filter_recursive(folder, NULL, NULL, 0);
 
@@ -257,7 +257,7 @@ bool naui_archive_create_custom(const Naui_Path* folder, const Naui_Path* archiv
 			continue;
 
 		size_t file_size;
-		char* file_data = naui_file_read_all(&entries[i].path, &file_size);
+		char* file_data = naui_file_read_all(entries[i].path, &file_size);
 		if (!file_data)
 		{
 			ok = false;
@@ -287,7 +287,7 @@ bool naui_archive_create_custom(const Naui_Path* folder, const Naui_Path* archiv
 		free(file_data);
 
 		const char* full = entries[i].path.data;
-		const char* rel = full + strlen(folder->data);
+		const char* rel = full + strlen(folder.data);
 		if (*rel == '/' || *rel == '\\')
 			++rel;
 
@@ -351,7 +351,7 @@ bool naui_archive_create_custom(const Naui_Path* folder, const Naui_Path* archiv
 	return true;
 }
 
-bool naui_archive_extract_custom(const Naui_Path* archive_path, const Naui_Path* output_folder)
+bool naui_archive_extract_custom(const Naui_Path archive_path, const Naui_Path output_folder)
 {
 	size_t total_size;
 	char* blob = naui_file_read_all(archive_path, &total_size);
@@ -412,11 +412,11 @@ bool naui_archive_extract_custom(const Naui_Path* archive_path, const Naui_Path*
 	for (uint64_t i = 0; i < count && ok; ++i)
 	{
 		Naui_Path out;
-		snprintf(out.data, NAUI_PATH_MAX, "%s/%s", output_folder->data, index[i].name);
+		snprintf(out.data, NAUI_PATH_MAX, "%s/%s", output_folder.data, index[i].name);
 
-		Naui_Path parent = naui_path_parent(&out);
-		naui_directory_create(&parent);
-		ok = naui_file_write_all(&out, data_start + index[i].offset, (size_t)index[i].size);
+		Naui_Path parent = naui_path_parent(out);
+		naui_directory_create(parent);
+		ok = naui_file_write_all(out, data_start + index[i].offset, (size_t)index[i].size);
 	}
 
 	free(index);

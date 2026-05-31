@@ -114,6 +114,9 @@ void test_assert_not_null(const void* ptr, const char* file, int line)
 
 void test_conclusion(void)
 {
+	if (s_active)
+		fatal("TEST_CONCLUSION called before TEST_END for the active suite", __FILE__, __LINE__);
+		
 	printf("\n============================\n");
 	printf("  TOTAL PASSED: \033[1;32m%d\033[0m\n", g_passed);
 	printf("  TOTAL FAILED: \033[1;31m%d\033[0m\n", g_failed);

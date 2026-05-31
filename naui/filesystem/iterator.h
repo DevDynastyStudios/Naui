@@ -17,7 +17,7 @@ typedef struct Naui_DirIterator
 	const char** _extensions;
 } Naui_DirIterator;
 
-Naui_DirIterator naui_dir_iterator_open(const Naui_Path* path, const char* filter, const char** extensions, bool case_sensitive);
+Naui_DirIterator naui_dir_iterator_open(const Naui_Path path, const char* filter, const char** extensions, bool case_sensitive);
 
 void naui_dir_iterator_next(Naui_DirIterator* it);
 void naui_dir_iterator_close(Naui_DirIterator* it);

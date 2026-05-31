@@ -15,6 +15,8 @@ bool naui_str_ends_with(const char* s, const char* suffix);
 const char* naui_str_find(const char* s, const char* needle);
 const char* naui_str_find_char(const char* s, char c);
 
+bool naui_str_is_whitespace(char c);
+bool naui_str_is_digit(char c);
 bool naui_str_to_int(const char* s, int* out);
 bool naui_str_to_uint(const char* s, unsigned int* out);
 bool naui_str_to_int64(const char* s, int64_t* out);
