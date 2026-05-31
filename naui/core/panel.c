@@ -91,7 +91,7 @@ typedef struct
     Naui_Vec2 resize_drag_start_size;
 
     Naui_ResizeHandle resize_handle;
-    bool hovering_close, dragging_early_frame;
+    bool hovering_close;
 }
 Naui_PanelManager;
 static Naui_PanelManager pm = { 0 };
@@ -159,7 +159,7 @@ static inline void naui_render_panel_titlebar(Naui_PanelNode *node)
         if (node->parent)
         {
             Leaf_ID tab_id = leaf_id_indexed(NAUI_PANEL_TAB_ID, (Naui_PanelID)node);
-            bool tab_hovered = leaf_hovered(tab_id) && !pm.dragging_early_frame;
+            bool tab_hovered = leaf_hovered(tab_id) && !naui_mouse_down(NAUI_MOUSE_LEFT);
 
             leaf({
                 .id = tab_id,
@@ -417,7 +417,6 @@ static void naui_update_panel_movement(Naui_PanelNode *node)
         first_position.x = naui_mouse_x() - root->position.x;
         first_position.y = naui_mouse_y() - root->position.y;
         pm.dragged_node  = root;
-        pm.dragging_early_frame = true;
         naui_panel_bring_to_front(root);
     }
 
@@ -433,7 +432,6 @@ static void naui_update_panel_movement(Naui_PanelNode *node)
         naui_undock_panel((Naui_PanelID)node);
         node->size = (Naui_Vec2){ body_box.width, body_box.height + titlebar_box.height };
         pm.dragged_node = node;
-        pm.dragging_early_frame = true;
         first_position.x = naui_mouse_x() - titlebar_box.x;
         first_position.y = naui_mouse_y() - titlebar_box.y;
         naui_panel_bring_to_front(node);
@@ -739,9 +737,6 @@ static inline void naui_process_pending_events(void)
 
 void naui_panel_manager_frame(void)
 {
-    if (!naui_mouse_down(NAUI_MOUSE_LEFT))
-        pm.dragging_early_frame = false;
-
     for (size_t i = naui_list_len(pm.root_nodes); i-- > 0;)
     {
         Naui_PanelNode *root = pm.root_nodes[i];
