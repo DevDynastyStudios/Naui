@@ -569,10 +569,10 @@ static Naui_ResizeHandle naui_get_resize_handle(Naui_PanelNode *root)
 
 static void naui_update_panel_resize(Naui_PanelNode *node)
 {
-    Naui_PanelNode *root = node->root;
-
-    if (root->flags & NAUI_PANEL_FLAG_NO_RESIZE)
+    if (node->flags & NAUI_PANEL_FLAG_NO_RESIZE)
         return;
+
+    Naui_PanelNode *root = node->root;
 
     if (!pm.resizing_node && !pm.dragged_node)
     {
