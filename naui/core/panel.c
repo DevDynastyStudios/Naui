@@ -869,8 +869,6 @@ Naui_PanelID naui_dock_panel(Naui_PanelID target_id, Naui_PanelID guest_id, Naui
     target->children[1] = child1;
     target->split_ratio  = split_ratio;
     target->type = (Naui_PanelType){ 0 };
-    target->user_data = NULL;
-    target->title[0] = '\0';
 
     child0->parent = target;
     child1->parent = target;
