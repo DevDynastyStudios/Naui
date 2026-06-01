@@ -8,6 +8,6 @@ int main(void)
 	math_test();
 	string_test();
 	iterator_test();
-	//json_test();
+	json_test();
 	TEST_CONCLUSION();
 }
