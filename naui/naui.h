@@ -4,5 +4,5 @@
 #include "core/input.h"
 #include "core/panel.h"
 #include "core/time.h"
-#include "core/themes.h"
+#include "core/theme.h"
 #include "renderer/asset_manager.h"

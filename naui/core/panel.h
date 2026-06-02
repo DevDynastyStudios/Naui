@@ -2,6 +2,42 @@
 #include "base.h"
 #include "math/vec2.h"
 
+#ifndef NAUI_PANEL_BORDER_COLOR_TAG
+    #define NAUI_PANEL_BORDER_COLOR_TAG "naui_panel_border_color"
+#endif
+
+#ifndef NAUI_PANEL_BORDER_WIDTH_TAG
+    #define NAUI_PANEL_BORDER_WIDTH_TAG "naui_panel_border_width"
+#endif
+
+#ifndef NAUI_PANEL_TITLEBAR_BG_COLOR_TAG
+    #define NAUI_PANEL_TITLEBAR_BG_COLOR_TAG "naui_panel_title_bg_color"
+#endif
+
+#ifndef NAUI_PANEL_TITLEBAR_TEXT_COLOR_TAG
+    #define NAUI_PANEL_TITLEBAR_TEXT_COLOR_TAG "naui_panel_title_text_color"
+#endif
+
+#ifndef NAUI_PANEL_TITLEBAR_PADDING_TAG
+    #define NAUI_PANEL_TITLEBAR_PADDING_TAG "naui_panel_title_padding"
+#endif
+
+#ifndef NAUI_PANEL_BODY_BG_COLOR_TAG
+    #define NAUI_PANEL_BODY_BG_COLOR_TAG "naui_panel_body_bg_color"
+#endif
+
+#ifndef NAUI_PANEL_BODY_PADDING_TAG
+    #define NAUI_PANEL_BODY_PADDING_TAG "naui_panel_body_padding"
+#endif
+
+#ifndef NAUI_PANEL_ROUNDING_TAG
+    #define NAUI_PANEL_ROUNDING_TAG "naui_panel_rounding"
+#endif
+
+#ifndef NAUI_PANEL_FONT_SIZE_TAG
+    #define NAUI_PANEL_FONT_SIZE_TAG "naui_panel_font_size"
+#endif
+
 typedef uint64_t Naui_PanelID;
 typedef void(*NauiPanelEvent)(Naui_PanelID panel_id, void *data);
 

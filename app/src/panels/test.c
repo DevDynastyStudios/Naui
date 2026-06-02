@@ -19,6 +19,7 @@ static void on_attach(Naui_PanelID panel_id, TestData *data)
     //Naui_PanelID child_panel_2 = NAUI_ATTACH_PANEL(test2);
     //naui_dock_panel(panel_slot, child_panel_2, NAUI_DOCK_DIRECTION_TOP);
     naui_panel_enable_flags(panel_id, NAUI_PANEL_FLAG_NO_RESIZE);
+    panel_slot = panel_id;
 }
 
 static void on_detach(Naui_PanelID panel_id, TestData *data)
@@ -31,8 +32,9 @@ static void on_update(Naui_PanelID panel_id, TestData *data)
     data->time = naui_time();
     if (naui_key_pressed(NAUI_KEY_W))
     {
-        NAUI_ATTACH_PANEL(test2);
-        //panel_slot = naui_dock_panel(panel_id, NAUI_ATTACH_PANEL(test2), NAUI_DOCK_DIRECTION_BOTTOM, 0.5f);
+        child_panel = NAUI_ATTACH_PANEL(test2);
+        panel_slot = naui_dock_panel(panel_slot, child_panel, rand() % NAUI_DOCK_DIRECTION_CENTER, 0.5f);
+
 
     }
     if (naui_key_pressed(NAUI_KEY_S))
@@ -40,7 +42,6 @@ static void on_update(Naui_PanelID panel_id, TestData *data)
         if (panel_slot)
         {
             naui_undock_panel(child_panel);
-            panel_slot = NULL;
         }
     }
 }
