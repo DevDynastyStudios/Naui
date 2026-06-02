@@ -1,4 +1,6 @@
 #include "app.h"
+#include "theme.h"
+
 #include <stddef.h>
 
 #include <leaf/leaf.h>
@@ -27,6 +29,9 @@ extern void naui_renderer_end(void);
 
 extern void naui_panel_manager_frame(void);
 extern void naui_input_update(void);
+
+void naui_themes_initialize(void);
+void naui_themes_shutdown(void);
 
 static Leaf_Dimensions measure_text_bridge(const char *text, uint32_t length, float resolved_font_size, const Leaf_TextConfig *config)
 {
@@ -115,6 +120,7 @@ static void __naui_app_start(void)
     naui_renderer_initialize();
     naui_set_font(0, "Assets/Fonts/Quicksand-SemiBold.ttf");
     naui_asset_manager_load_images("Assets/Images");
+    naui_themes_initialize();
     leaf_initialize();
     leaf_set_measure_text(measure_text_bridge);
     state.events.start();
@@ -125,6 +131,7 @@ static void __naui_app_end(void)
     state.events.end();
     leaf_shutdown();
     naui_renderer_shutdown();
+    naui_themes_shutdown();
 }
 
 static void __naui_app_update(void)

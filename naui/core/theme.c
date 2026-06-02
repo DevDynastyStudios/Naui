@@ -1,5 +1,11 @@
 #include "theme.h"
 #include "utils/map.h"
+#include "utils/arena.h"
+#include "serialization/json.h"
+
+#include <stdio.h>
+
+#define NAUI_THEME_KEY_SCRATCH_SIZE (1 << 13)
 
 typedef struct { char *key; float value; } Naui_ThemeFloatEntry;
 typedef struct { char *key; Naui_Vec2 value; } Naui_ThemeVec2Entry;
@@ -10,44 +16,81 @@ typedef struct
     Naui_Map(Naui_ThemeColorEntry) color_map;
     Naui_Map(Naui_ThemeFloatEntry) float_map;
     Naui_Map(Naui_ThemeVec2Entry) vec2_map;
+    Naui_Arena key_arena;
 }
 Naui_ThemeData;
-static Naui_ThemeData data;
+static Naui_ThemeData tm;
+
+static Naui_Color naui_color_from_hex(const char *hex)
+{
+    if (*hex == '#') hex++;
+    size_t len = strlen(hex);
+
+    uint32_t r = 0, g = 0, b = 0, a = 255;
+
+#if defined(_MSC_VER)
+    if (len == 8)
+        sscanf_s(hex, "%02x%02x%02x%02x", &r, &g, &b, &a);
+    else sscanf_s(hex, "%02x%02x%02x", &r, &g, &b);
+#else
+    if (len == 8)
+        sscanf(hex, "%02x%02x%02x%02x", &r, &g, &b, &a);
+    else sscanf(hex, "%02x%02x%02x", &r, &g, &b);
+#endif
+
+    Naui_Color color;
+    color.r = (uint8_t)r;
+    color.g = (uint8_t)g;
+    color.b = (uint8_t)b;
+    color.a = (uint8_t)a;
+    return color;
+}
+
+void naui_themes_initialize(void) { naui_create_arena(&tm.key_arena, NAUI_THEME_KEY_SCRATCH_SIZE); }
+void naui_themes_shutdown(void) { naui_destroy_arena(&tm.key_arena); }
 
 void naui_load_theme(const char *file_name)
 {
-    // Fuck we need jsons CHIMPCHI HURRY TF UP
+    naui_arena_reset(&tm.key_arena);
 
-    // Anyway here are some hardcoded values for now :3
-    naui_strmap_put(data.color_map, "naui_panel_border_color",         naui_color_rgba( 55,  55,  60, 255));
-    naui_strmap_put(data.color_map, "naui_panel_body_bg_color",        naui_color_rgba( 37,  37,  40, 255));
-    naui_strmap_put(data.color_map, "naui_panel_tab_bg_color",         naui_color_rgba( 37,  37,  40, 255));
-    naui_strmap_put(data.color_map, "naui_panel_title_bg_color",       naui_color_rgba( 50,  50,  55, 255));
-    naui_strmap_put(data.color_map, "naui_panel_title_text_color",     naui_color_rgba(220, 220, 225, 255));
-    naui_strmap_put(data.color_map, "naui_panel_text_color",           naui_color_rgba(185, 185, 190, 255));
-    naui_strmap_put(data.color_map, "naui_panel_text_disabled_color",  naui_color_rgba( 90,  90,  95, 255));
+    Naui_Json json = naui_json_parse_file(NAUI_PATH(file_name));
+    NAUI_JSON_FOREACH(json.root, key, val)
+    {
+        char *key_str = naui_arena_alloc(&tm.key_arena, 64);
+        naui_json_copy_string(key, key_str, 64);
 
-    Naui_Vec2 padding = { 6.0f, 6.0f };
-    naui_strmap_put(data.vec2_map, "naui_panel_title_padding", padding);
-    naui_strmap_put(data.vec2_map, "naui_panel_body_padding", padding);
-
-    naui_strmap_put(data.float_map, "naui_panel_font_size", 20.0f);
-    naui_strmap_put(data.float_map, "naui_panel_border_width", 1.0f);
-
-    naui_strmap_put(data.float_map, "naui_panel_rounding", 8.0f);
+        if (val->type == NAUI_JSON_STRING)
+        {
+            char value_str[16];
+            naui_json_copy_string(val, value_str, sizeof(value_str));
+            naui_strmap_put(tm.color_map, key_str, naui_color_from_hex(value_str));
+        }
+        else if (val->type == NAUI_JSON_ARRAY)
+        {
+            Naui_Vec2 vec2 = {
+                (float)naui_json_get_number(naui_json_array_get(val, 0), 0.0f),
+                (float)naui_json_get_number(naui_json_array_get(val, 1), 0.0f),
+            };
+            naui_strmap_put(tm.vec2_map, key_str, vec2);
+        }
+        else if (val->type == NAUI_JSON_NUMBER)
+        {
+            naui_strmap_put(tm.float_map, key_str, (float)naui_json_get_number(val, 0.0));
+        }
+    }
 }
 
 Naui_Color naui_theme_color(const char *name)
 {
-    return naui_strmap_get(data.color_map, name);
+    return naui_strmap_get(tm.color_map, name);
 }
 
 float naui_theme_float(const char *name)
 {
-    return naui_strmap_get(data.float_map, name);
+    return naui_strmap_get(tm.float_map, name);
 }
 
 Naui_Vec2 naui_theme_vec2(const char *name)
 {
-    return naui_strmap_get(data.vec2_map, name);
+    return naui_strmap_get(tm.vec2_map, name);
 }

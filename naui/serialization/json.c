@@ -549,15 +549,17 @@ const char* naui_json_get_string(const Naui_JsonValue* value, const char* defaul
 
 int naui_json_copy_string(const Naui_JsonValue* value, char* dest, size_t dest_size)
 {
-	if (!value || value->type != NAUI_JSON_STRING || !dest || dest_size == 0)
-		return -1;
+    if (!value || value->type != NAUI_JSON_STRING || !dest || dest_size == 0)
+        return -1;
 
-	Naui_JsonReader tmp;
-	naui_json_reader_init(&tmp, value->string.ptr, value->string.len);
-	tmp.token = NAUI_JSON_TOKEN_STRING;
-	tmp.str = value->string.ptr;
-	tmp.len = value->string.len;
-	return naui_json_reader_copy_str(&tmp, dest, dest_size);
+    Naui_JsonReader tmp;
+    naui_json_reader_init(&tmp, value->string.ptr, value->string.len);
+    tmp.token = NAUI_JSON_TOKEN_STRING;
+    tmp.str = value->string.ptr;
+    tmp.len = value->string.len;
+    int written = naui_json_reader_copy_str(&tmp, dest, dest_size);
+    dest[dest_size - 1] = '\0';
+    return written;
 }
 
 Naui_Json naui_json_result_create(void)

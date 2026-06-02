@@ -1,0 +1,16 @@
+{
+    "naui_panel_border_color": "#37373C",
+    "naui_panel_body_bg_color": "#252528",
+    "naui_panel_tab_bg_color": "#252528",
+    "naui_panel_title_bg_color": "#323237",
+    "naui_panel_title_text_color": "#DCDCE1",
+    "naui_panel_text_color": "#B9B9BE",
+    "naui_panel_text_disabled_color": "#5A5A5F",
+
+    "naui_panel_title_padding": [6.0, 6.0],
+    "naui_panel_body_padding": [6.0, 6.0],
+
+    "naui_panel_font_size": 20.0,
+    "naui_panel_border_width": 1.0,
+    "naui_panel_rounding": 8.0
+}
