@@ -207,6 +207,16 @@ typedef void (*Leaf_CustomDrawFn)(Leaf_BoundingBox box, void *user_data);
 
 typedef struct
 {
+    float blur_radius;
+    Leaf_Vec2 offset;
+    Leaf_Color color;
+}
+Leaf_Shadow;
+
+#define LEAF_SHADOW(c, ox, oy, blur) (Leaf_Shadow){ (c), { (ox), (oy) }, (blur) }
+
+typedef struct
+{
     Leaf_ID id;
 
     Leaf_Image image;
@@ -222,6 +232,7 @@ typedef struct
     Leaf_Alignment child_alignment;
     Leaf_Alignment floating_alignment;
 
+    Leaf_Shadow shadow;
     Leaf_Rounding rounding;
 
     float child_gap;
@@ -275,6 +286,7 @@ enum
     LEAF_RENDER_CMD_RECT_LINES,
     LEAF_RENDER_CMD_TEXT,
     LEAF_RENDER_CMD_IMAGE,
+    LEAF_RENDER_CMD_SHADOW,
     LEAF_RENDER_CMD_SCISSOR_PUSH,
     LEAF_RENDER_CMD_SCISSOR_POP,
     LEAF_RENDER_CMD_CUSTOM
@@ -305,6 +317,13 @@ typedef struct
             Leaf_Rounding rounding;
         }
         image;
+
+        struct
+        {
+            float blur_radius;
+            Leaf_Rounding rounding;
+        }
+        shadow;
 
         struct
         {
@@ -789,6 +808,26 @@ static void leaf_render_node(Leaf_Node *node)
     case LEAF_NODE_TYPE_ELEMENT:
     {
         const Leaf_ElementConfig *config = &node->element.config;
+        if (config->shadow.color.a > 0)
+        {
+            Leaf_BoundingBox shadow_box = {
+                .x = node->bounding_box.x + config->shadow.offset.x + config->shadow.offset.x,
+                .y = node->bounding_box.y + config->shadow.offset.y + config->shadow.offset.y,
+                .width  = node->bounding_box.width,
+                .height = node->bounding_box.height,
+            };
+            leaf_push_render_cmd((Leaf_RenderCmd){
+                .type = LEAF_RENDER_CMD_SHADOW,
+                .color = (Leaf_ColorFill){
+                    .color1 = config->shadow.color,
+                    .type = LEAF_SOLID_COLOR_FILL
+                },
+                .bounding_box = shadow_box,
+                .shadow.blur_radius = config->shadow.blur_radius,
+                .shadow.rounding = config->rounding,
+            });
+        }
+
         if (!leaf_is_color_fill_empty(config->color))
         {
             if (config->image.handle)

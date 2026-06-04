@@ -34,6 +34,10 @@
     #define NAUI_PANEL_ROUNDING_TAG "naui_panel_rounding"
 #endif
 
+#ifndef NAUI_PANEL_SHADOW_COLOR_TAG
+    #define NAUI_PANEL_SHADOW_COLOR_TAG "naui_panel_shadow_color"
+#endif
+
 #ifndef NAUI_PANEL_FONT_SIZE_TAG
     #define NAUI_PANEL_FONT_SIZE_TAG "naui_panel_font_size"
 #endif
@@ -68,7 +72,8 @@ enum
     NAUI_PANEL_FLAG_NO_CLOSE = 1 << 0,
     NAUI_PANEL_FLAG_NO_DOCKING = 1 << 1,
     NAUI_PANEL_FLAG_NO_MOVE = 1 << 2,
-    NAUI_PANEL_FLAG_NO_RESIZE = 1 << 3
+    NAUI_PANEL_FLAG_NO_RESIZE = 1 << 3,
+    NAUI_PANEL_FLAG_ALWAYS_TO_FRONT = 1 << 4
 };
 
 #define NAUI_ATTACH_PANEL(type_name) naui_attach_panel(#type_name)

@@ -7,6 +7,8 @@
     "naui_panel_text_color": "#B9B9BE",
     "naui_panel_text_disabled_color": "#5A5A5F",
 
+    "naui_panel_shadow_color": "#0000001F",
+
     "naui_panel_title_padding": [6.0, 6.0],
     "naui_panel_body_padding": [6.0, 6.0],
 

@@ -42,6 +42,7 @@ static void on_update(Naui_PanelID panel_id, TestData *data)
         if (panel_slot)
         {
             naui_undock_panel(child_panel);
+            panel_slot = panel_id;
         }
     }
 }

@@ -3,6 +3,8 @@
 #include <magma/mgapp.h>
 #include <magma/mgfx.h>
 
+#include "math/math.h"
+
 #include "shaders/base.glsl.h"
 
 #include <stb/stb_truetype.h>
@@ -11,8 +13,8 @@
 #include <stdio.h>
 #include <math.h>
 
-#define NAUI_RENDERER_MAX_GEOMETRY (1 << 14)
-#define NAUI_RENDERER_CORNER_SEGMENTS 16
+#define NAUI_RENDERER_MAX_GEOMETRY (1 << 15)
+#define NAUI_RENDERER_CORNER_SEGMENTS 8
 
 #define NAUI_FONT_ATLAS_SIZE_SMALL  1024
 #define NAUI_FONT_ATLAS_SIZE_LARGE  4096
@@ -1037,4 +1039,94 @@ void naui_draw_gradient_image(const Naui_Image *image, Naui_Vec2 position, Naui_
     if (tr) naui_push_textured_gradient_corner_fan((Naui_Vec2){x1-r, y0+r}, r, +1, -1, uv, img_tl, img_size, &tint, &axis);
     if (br) naui_push_textured_gradient_corner_fan((Naui_Vec2){x1-r, y1-r}, r, +1, +1, uv, img_tl, img_size, &tint, &axis);
     if (bl) naui_push_textured_gradient_corner_fan((Naui_Vec2){x0+r, y1-r}, r, -1, +1, uv, img_tl, img_size, &tint, &axis);
+}
+
+void naui_draw_shadow(Naui_Vec2 position, Naui_Vec2 scale, float blur_radius, Naui_Color color, float rounding, Naui_CornerFlags corners)
+{
+    float r  = naui_min(rounding, naui_min(scale.x, scale.y) * 0.5f);
+    float br = blur_radius;
+
+    float x0 = position.x, y0 = position.y;
+    float x1 = position.x + scale.x, y1 = position.y + scale.y;
+
+    uint32_t c_full = naui_pack_color(color);
+    uint32_t c_zero = naui_pack_color((Naui_Color){ color.r, color.g, color.b, 0 });
+
+    int tl = (corners & NAUI_CORNER_TL) != 0;
+    int tr = (corners & NAUI_CORNER_TR) != 0;
+    int br_flag = (corners & NAUI_CORNER_BR) != 0;
+    int bl = (corners & NAUI_CORNER_BL) != 0;
+
+    float cx_tl = x0 + (tl ? r : 0), cy_tl = y0 + (tl ? r : 0);
+    float cx_tr = x1 - (tr ? r : 0), cy_tr = y0 + (tr ? r : 0);
+    float cx_br = x1 - (br_flag ? r : 0), cy_br = y1 - (br_flag ? r : 0);
+    float cx_bl = x0 + (bl ? r : 0), cy_bl = y1 - (bl ? r : 0);
+
+    naui_push_gradient_quad4(
+        (Naui_Vec2){cx_tl, y0 - br}, (Naui_Vec2){cx_tr, y0 - br},
+        (Naui_Vec2){cx_tr, y0     }, (Naui_Vec2){cx_tl, y0     },
+        c_zero, c_zero, c_full, c_full, -1);
+
+    naui_push_gradient_quad4(
+        (Naui_Vec2){cx_bl, y1     }, (Naui_Vec2){cx_br, y1     },
+        (Naui_Vec2){cx_br, y1 + br}, (Naui_Vec2){cx_bl, y1 + br},
+        c_full, c_full, c_zero, c_zero, -1);
+
+    naui_push_gradient_quad4(
+        (Naui_Vec2){x0 - br, cy_tl}, (Naui_Vec2){x0, cy_tl},
+        (Naui_Vec2){x0, cy_bl}, (Naui_Vec2){x0 - br, cy_bl},
+        c_zero, c_full, c_full, c_zero, -1);
+
+    naui_push_gradient_quad4(
+        (Naui_Vec2){x1,      cy_tr}, (Naui_Vec2){x1 + br, cy_tr},
+        (Naui_Vec2){x1 + br, cy_br}, (Naui_Vec2){x1,      cy_br},
+        c_full, c_zero, c_zero, c_full, -1);
+
+    naui_push_rect((Naui_Vec2){x0, y0}, (Naui_Vec2){x1, y1}, c_full, -1);
+
+    struct {
+        float cx, cy;
+        float ax, ay;
+        int enabled;
+    } fan[4] = {
+        { cx_tl, cy_tl, -1, -1, tl      },
+        { cx_tr, cy_tr, +1, -1, tr      },
+        { cx_br, cy_br, +1, +1, br_flag },
+        { cx_bl, cy_bl, -1, +1, bl      },
+    };
+
+    for (int f = 0; f < 4; f++)
+    {
+        if (!fan[f].enabled)
+        {
+            float cx = fan[f].cx, cy = fan[f].cy;
+            float ax = fan[f].ax, ay = fan[f].ay;
+
+            naui_push_gradient_quad4(
+                (Naui_Vec2){cx, cy },
+                (Naui_Vec2){cx + ax*br, cy },
+                (Naui_Vec2){cx + ax*br, cy + ay*br},
+                (Naui_Vec2){cx, cy + ay*br},
+                c_full, c_zero, c_zero, c_zero, -1);
+            continue;
+        }
+
+        float cx = fan[f].cx, cy = fan[f].cy;
+        float ax = fan[f].ax, ay = fan[f].ay;
+
+        for (int s = 0; s < NAUI_RENDERER_CORNER_SEGMENTS; s++)
+        {
+            float c0 = s_cos[s], s0 = s_sin[s];
+            float c1 = s_cos[s + 1], s1 = s_sin[s + 1];
+
+            Naui_Vec2 i0 = { cx + ax * c0 * r, cy + ay * s0 * r };
+            Naui_Vec2 i1 = { cx + ax * c1 * r, cy + ay * s1 * r };
+
+            Naui_Vec2 o0 = { cx + ax * c0 * (r + br), cy + ay * s0 * (r + br) };
+            Naui_Vec2 o1 = { cx + ax * c1 * (r + br), cy + ay * s1 * (r + br) };
+
+            naui_push_gradient_quad4(i0, i1, o1, o0,
+                c_full, c_full, c_zero, c_zero, -1);
+        }
+    }
 }

@@ -74,10 +74,9 @@ void naui_load_theme(const char *file_name)
             naui_strmap_put(tm.vec2_map, key_str, vec2);
         }
         else if (val->type == NAUI_JSON_NUMBER)
-        {
             naui_strmap_put(tm.float_map, key_str, (float)naui_json_get_number(val, 0.0));
-        }
     }
+    naui_json_free(&json);
 }
 
 Naui_Color naui_theme_color(const char *name)

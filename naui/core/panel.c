@@ -10,10 +10,12 @@
 #define NAUI_PANEL_DEFAULT_WIDTH 1280
 #define NAUI_PANEL_DEFAULT_HEIGHT 720
 
+#define NAUI_ROOT_PANEL_ID "__naui_root_panel"
+
 typedef uint8_t Naui_SplitAxis;
 enum
 {
-    NAUI_SPLIT_AXIS_VERTICAL   = LEAF_LAYOUT_VERTICAL,
+    NAUI_SPLIT_AXIS_VERTICAL = LEAF_LAYOUT_VERTICAL,
     NAUI_SPLIT_AXIS_HORIZONTAL = LEAF_LAYOUT_HORIZONAL
 };
 
@@ -166,9 +168,21 @@ Naui_PanelID naui_dock_panel(Naui_PanelID target_id, Naui_PanelID guest_id, Naui
 
     target->parent = dock_node;
 
-    dock_node->children[0] = target;
-    dock_node->children[1] = guest;
+    if (direction == NAUI_DOCK_DIRECTION_RIGHT || direction == NAUI_DOCK_DIRECTION_BOTTOM)
+    {
+        dock_node->children[0] = target;
+        dock_node->children[1] = guest;
+    }
+    else
+    {
+        dock_node->children[0] = guest;
+        dock_node->children[1] = target;
+    }
+
     dock_node->split_ratio = split_ratio;
+    dock_node->split_axis =
+        (direction == NAUI_DOCK_DIRECTION_LEFT || direction == NAUI_DOCK_DIRECTION_RIGHT) ?
+        NAUI_SPLIT_AXIS_HORIZONTAL : NAUI_SPLIT_AXIS_VERTICAL;
 
     guest->root  = target->root;
     guest->parent = dock_node;
@@ -187,9 +201,27 @@ static void naui_undock_panel_immediate(Naui_PanelID id)
     if (!dock_node)
         return;
 
-    node->parent = dock_node->parent;
+    Naui_PanelNode *sibling = dock_node->children[dock_node->children[0] == node ? 1 : 0];
+
+    if (dock_node->parent)
+    {
+        int slot = dock_node->parent->children[0] == dock_node ? 0 : 1;
+        dock_node->parent->children[slot] = sibling;
+        sibling->parent = dock_node->parent;
+    }
+    else
+    {
+        sibling->root_index = dock_node->root_index;
+        pm.root_nodes[dock_node->root_index] = sibling;
+        sibling->parent = NULL;
+    }
 
     naui_free_panel_node(dock_node);
+
+    node->parent = NULL;
+    node->root = node;
+    node->root_index = naui_list_len(pm.root_nodes);
+    naui_list_push(pm.root_nodes, node);
 }
 
 void naui_undock_panel(Naui_PanelID id)
@@ -290,6 +322,10 @@ static void naui_render_panel(Naui_PanelNode *node)
         .border = {
             naui_theme_float(NAUI_PANEL_BORDER_WIDTH_TAG),
             naui_theme_leaf_color(NAUI_PANEL_BORDER_COLOR_TAG)
+        },
+        .shadow = {
+            .blur_radius = 32.0f,
+            .color = naui_theme_leaf_color(NAUI_PANEL_SHADOW_COLOR_TAG)
         },
         .rounding = {
             naui_theme_float(NAUI_PANEL_ROUNDING_TAG),

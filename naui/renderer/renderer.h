@@ -56,3 +56,5 @@ NAUI_API Naui_Vec2 naui_measure_text(const char *text, uint32_t length, float fo
 
 NAUI_API void naui_push_clip_rect(Naui_Vec2 position, Naui_Vec2 size);
 NAUI_API void naui_pop_clip_rect(void);
+
+NAUI_API void naui_draw_shadow(Naui_Vec2 position, Naui_Vec2 scale, float blur_radius, Naui_Color color, float rounding, Naui_CornerFlags corners);

@@ -78,6 +78,19 @@ static void render_leaf_cmd_list(const Leaf_RenderCmdList *list)
         case LEAF_RENDER_CMD_TEXT:
             naui_draw_text((Naui_Vec2){cmd.bounding_box.x, cmd.bounding_box.y}, cmd.text.text, cmd.text.font_size, cmd.text.font_id, (Naui_Color){cmd.color.color1.r, cmd.color.color1.g, cmd.color.color1.b, cmd.color.color1.a});
             break;
+        case LEAF_RENDER_CMD_SHADOW:
+        {
+            Naui_Color color1 = (Naui_Color){cmd.color.color1.r, cmd.color.color1.g, cmd.color.color1.b, cmd.color.color1.a};
+            naui_draw_shadow(
+                (Naui_Vec2){cmd.bounding_box.x, cmd.bounding_box.y},
+                (Naui_Vec2){cmd.bounding_box.width, cmd.bounding_box.height},
+                cmd.shadow.blur_radius,
+                (Naui_Color){color1.r, color1.g, color1.b, color1.a},
+                cmd.shadow.rounding.value,
+                (Naui_CornerFlags)cmd.shadow.rounding.corners
+            );
+            break;
+        }
         case LEAF_RENDER_CMD_SCISSOR_PUSH:
             naui_push_clip_rect(
                 (Naui_Vec2){cmd.bounding_box.x, cmd.bounding_box.y},
