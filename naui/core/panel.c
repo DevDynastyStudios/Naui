@@ -1,5 +1,6 @@
 #include "panel.h"
 #include "theme.h"
+#include "input.h"
 
 #include "utils/map.h"
 #include "utils/list.h"
@@ -57,6 +58,8 @@ typedef struct
     Naui_Map(Naui_PanelTypeMapEntry) panel_type_map;
     Naui_List(Naui_PanelNode*) root_nodes;
     Naui_List(Naui_PanelEvent) event_queue;
+
+    Naui_PanelNode *dragging_node;
 }
 Naui_PanelManager;
 static Naui_PanelManager pm = { 0 };
@@ -146,6 +149,15 @@ static void naui_panel_bring_to_front(Naui_PanelNode *node)
     root->root_index = last;
 }
 
+static void naui_set_root_recursive(Naui_PanelNode *node, Naui_PanelNode *new_root)
+{
+    if (!node)
+        return;
+    node->root = new_root;
+    naui_set_root_recursive(node->children[0], new_root);
+    naui_set_root_recursive(node->children[1], new_root);
+}
+
 Naui_PanelID naui_dock_panel(Naui_PanelID target_id, Naui_PanelID guest_id, Naui_DockDirection direction, float split_ratio)
 {
     Naui_PanelNode *target = (Naui_PanelNode*)target_id;
@@ -153,17 +165,22 @@ Naui_PanelID naui_dock_panel(Naui_PanelID target_id, Naui_PanelID guest_id, Naui
 
     naui_list_remove(pm.root_nodes, guest->root_index);
 
+    if (!target->parent && guest->root_index < target->root_index)
+        target->root_index--;
+
     Naui_PanelNode *dock_node = naui_alloc_panel_node();
 
     if (target->parent)
     {
         dock_node->parent = target->parent;
         target->parent->children[target->parent->children[0] == target ? 0 : 1] = dock_node;
+        dock_node->root = target->root;
     }
     else
     {
         dock_node->root_index = target->root_index;
         pm.root_nodes[target->root_index] = dock_node;
+        dock_node->root = dock_node;
     }
 
     target->parent = dock_node;
@@ -184,7 +201,9 @@ Naui_PanelID naui_dock_panel(Naui_PanelID target_id, Naui_PanelID guest_id, Naui
         (direction == NAUI_DOCK_DIRECTION_LEFT || direction == NAUI_DOCK_DIRECTION_RIGHT) ?
         NAUI_SPLIT_AXIS_HORIZONTAL : NAUI_SPLIT_AXIS_VERTICAL;
 
-    guest->root  = target->root;
+    naui_set_root_recursive(target, dock_node->root);
+    naui_set_root_recursive(guest, dock_node->root);
+
     guest->parent = dock_node;
 
     dock_node->size = target->size;
@@ -214,6 +233,7 @@ static void naui_undock_panel_immediate(Naui_PanelID id)
         sibling->root_index = dock_node->root_index;
         pm.root_nodes[dock_node->root_index] = sibling;
         sibling->parent = NULL;
+        naui_set_root_recursive(sibling, sibling);
     }
 
     naui_free_panel_node(dock_node);
@@ -229,12 +249,78 @@ void naui_undock_panel(Naui_PanelID id)
     naui_list_push(pm.event_queue, ((Naui_PanelEvent){ (Naui_PanelNode*)id, NAUI_PANEL_EVENT_UNDOCK }));
 }
 
+static inline void naui_render_basic_panel_titlebar(Naui_PanelNode *node)
+{
+    const float font_size = naui_theme_float(NAUI_PANEL_FONT_SIZE_TAG);
+    const Leaf_Color text_color = naui_theme_leaf_color(NAUI_PANEL_TITLEBAR_TEXT_COLOR_TAG);
+    const Naui_Vec2 padding = naui_theme_vec2(NAUI_PANEL_TITLEBAR_PADDING_TAG);
+
+    leaf({
+        .size = {LEAF_SIZE_FULL, LEAF_SIZE_FIXED(font_size)},
+        .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER},
+        .padding = LEAF_PADDING_AXES(padding.x, padding.y)
+    })
+    {
+        leaf_text(node->title, {
+            .font_size = font_size,
+            .color = text_color,
+            .alignment = LEAF_TEXT_ALIGN_CENTER
+        });
+    }
+}
+
+static inline void naui_render_docked_panel_tab(Naui_PanelNode *node)
+{
+    const float font_size = naui_theme_float(NAUI_PANEL_FONT_SIZE_TAG);
+    const float rounding = naui_theme_float(NAUI_PANEL_ROUNDING_TAG);
+    const Leaf_Color text_color = naui_theme_leaf_color(NAUI_PANEL_TITLEBAR_TEXT_COLOR_TAG);
+    const Naui_Vec2 padding = naui_theme_vec2(NAUI_PANEL_TITLEBAR_PADDING_TAG);
+    const Leaf_Color bg_color = naui_theme_leaf_color(NAUI_PANEL_BODY_BG_COLOR_TAG);
+
+    leaf({
+        .size = {LEAF_SIZE_FIT, LEAF_SIZE_FIXED(font_size)},
+        .padding = LEAF_PADDING_AXES(padding.x, padding.y),
+        .child_alignment = {LEAF_ALIGN_X_LEFT, LEAF_ALIGN_Y_CENTER},
+        .color = bg_color,
+        .rounding = {
+            rounding,
+            LEAF_CORNER_TL | LEAF_CORNER_TR
+        }
+    })
+    {
+        leaf_text(node->title, {
+            .font_size = font_size,
+            .color = text_color
+        });
+    }
+}
+
+static inline void naui_render_docked_panel_titlebar(Naui_PanelNode *node)
+{
+    leaf({
+        .size = {LEAF_SIZE_FULL, LEAF_SIZE_FIT},
+        .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER},
+    })
+    {
+        leaf({
+            .direction = LEAF_LAYOUT_HORIZONAL,
+            .size = {LEAF_SIZE_FULL, LEAF_SIZE_FIT},
+            .child_alignment = {LEAF_ALIGN_X_LEFT, LEAF_ALIGN_Y_CENTER},
+            .child_gap = 2.0f
+        })
+        if (node->parent->tabs)
+        {
+            printf("%i\n", naui_list_len(node->parent->tabs));
+            for (int32_t i = 0; i < naui_list_len(node->parent->tabs); i++)
+                naui_render_docked_panel_tab(node->parent->tabs[i]);
+        }
+        else naui_render_docked_panel_tab(node);
+    }
+}
+
 static inline void naui_render_panel_titlebar(Naui_PanelNode *node)
 {
     const Leaf_Color bg_color = naui_theme_leaf_color(NAUI_PANEL_TITLEBAR_BG_COLOR_TAG);
-    const Leaf_Color text_color = naui_theme_leaf_color(NAUI_PANEL_TITLEBAR_TEXT_COLOR_TAG);
-    const Naui_Vec2 padding = naui_theme_vec2(NAUI_PANEL_TITLEBAR_PADDING_TAG);
-    const float font_size = naui_theme_float(NAUI_PANEL_FONT_SIZE_TAG);
 
     leaf({
         .size = {LEAF_SIZE_FULL, LEAF_SIZE_FIT},
@@ -245,18 +331,9 @@ static inline void naui_render_panel_titlebar(Naui_PanelNode *node)
         }
     })
     {
-        leaf({
-            .size = {LEAF_SIZE_FULL, LEAF_SIZE_FIXED(font_size)},
-            .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER},
-            .padding = LEAF_PADDING_AXES(padding.x, padding.y),
-        })
-        {
-            leaf_text(node->title, {
-                .font_size = font_size,
-                .color = text_color,
-                .alignment = LEAF_TEXT_ALIGN_CENTER
-            });
-        }
+        if (node->parent)
+            naui_render_docked_panel_titlebar(node);
+        else naui_render_basic_panel_titlebar(node);
     }
 }
 
@@ -309,6 +386,12 @@ static void naui_render_next_panel_child(Naui_PanelNode *node)
         return;
     }
 
+    if (node->tabs)
+    {
+        naui_render_next_panel_child(node->tabs[node->active_tab]);
+        return;
+    }
+
     naui_render_panel_titlebar(node);
     naui_render_panel_body(node);
 }
@@ -316,6 +399,7 @@ static void naui_render_next_panel_child(Naui_PanelNode *node)
 static void naui_render_panel(Naui_PanelNode *node)
 {
     leaf({
+        .id = leaf_id_indexed(NAUI_ROOT_PANEL_ID, (Naui_PanelID)node),
         .positioning = LEAF_POSITIONING_FLOATING_TO_ROOT,
         .size = {LEAF_SIZE_FIXED(node->size.x), LEAF_SIZE_FIXED(node->size.y)},
         .floating_offset = {node->position.x, node->position.y},
@@ -331,10 +415,32 @@ static void naui_render_panel(Naui_PanelNode *node)
             naui_theme_float(NAUI_PANEL_ROUNDING_TAG),
             LEAF_CORNER_ALL
         },
+        .color = naui_theme_leaf_color(NAUI_PANEL_BORDER_COLOR_TAG),
         .clip_children = true
     })
     {
         naui_render_next_panel_child(node);
+    }
+}
+
+static void naui_update_panel_dragging(Naui_PanelNode *node)
+{
+    Naui_PanelNode *root = node->root;
+    Leaf_ID id = leaf_id_indexed(NAUI_ROOT_PANEL_ID, (Naui_PanelID)root);
+
+    static Naui_Vec2 drag_offset;
+    if (!pm.dragging_node && leaf_hovered(id) && naui_mouse_clicked(NAUI_MOUSE_LEFT))
+    {
+        pm.dragging_node = root;
+        drag_offset.x = naui_mouse_x() - root->position.x;
+        drag_offset.y = naui_mouse_y() - root->position.y;
+        naui_panel_bring_to_front(root);
+    }
+
+    if (pm.dragging_node == root)
+    {
+        root->position.x = naui_mouse_x() - drag_offset.x;
+        root->position.y = naui_mouse_y() - drag_offset.y;
     }
 }
 
@@ -346,6 +452,8 @@ static void naui_update_panel(Naui_PanelNode *node)
         naui_update_panel(node->children[1]);
         return;
     }
+
+    naui_update_panel_dragging(node);
 
     if (node->type.on_update)
         node->type.on_update((Naui_PanelID)node, node->user_data);
@@ -370,6 +478,9 @@ static void naui_process_events(void)
 
 void naui_panel_manager_frame(void)
 {
+    if (naui_mouse_released(NAUI_MOUSE_LEFT))
+        pm.dragging_node = NULL;
+
     for (int32_t i = (int32_t)naui_list_len(pm.root_nodes); i-- > 0;)
         naui_update_panel(pm.root_nodes[i]);
 

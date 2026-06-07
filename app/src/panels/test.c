@@ -33,7 +33,7 @@ static void on_update(Naui_PanelID panel_id, TestData *data)
     if (naui_key_pressed(NAUI_KEY_W))
     {
         child_panel = NAUI_ATTACH_PANEL(test2);
-        panel_slot = naui_dock_panel(panel_slot, child_panel, rand() % NAUI_DOCK_DIRECTION_CENTER, 0.5f);
+        panel_slot = naui_dock_panel(panel_slot, child_panel, NAUI_DOCK_DIRECTION_CENTER, 0.5f);
 
 
     }
