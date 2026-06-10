@@ -12,6 +12,7 @@
 #define NAUI_PANEL_DEFAULT_HEIGHT 720
 
 #define NAUI_ROOT_PANEL_ID "__naui_root_panel"
+#define NAUI_PANEL_TAB_ID "__naui_panel_tab"
 
 typedef uint8_t Naui_SplitAxis;
 enum
@@ -158,10 +159,27 @@ static void naui_set_root_recursive(Naui_PanelNode *node, Naui_PanelNode *new_ro
     naui_set_root_recursive(node->children[1], new_root);
 }
 
-Naui_PanelID naui_dock_panel(Naui_PanelID target_id, Naui_PanelID guest_id, Naui_DockDirection direction, float split_ratio)
+void naui_dock_panel(Naui_PanelID target_id, Naui_PanelID guest_id, Naui_DockDirection direction, float split_ratio)
 {
     Naui_PanelNode *target = (Naui_PanelNode*)target_id;
     Naui_PanelNode *guest  = (Naui_PanelNode*)guest_id;
+
+    if (direction == NAUI_DOCK_DIRECTION_CENTER)
+    {
+        naui_list_remove(pm.root_nodes, guest->root_index);
+        if (guest->root_index < target->root->root_index)
+            target->root->root_index--;
+
+        if (!target->tabs)
+            naui_list_push(target->tabs, target);
+
+        guest->parent = target;
+        naui_set_root_recursive(guest, target->root);
+        naui_list_push(target->tabs, guest);
+
+        target->active_tab = naui_list_len(target->tabs) - 1;
+        return;
+    }
 
     naui_list_remove(pm.root_nodes, guest->root_index);
 
@@ -208,14 +226,37 @@ Naui_PanelID naui_dock_panel(Naui_PanelID target_id, Naui_PanelID guest_id, Naui
 
     dock_node->size = target->size;
     dock_node->position = target->position;
-
-    return dock_node;
 }
 
 static void naui_undock_panel_immediate(Naui_PanelID id)
 {
     Naui_PanelNode *node = (Naui_PanelNode*)id;
     Naui_PanelNode *dock_node = node->parent;
+
+    if (dock_node && dock_node->tabs)
+    {
+        Naui_PanelNode *owner = dock_node;
+        for (int32_t i = 0; i < naui_list_len(owner->tabs); i++)
+        {
+            if (owner->tabs[i] == node)
+            {
+                naui_list_remove(owner->tabs, i);
+                if (owner->active_tab >= naui_list_len(owner->tabs))
+                    owner->active_tab = naui_list_len(owner->tabs) - 1;
+                break;
+            }
+        }
+        if (naui_list_len(owner->tabs) == 1)
+        {
+            owner->active_tab = 0;
+            naui_list_free(owner->tabs);
+        }
+        node->parent = NULL;
+        node->root = node;
+        node->root_index = naui_list_len(pm.root_nodes);
+        naui_list_push(pm.root_nodes, node);
+        return;
+    }
 
     if (!dock_node)
         return;
@@ -269,34 +310,33 @@ static inline void naui_render_basic_panel_titlebar(Naui_PanelNode *node)
     }
 }
 
-static inline void naui_render_docked_panel_tab(Naui_PanelNode *node)
+static inline void naui_render_docked_panel_tab(Naui_PanelNode *node, bool is_active, Leaf_ID id)
 {
     const float font_size = naui_theme_float(NAUI_PANEL_FONT_SIZE_TAG);
     const float rounding = naui_theme_float(NAUI_PANEL_ROUNDING_TAG);
     const Leaf_Color text_color = naui_theme_leaf_color(NAUI_PANEL_TITLEBAR_TEXT_COLOR_TAG);
     const Naui_Vec2 padding = naui_theme_vec2(NAUI_PANEL_TITLEBAR_PADDING_TAG);
-    const Leaf_Color bg_color = naui_theme_leaf_color(NAUI_PANEL_BODY_BG_COLOR_TAG);
+
+    const Leaf_Color bg_color = is_active
+        ? naui_theme_leaf_color(NAUI_PANEL_BODY_BG_COLOR_TAG)
+        : naui_theme_leaf_color(NAUI_PANEL_TITLEBAR_BG_COLOR_TAG);
 
     leaf({
+        .id = id,
         .size = {LEAF_SIZE_FIT, LEAF_SIZE_FIXED(font_size)},
         .padding = LEAF_PADDING_AXES(padding.x, padding.y),
-        .child_alignment = {LEAF_ALIGN_X_LEFT, LEAF_ALIGN_Y_CENTER},
         .color = bg_color,
-        .rounding = {
-            rounding,
-            LEAF_CORNER_TL | LEAF_CORNER_TR
-        }
+        .rounding = { rounding, LEAF_CORNER_TL | LEAF_CORNER_TR }
     })
     {
-        leaf_text(node->title, {
-            .font_size = font_size,
-            .color = text_color
-        });
+        leaf_text(node->title, { .font_size = font_size, .color = text_color });
     }
 }
 
 static inline void naui_render_docked_panel_titlebar(Naui_PanelNode *node)
 {
+    Naui_PanelNode *owner = node->tabs ? node : node->parent;
+
     leaf({
         .size = {LEAF_SIZE_FULL, LEAF_SIZE_FIT},
         .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER},
@@ -308,13 +348,27 @@ static inline void naui_render_docked_panel_titlebar(Naui_PanelNode *node)
             .child_alignment = {LEAF_ALIGN_X_LEFT, LEAF_ALIGN_Y_CENTER},
             .child_gap = 2.0f
         })
-        if (node->parent->tabs)
         {
-            printf("%i\n", naui_list_len(node->parent->tabs));
-            for (int32_t i = 0; i < naui_list_len(node->parent->tabs); i++)
-                naui_render_docked_panel_tab(node->parent->tabs[i]);
+            if (owner && owner->tabs)
+            {
+                for (int32_t i = 0; i < naui_list_len(owner->tabs); i++)
+                {
+                    Naui_PanelNode *tab = owner->tabs[i];
+                    bool is_active = owner->active_tab == i;
+                    Leaf_ID tab_id = leaf_id_indexed(NAUI_PANEL_TAB_ID, (uintptr_t)tab);
+
+                    naui_render_docked_panel_tab(tab, is_active, tab_id);
+
+                    if (leaf_hovered(tab_id) && naui_mouse_clicked(NAUI_MOUSE_LEFT))
+                        owner->active_tab = i;
+                }
+            }
+            else
+            {
+                Leaf_ID tab_id = leaf_id_indexed(NAUI_PANEL_TAB_ID, (uintptr_t)node);
+                naui_render_docked_panel_tab(node, true, tab_id);
+            }
         }
-        else naui_render_docked_panel_tab(node);
     }
 }
 
@@ -331,7 +385,7 @@ static inline void naui_render_panel_titlebar(Naui_PanelNode *node)
         }
     })
     {
-        if (node->parent)
+        if (node->tabs || node->parent)
             naui_render_docked_panel_titlebar(node);
         else naui_render_basic_panel_titlebar(node);
     }
@@ -388,7 +442,8 @@ static void naui_render_next_panel_child(Naui_PanelNode *node)
 
     if (node->tabs)
     {
-        naui_render_next_panel_child(node->tabs[node->active_tab]);
+        naui_render_panel_titlebar(node);
+        naui_render_panel_body(node->tabs[node->active_tab]);
         return;
     }
 
