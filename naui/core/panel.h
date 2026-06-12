@@ -42,6 +42,10 @@
     #define NAUI_PANEL_FONT_SIZE_TAG "naui_panel_font_size"
 #endif
 
+#ifndef NAUI_DOCK_GUIDE_COLOR
+    #define NAUI_DOCK_GUIDE_COLOR "naui_dock_guide_color"
+#endif
+
 typedef uint64_t Naui_PanelID;
 typedef void(*NauiPanelEvent)(Naui_PanelID panel_id, void *data);
 
@@ -73,7 +77,8 @@ enum
     NAUI_PANEL_FLAG_NO_DOCKING = 1 << 1,
     NAUI_PANEL_FLAG_NO_MOVE = 1 << 2,
     NAUI_PANEL_FLAG_NO_RESIZE = 1 << 3,
-    NAUI_PANEL_FLAG_ALWAYS_TO_FRONT = 1 << 4
+    NAUI_PANEL_FLAG_ALWAYS_TO_FRONT = 1 << 4,
+    __NAUI_PANEl_FLAG_VIEWPORT = 1 << 5 // internal flag for whether this is the main window viewport panel
 };
 
 #define NAUI_ATTACH_PANEL(type_name) naui_attach_panel(#type_name)

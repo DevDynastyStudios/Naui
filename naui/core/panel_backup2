@@ -18,8 +18,8 @@
 typedef uint8_t Naui_SplitAxis;
 enum
 {
-    NAUI_SPLIT_AXIS_VERTICAL   = LEAF_LAYOUT_VERTICAL,
-    NAUI_SPLIT_AXIS_HORIZONTAL = LEAF_LAYOUT_HORIZONAL
+    NAUI_SPLIT_AXIS_VERTICAL   = LEAF_DIRECTION_VERTICAL,
+    NAUI_SPLIT_AXIS_HORIZONTAL = LEAF_DIRECTION_HORIZONAL
 };
 
 typedef struct Naui_PanelNode Naui_PanelNode;
@@ -162,7 +162,7 @@ static void naui_render_panel_tab(Naui_PanelNode *node)
     })
     {
         leaf({
-            .direction = LEAF_LAYOUT_HORIZONAL,
+            .direction = LEAF_DIRECTION_HORIZONAL,
             .size = {LEAF_SIZE_FIT, LEAF_SIZE_FULL},
             .padding = { 0.0f, font_size - padding.x * 0.5f, 0.0f, 0.0f}
         })
@@ -177,7 +177,7 @@ static void naui_render_panel_tab(Naui_PanelNode *node)
         if (!(node->flags & NAUI_PANEL_FLAG_NO_CLOSE) && tab_hovered)
             leaf({
                 .positioning = LEAF_POSITIONING_FLOATING_TO_PARENT,
-                .direction = LEAF_LAYOUT_HORIZONAL,
+                .direction = LEAF_DIRECTION_HORIZONAL,
                 .size = {LEAF_SIZE_FULL, LEAF_SIZE_FULL},
                 .child_alignment = {LEAF_ALIGN_X_RIGHT, LEAF_ALIGN_Y_CENTER},
                 .floating_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER}
@@ -203,7 +203,7 @@ static inline void naui_render_panel_titlebar(Naui_PanelNode *node)
         {
             if (node->parent->tabs)
             {
-                leaf({ .direction = LEAF_LAYOUT_HORIZONAL, .size = {LEAF_SIZE_FULL, LEAF_SIZE_FIT}, .child_gap = 2.0f })
+                leaf({ .direction = LEAF_DIRECTION_HORIZONAL, .size = {LEAF_SIZE_FULL, LEAF_SIZE_FIT}, .child_gap = 2.0f })
                 {
                     printf("%i\n", naui_list_len(node->parent->tabs)); // seems to never be more than 2 no matter how many I dock
                     for (int32_t i = 0; i < (int32_t)naui_list_len(node->parent->tabs); i++)
@@ -291,7 +291,7 @@ static void naui_render_docking_guide(Naui_PanelNode *node)
         }
         leaf({
             .positioning     = LEAF_POSITIONING_FLOATING_TO_PARENT,
-            .direction       = LEAF_LAYOUT_HORIZONAL,
+            .direction       = LEAF_DIRECTION_HORIZONAL,
             .size            = {LEAF_SIZE_PERCENT(1.0f), LEAF_SIZE_PERCENT(1.0f)},
             .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER},
             .child_gap       = 6.0f

@@ -23,8 +23,8 @@ Naui_PanelData;
 typedef uint8_t Naui_SplitAxis;
 enum
 {
-    NAUI_SPLIT_AXIS_VERTICAL   = LEAF_LAYOUT_VERTICAL,
-    NAUI_SPLIT_AXIS_HORIZONTAL = LEAF_LAYOUT_HORIZONAL
+    NAUI_SPLIT_AXIS_VERTICAL   = LEAF_DIRECTION_VERTICAL,
+    NAUI_SPLIT_AXIS_HORIZONTAL = LEAF_DIRECTION_HORIZONAL
 };
 
 typedef uint8_t Naui_ResizeEdge;
@@ -208,7 +208,7 @@ static void naui_docking_guide(Naui_PanelID id)
         }
         leaf({
             .positioning     = LEAF_POSITIONING_FLOATING_TO_PARENT,
-            .direction       = LEAF_LAYOUT_HORIZONAL,
+            .direction       = LEAF_DIRECTION_HORIZONAL,
             .size            = {LEAF_SIZE_PERCENT(1.0f), LEAF_SIZE_PERCENT(1.0f)},
             .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER},
             .child_gap       = 6.0f
@@ -327,7 +327,7 @@ static void naui_render_leaf_panel_node(Naui_PanelNode *node)
                 .color = LEAF_DBG_BG1
             })
             {
-                leaf({ .direction = LEAF_LAYOUT_HORIZONAL })
+                leaf({ .direction = LEAF_DIRECTION_HORIZONAL })
                 {
                     leaf_text(panel_data->title, {
                         .color     = LEAF_DBG_TEXT,

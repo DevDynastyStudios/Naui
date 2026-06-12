@@ -108,8 +108,8 @@ enum
 typedef uint8_t Leaf_LayoutDirection;
 enum
 {
-    LEAF_LAYOUT_VERTICAL,
-    LEAF_LAYOUT_HORIZONAL
+    LEAF_DIRECTION_VERTICAL,
+    LEAF_DIRECTION_HORIZONAL
 };
 
 typedef uint8_t Leaf_LayoutAlignmentX;
@@ -623,7 +623,7 @@ static inline void leaf_accumulate_fit(Leaf_Node *parent, Leaf_Node *child)
 
     if (fit_w)
     {
-        if (cfg->direction == LEAF_LAYOUT_HORIZONAL)
+        if (cfg->direction == LEAF_DIRECTION_HORIZONAL)
             parent->bounding_box.width += cw;
         else
             parent->bounding_box.width = leaf_maxf(
@@ -632,7 +632,7 @@ static inline void leaf_accumulate_fit(Leaf_Node *parent, Leaf_Node *child)
     }
     if (fit_h)
     {
-        if (cfg->direction == LEAF_LAYOUT_HORIZONAL)
+        if (cfg->direction == LEAF_DIRECTION_HORIZONAL)
             parent->bounding_box.height = leaf_maxf(
                 ch + cfg->padding.top + cfg->padding.bottom,
                 parent->bounding_box.height);
@@ -755,9 +755,9 @@ void leaf_end_element(void)
     node->bounding_box.height += config->padding.top + config->padding.bottom;
 
     const float child_gap = leaf_max(node->element.relative_child_count - 1, 0) * config->child_gap;
-    if (config->size.width.type == LEAF_SIZE_TYPE_FIT && config->direction == LEAF_LAYOUT_HORIZONAL)
+    if (config->size.width.type == LEAF_SIZE_TYPE_FIT && config->direction == LEAF_DIRECTION_HORIZONAL)
         node->bounding_box.width += child_gap;
-    else if (config->size.height.type == LEAF_SIZE_TYPE_FIT && config->direction == LEAF_LAYOUT_VERTICAL)
+    else if (config->size.height.type == LEAF_SIZE_TYPE_FIT && config->direction == LEAF_DIRECTION_VERTICAL)
         node->bounding_box.height += child_gap;
 
     if (node->parent)
@@ -1054,7 +1054,7 @@ static void leaf_size_pass(Leaf_Node *parent)
 
     leaf_resolve_aspect_ratio(parent);
 
-    bool h = parent_config->direction == LEAF_LAYOUT_HORIZONAL;
+    bool h = parent_config->direction == LEAF_DIRECTION_HORIZONAL;
 
     int32_t growing_width_count  = 0;
     int32_t growing_height_count = 0;
@@ -1161,7 +1161,7 @@ static void leaf_position_render(Leaf_Node *parent)
      (align) == (center_val) ? (free) * 0.5f : 0)
 
     const Leaf_ElementConfig *parent_config = &parent->element.config;
-    bool h = parent_config->direction == LEAF_LAYOUT_HORIZONAL;
+    bool h = parent_config->direction == LEAF_DIRECTION_HORIZONAL;
 
     float available_main  =
         LEAF_MAIN (h, parent->bounding_box.width,  parent->bounding_box.height) -
