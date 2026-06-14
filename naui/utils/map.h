@@ -7,6 +7,7 @@
 #define naui_strmap_get(map, key)           shget(map, key)
 #define naui_strmap_get_index(map, key)     shgeti(map, key)
 #define naui_strmap_put(map, key, value)    shput(map, key, value)
+#define naui_strmap_puts(map, entry)		shputs(map, entry)
 #define naui_strmap_del(map, key)           shdel(map, key)
 #define naui_strmap_len(map)                shlen(map)
 #define naui_strmap_free(map)               shfree(map)
