@@ -1,79 +1,26 @@
 #include "json.h"
 #include "json_reader.h"
 #include "json_writer.h"
+#include "utils/arena.h"
 
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
-#define ARENA_BLOCK_SIZE (32 * 1024)
-
-typedef struct Naui_ArenaBlock
-{
-	struct Naui_ArenaBlock* next;
-	size_t used;
-	size_t cap;
-} Naui_ArenaBlock;
-
 #pragma region Static Functions
-static void* arena_alloc(Naui_Json* json, size_t size)
-{
-	size = (size + sizeof(void*) - 1) & ~(sizeof(void*) - 1);
-
-	Naui_ArenaBlock* block = (Naui_ArenaBlock*)json->_arena;
-
-	if (block)
-	{
-		Naui_ArenaBlock* last = block;
-		while (last->next)
-			last = last->next;
-
-		if (last->used + size <= last->cap)
-		{
-			void* ptr = (char*)(last + 1) + last->used;
-			last->used += size;
-			memset(ptr, 0, size);
-			return ptr;
-		}
-
-		size_t cap = size > ARENA_BLOCK_SIZE ? size : ARENA_BLOCK_SIZE;
-		Naui_ArenaBlock* next = (Naui_ArenaBlock*)malloc(sizeof(Naui_ArenaBlock) + cap);
-		if (!next)
-			return NULL;
-
-		next->next = NULL;
-		next->used = size;
-		next->cap  = cap;
-		last->next = next;
-
-		void* ptr = (char*)(next + 1);
-		memset(ptr, 0, size);
-		return ptr;
-	}
-
-	size_t cap = size > ARENA_BLOCK_SIZE ? size : ARENA_BLOCK_SIZE;
-	Naui_ArenaBlock* first = (Naui_ArenaBlock*)malloc(sizeof(Naui_ArenaBlock) + cap);
-	if (!first)
-		return NULL;
-
-	first->next = NULL;
-	first->used = size;
-	first->cap  = cap;
-	json->_arena = first;
-
-	void* ptr = (char*)(first + 1);
-	memset(ptr, 0, size);
-	return ptr;
-}
-
 static Naui_JsonValue* arena_value(Naui_Json* json)
 {
-	return (Naui_JsonValue*)arena_alloc(json, sizeof(Naui_JsonValue));
+	return (Naui_JsonValue*)naui_arena_alloc(&json->_arena, sizeof(Naui_JsonValue));
+}
+
+static Naui_JsonValue* arena_values(Naui_Json* json, size_t count)
+{
+	return (Naui_JsonValue*)naui_arena_alloc(&json->_arena, count * sizeof(Naui_JsonValue));
 }
 
 static const char* arena_str(Naui_Json* json, const char* src, size_t len)
 {
-	char* dst = (char*)arena_alloc(json, len + 1);
+	char* dst = (char*)naui_arena_alloc(&json->_arena, len + 1);
 	if (!dst)
 		return NULL;
 
@@ -102,7 +49,7 @@ static bool build_array(Naui_Json* json, Naui_JsonReader* reader, Naui_JsonValue
 		if (arr->array.count >= arr->array.cap)
 		{
 			size_t new_cap = arr->array.cap ? arr->array.cap * 2 : 8;
-			Naui_JsonValue* tmp = (Naui_JsonValue*)arena_alloc(json, new_cap * sizeof(Naui_JsonValue));
+			Naui_JsonValue* tmp = arena_values(json, new_cap);
 			if (!tmp)
 				return false;
 
@@ -178,7 +125,7 @@ static bool build_object(Naui_Json* json, Naui_JsonReader* reader, Naui_JsonValu
 		if (obj->object.count + 2 > obj->object.cap)
 		{
 			size_t new_cap = obj->object.cap ? obj->object.cap * 2 : 16;
-			Naui_JsonValue* tmp = (Naui_JsonValue*)arena_alloc(json, new_cap * sizeof(Naui_JsonValue));
+			Naui_JsonValue* tmp = arena_values(json, new_cap);
 			if (!tmp)
 				return false;
 
@@ -311,7 +258,7 @@ static Naui_JsonValue* object_slot(Naui_Json* json, Naui_JsonValue* obj, const c
 	if (obj->object.count + 2 > obj->object.cap)
 	{
 		size_t new_cap = obj->object.cap ? obj->object.cap * 2 : 8;
-		Naui_JsonValue* tmp = (Naui_JsonValue*)arena_alloc(json, new_cap * sizeof(Naui_JsonValue));
+		Naui_JsonValue* tmp = arena_values(json, new_cap);
 		if (!tmp)
 			return NULL;
 
@@ -340,7 +287,7 @@ static Naui_JsonValue* array_slot(Naui_Json* json, Naui_JsonValue* arr)
 	if (arr->array.count >= arr->array.cap)
 	{
 		size_t new_cap = arr->array.cap ? arr->array.cap * 2 : 8;
-		Naui_JsonValue* tmp = (Naui_JsonValue*)arena_alloc(json, new_cap * sizeof(Naui_JsonValue));
+		Naui_JsonValue* tmp = arena_values(json, new_cap);
 		if (!tmp)
 			return NULL;
 
@@ -471,14 +418,7 @@ Naui_Json naui_json_parse_file(const Naui_Path path)
 
 void naui_json_free(Naui_Json* result)
 {
-	Naui_ArenaBlock* block = (Naui_ArenaBlock*)result->_arena;
-	while (block)
-	{
-		Naui_ArenaBlock* next = block->next;
-		free(block);
-		block = next;
-	}
-
+	naui_arena_free(&result->_arena);
 	free(result->_file_src);
 	memset(result, 0, sizeof(*result));
 }

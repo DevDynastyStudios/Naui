@@ -3,15 +3,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
-typedef struct
-{
-    uint8_t *ptr;
-    size_t pos;
-    size_t size;
-}
-Naui_Arena;
+typedef struct Naui_ArenaBlock Naui_ArenaBlock;
 
-void naui_create_arena(Naui_Arena *arena, size_t size);
-void naui_destroy_arena(Naui_Arena *arena);
-void naui_arena_reset(Naui_Arena *arena);
-void *naui_arena_alloc(Naui_Arena *arena, size_t size);
+typedef struct Naui_Arena
+{
+	Naui_ArenaBlock* head;
+} Naui_Arena;
+
+void naui_arena_init(Naui_Arena* arena, size_t size);
+void naui_arena_free(Naui_Arena* arena);
+void naui_arena_reset(Naui_Arena* arena);
+void* naui_arena_alloc(Naui_Arena* arena, size_t size);

@@ -46,8 +46,8 @@ static Naui_Color naui_color_from_hex(const char *hex)
     return color;
 }
 
-void naui_themes_initialize(void) { naui_create_arena(&tm.key_arena, NAUI_THEME_KEY_SCRATCH_SIZE); }
-void naui_themes_shutdown(void) { naui_destroy_arena(&tm.key_arena); }
+void naui_themes_initialize(void) { naui_arena_init(&tm.key_arena, NAUI_THEME_KEY_SCRATCH_SIZE); }
+void naui_themes_shutdown(void) { naui_arena_free(&tm.key_arena); }
 
 void naui_load_theme(const char *file_name)
 {

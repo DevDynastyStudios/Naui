@@ -1,23 +1,14 @@
 #pragma once
 #include "filesystem/filesystem.h"
+#include "utils/arena.h"
 
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
-#define NAUI_JSON_FOREACH(node, k, v)                                          \
-    for (size_t _i = 0;                                                        \
-         (node) &&                                                             \
-         (((node)->type == NAUI_JSON_ARRAY  && _i < (node)->array.count) ||   \
-          ((node)->type == NAUI_JSON_OBJECT && _i + 1 < (node)->object.count));\
-         _i += (node)->type == NAUI_JSON_OBJECT ? 2 : 1)                       \
-    for (const Naui_JsonValue* k =                                             \
-             (node)->type == NAUI_JSON_OBJECT ? &(node)->object.pairs[_i]      \
-                                              : NULL,                          \
-                             * v =                                             \
-             (node)->type == NAUI_JSON_OBJECT ? &(node)->object.pairs[_i + 1] \
-                                              : &(node)->array.items[_i];      \
-         v; k = NULL, v = NULL)
+#define NAUI_JSON_FOREACH(node, k, v) \
+    for (size_t _i = 0; (node) && (((node)->type == NAUI_JSON_ARRAY  && _i < (node)->array.count) || ((node)->type == NAUI_JSON_OBJECT && _i + 1 < (node)->object.count)); _i += (node)->type == NAUI_JSON_OBJECT ? 2 : 1) \
+    for (const Naui_JsonValue* k = (node)->type == NAUI_JSON_OBJECT ? &(node)->object.pairs[_i] : NULL, * v = (node)->type == NAUI_JSON_OBJECT ? &(node)->object.pairs[_i + 1] : &(node)->array.items[_i]; v; k = NULL, v = NULL)
 
 typedef uint8_t Naui_JsonType;
 enum
@@ -67,9 +58,7 @@ typedef struct
 	int error_line;
 	int error_col;
 
-	void* _arena;
-	size_t _arena_used;
-	size_t _arena_cap;
+	Naui_Arena _arena;
 	char* _file_src;
 } Naui_Json;
 
