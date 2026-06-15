@@ -42,6 +42,10 @@
     #define NAUI_PANEL_FONT_SIZE_TAG "naui_panel_font_size"
 #endif
 
+#ifndef NAUI_VIEWPORT_BG_COLOR_TAG
+    #define NAUI_VIEWPORT_BG_COLOR_TAG "naui_viewport_bg_color"
+#endif
+
 #ifndef NAUI_DOCK_GUIDE_COLOR
     #define NAUI_DOCK_GUIDE_COLOR "naui_dock_guide_color"
 #endif
@@ -99,6 +103,9 @@ NAUI_API void         naui_panel_disable_flags  (Naui_PanelID panel_id, Naui_Pan
 
 NAUI_API void         naui_dock_panel   (Naui_PanelID target_id, Naui_PanelID guest_id, Naui_DockDirection direction, float split_ratio);
 NAUI_API void         naui_undock_panel (Naui_PanelID id);
+
+NAUI_API void         naui_set_main_viewport(Naui_PanelID id);
+NAUI_API Naui_PanelID naui_get_main_viewport(void);
 
 #ifdef _MSC_VER
   #pragma section(".CRT$XCU", read)
