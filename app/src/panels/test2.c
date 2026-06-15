@@ -31,7 +31,6 @@ static void on_render(Naui_PanelID panel_id, TestData *data)
         .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_TOP}
     })
     {
-
         leaf_text("Yipeee :3", {
             .color = LEAF_COLOR_WHITE,
             .font_size = 24.0f,

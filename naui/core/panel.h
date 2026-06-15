@@ -86,8 +86,7 @@ enum
     NAUI_PANEL_FLAG_NO_MOVE = 1 << 2,
     NAUI_PANEL_FLAG_NO_RESIZE = 1 << 3,
     NAUI_PANEL_FLAG_NO_TITLE = 1 << 4,
-    NAUI_PANEL_FLAG_ALWAYS_TO_FRONT = 1 << 5,
-    __NAUI_PANEl_FLAG_VIEWPORT = 1 << 6 // internal flag for whether this is the main window viewport panel
+    NAUI_PANEL_FLAG_ALWAYS_TO_FRONT = 1 << 5
 };
 
 #define NAUI_ATTACH_PANEL(type_name) naui_attach_panel(#type_name)
