@@ -131,7 +131,7 @@ static void __naui_app_event(const mg_app_event* event)
 static void __naui_app_start(void)
 {
     naui_renderer_initialize();
-    naui_set_font(0, "Assets/Fonts/Quicksand-SemiBold.ttf");
+    naui_set_font(0, "Assets/Fonts/MYRIADPRO-REGULAR.otf");
     naui_asset_manager_load_images("Assets/Images");
     naui_themes_initialize();
     leaf_initialize();
