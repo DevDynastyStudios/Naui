@@ -318,6 +318,10 @@ static inline void naui_render_docking_guide_slot(const char *label, Naui_PanelN
         .color = hovered ?
             naui_theme_leaf_color(NAUI_DOCK_GUIDE_COLOR) :
             naui_theme_leaf_color(NAUI_DOCK_GUIDE_HOVERED_COLOR),
+        .rounding = {
+            .value = 8.0f,
+            .corners = LEAF_CORNER_ALL
+        },
         .aspect_ratio = 1.0f
     });
 }
@@ -334,7 +338,8 @@ static void naui_render_docking_guides(Naui_PanelNode *node)
     })
     {
         naui_render_docking_guide_slot(NAUI_DOCK_GUIDE_TOP_ID, node, false);
-        naui_render_docking_guide_slot(NAUI_DOCK_GUIDE_CENTER_ID, node, false);
+        leaf({.size = {LEAF_SIZE_DERIVED, LEAF_SIZE_GROW}, .aspect_ratio = 1.0f});
+        //naui_render_docking_guide_slot(NAUI_DOCK_GUIDE_CENTER_ID, node, false);
         naui_render_docking_guide_slot(NAUI_DOCK_GUIDE_BOTTOM_ID, node, false);
     }
 
@@ -592,6 +597,14 @@ static void naui_update_panel_dragging(Naui_PanelNode *node)
     }
 }
 
+static void naui_update_panel_resizing(Naui_PanelNode *node)
+{
+    Naui_PanelNode *root = node->root;
+    if (root == pm.main_viewport)
+        return;
+    // TODO: the rest of the resizing logic
+}
+
 static void naui_update_panel_docking_guides(Naui_PanelNode *node)
 {
     if (!naui_mouse_released(NAUI_MOUSE_LEFT))
@@ -617,6 +630,7 @@ static void naui_update_panel(Naui_PanelNode *node)
         return;
     }
 
+    naui_update_panel_resizing(node);
     naui_update_panel_dragging(node);
 
     if (naui_can_show_docking_guides(node))
