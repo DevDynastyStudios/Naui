@@ -1,6 +1,7 @@
 #include "panel.h"
 #include "theme.h"
 #include "input.h"
+#include "math.h"
 
 #include "utils/map.h"
 #include "utils/list.h"
@@ -76,9 +77,6 @@ typedef struct
 }
 Naui_PanelManager;
 static Naui_PanelManager pm = { 0 };
-
-static inline float naui_min(float a, float b) { return a < b ? a : b; }
-static inline float naui_max(float a, float b) { return a > b ? a : b; }
 
 static Naui_PanelNode *naui_alloc_panel_node(void) { return (Naui_PanelNode*)calloc(1, sizeof(Naui_PanelNode)); }
 static void naui_free_panel_node(Naui_PanelNode *node) { free(node); }
@@ -676,14 +674,14 @@ static void naui_update_panel_resizing(Naui_PanelNode *node)
         float dx = naui_mouse_x() - drag_mouse.x;
         float dy = naui_mouse_y() - drag_mouse.y;
 
-        if (drag_x < 0) dx = naui_min(dx, drag_size.x - NAUI_PANEL_MIN_SIZE);
-        if (drag_y < 0) dy = naui_min(dy, drag_size.y - NAUI_PANEL_MIN_SIZE);
+        if (drag_x < 0) dx = fminf(dx, drag_size.x - NAUI_PANEL_MIN_SIZE);
+        if (drag_y < 0) dy = fminf(dy, drag_size.y - NAUI_PANEL_MIN_SIZE);
 
         if (drag_x < 0) { root->position.x = drag_pos.x + dx; root->size.x = drag_size.x - dx; }
-        else if (drag_x > 0) root->size.x = naui_max(drag_size.x + dx, NAUI_PANEL_MIN_SIZE);
+        else if (drag_x > 0) root->size.x = fmaxf(drag_size.x + dx, NAUI_PANEL_MIN_SIZE);
 
         if (drag_y < 0) { root->position.y = drag_pos.y + dy; root->size.y = drag_size.y - dy; }
-        else if (drag_y > 0) root->size.y = naui_max(drag_size.y + dy, NAUI_PANEL_MIN_SIZE);
+        else if (drag_y > 0) root->size.y = fmaxf(drag_size.y + dy, NAUI_PANEL_MIN_SIZE);
 
         if (naui_mouse_released(NAUI_MOUSE_LEFT))
             pm.resizing_node = NULL;

@@ -34,7 +34,7 @@ static void on_render(Naui_PanelID panel_id, TestData *data)
 
         leaf_text("Yipeee :3", {
             .color = LEAF_COLOR_WHITE,
-            .font_size = LEAF_SIZE_GROW,
+            .font_size = 24.0f,
             .alignment = LEAF_TEXT_ALIGN_CENTER
         });
     }
