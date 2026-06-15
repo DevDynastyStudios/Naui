@@ -464,13 +464,16 @@ static inline void naui_render_docked_panel_tab(Naui_PanelNode *node, bool is_ac
 
     leaf({
         .id = id,
+        .direction = LEAF_DIRECTION_HORIZONAL,
         .size = {LEAF_SIZE_FIT, LEAF_SIZE_FIXED(font_size)},
         .padding = LEAF_PADDING_AXES(padding.x, padding.y),
+        .rounding = { rounding, LEAF_CORNER_TL | LEAF_CORNER_TR },
         .color = bg_color,
-        .rounding = { rounding, LEAF_CORNER_TL | LEAF_CORNER_TR }
+        .child_gap = 2.0f
     })
     {
         leaf_text(node->title, { .font_size = font_size, .color = text_color });
+        naui_render_close_button(node, font_size, text_color);
     }
 }
 
@@ -607,7 +610,9 @@ static void naui_render_main_viewport(void)
     Naui_PanelNode *node = pm.main_viewport;
     leaf({
         .size = {LEAF_SIZE_FULL, LEAF_SIZE_FULL},
-        .color = naui_theme_leaf_color(NAUI_VIEWPORT_BG_COLOR_TAG)
+        .color = node ?
+            naui_theme_leaf_color(NAUI_PANEL_BORDER_COLOR_TAG) :
+            naui_theme_leaf_color(NAUI_VIEWPORT_BG_COLOR_TAG)
     })
     {
         if (node)
@@ -798,6 +803,9 @@ static void naui_update_main_viewport(void)
 
 static void naui_detach_panel_immediate(Naui_PanelNode *node)
 {
+    if (node->parent)
+        naui_undock_panel_immediate(node);
+
     if (node->type.on_detach)
         node->type.on_detach((Naui_PanelID)node, node->user_data);
 
