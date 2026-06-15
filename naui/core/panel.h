@@ -107,6 +107,8 @@ NAUI_API void         naui_undock_panel (Naui_PanelID id);
 NAUI_API void         naui_set_main_viewport(Naui_PanelID id);
 NAUI_API Naui_PanelID naui_get_main_viewport(void);
 
+NAUI_API bool         naui_is_panel_hovered(Naui_PanelID id);
+
 #ifdef _MSC_VER
   #pragma section(".CRT$XCU", read)
   #define NAUI_CONSTRUCTOR_NAMED(fn) \
