@@ -6,3 +6,4 @@
 	void string_test();
 	void iterator_test();
 	void json_test();
+	void localization_test();

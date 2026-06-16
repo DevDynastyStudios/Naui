@@ -9,5 +9,6 @@ int main(void)
 	string_test();
 	iterator_test();
 	json_test();
+	localization_test();
 	TEST_CONCLUSION();
 }
