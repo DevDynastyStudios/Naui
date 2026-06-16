@@ -18,7 +18,7 @@ static void on_attach(Naui_PanelID panel_id, TestData *data)
 
     //Naui_PanelID child_panel_2 = NAUI_ATTACH_PANEL(test2);
     //naui_dock_panel(panel_slot, child_panel_2, NAUI_DOCK_DIRECTION_TOP);
-
+    naui_panel_enable_flags(panel_id, NAUI_PANEL_FLAG_NO_CLOSE);
     panel_slot = panel_id;
 }
 

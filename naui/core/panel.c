@@ -522,7 +522,9 @@ static inline void naui_render_basic_panel_titlebar(Naui_PanelNode *node)
             .floating_alignment = {LEAF_ALIGN_X_RIGHT, LEAF_ALIGN_Y_CENTER},
             .padding = LEAF_PADDING_AXES(padding.x * 0.5f, padding.y)
         })
-        naui_render_close_button(node, font_size);
+
+        if (!(node->flags & NAUI_PANEL_FLAG_NO_CLOSE))
+            naui_render_close_button(node, font_size);
     }
 }
 
@@ -548,7 +550,7 @@ static inline void naui_render_docked_panel_tab(Naui_PanelNode *node, bool is_ac
     })
     {
         leaf_text(node->title, { .font_size = font_size, .color = text_color });
-        if (leaf_hovered(id))
+        if (!(node->flags & NAUI_PANEL_FLAG_NO_CLOSE) && leaf_hovered(id))
             naui_render_close_button(node, font_size);
         else
             leaf({
@@ -732,7 +734,7 @@ static void naui_render_dock_guide_area(void)
 static void naui_update_panel_dragging(Naui_PanelNode *node)
 {
     static Naui_Vec2 drag_offset;
-    if (pm.resizing_node || pm.split_resizing_node)
+    if (node->flags & NAUI_PANEL_FLAG_NO_MOVE || pm.resizing_node || pm.split_resizing_node)
         return;
 
     Naui_PanelNode *root = node->root;
@@ -784,7 +786,7 @@ static void naui_update_panel_resizing(Naui_PanelNode *node)
     static int8_t drag_x, drag_y;
     static Naui_Vec2 drag_mouse, drag_pos, drag_size;
 
-    if (pm.split_resizing_node)
+    if (node->flags & NAUI_PANEL_FLAG_NO_RESIZE || pm.split_resizing_node)
         return;
 
     Naui_PanelNode *root = node->root;
@@ -948,10 +950,8 @@ static void naui_update_panel(Naui_PanelNode *node)
 
     naui_calculate_and_cache_panel_occlusion(node);
 
-    if (!(node->flags & NAUI_PANEL_FLAG_NO_RESIZE))
-        naui_update_panel_resizing(node);
-    if (!(node->flags & NAUI_PANEL_FLAG_NO_MOVE))
-        naui_update_panel_dragging(node);
+    naui_update_panel_resizing(node);
+    naui_update_panel_dragging(node);
 
     node->position.x = fminf(node->position.x, naui_app_width() - 24.0f);
     node->position.y = fminf(node->position.y, naui_app_height() - 24.0f);
