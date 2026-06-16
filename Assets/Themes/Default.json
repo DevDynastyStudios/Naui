@@ -8,8 +8,9 @@
     "naui_panel_text_disabled_color": "#5A5A5F",
 
     "naui_panel_shadow_color": "#00000015",
-    "naui_dock_guide_color": "#05050F5F",
-    "naui_dock_guide_hovered_color": "#0F0F0F5F",
+    "naui_dock_guide_color": "#1464A030",
+    "naui_dock_guide_hovered_color": "#1E8FD050",
+    "naui_dock_guide_outline_color": "#1E8FD080",
 
     "naui_viewport_bg_color": "#252528",
 
@@ -21,5 +22,5 @@
 
     "naui_panel_font_size": 15.0,
     "naui_panel_border_width": 1.0,
-    "naui_panel_rounding": 8.0
+    "naui_panel_rounding": 4.0
 }

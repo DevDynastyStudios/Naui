@@ -62,6 +62,10 @@
     #define NAUI_DOCK_GUIDE_HOVERED_COLOR "naui_dock_guide_hovered_color"
 #endif
 
+#ifndef NAUI_DOCK_GUIDE_OUTLINE_COLOR
+#define NAUI_DOCK_GUIDE_OUTLINE_COLOR "naui_dock_guide_outline_color"
+#endif
+
 typedef uint64_t Naui_PanelID;
 typedef void(*NauiPanelEvent)(Naui_PanelID panel_id, void *data);
 
@@ -90,11 +94,13 @@ enum
 {
     NAUI_PANEL_FLAG_NONE = 0,
     NAUI_PANEL_FLAG_NO_CLOSE = 1 << 0,
-    NAUI_PANEL_FLAG_NO_DOCKING = 1 << 1,
-    NAUI_PANEL_FLAG_NO_MOVE = 1 << 2,
-    NAUI_PANEL_FLAG_NO_RESIZE = 1 << 3,
-    NAUI_PANEL_FLAG_NO_TITLE = 1 << 4,
-    NAUI_PANEL_FLAG_ALWAYS_TO_FRONT = 1 << 5
+    NAUI_PANEL_FLAG_NO_DOCK_TO_OTHER = 1 << 1,
+    NAUI_PANEL_FLAG_NO_DOCK_FROM_OTHER = 1 << 2,
+    NAUI_PANEL_FLAG_NO_DOCK = NAUI_PANEL_FLAG_NO_DOCK_TO_OTHER | NAUI_PANEL_FLAG_NO_DOCK_FROM_OTHER,
+    NAUI_PANEL_FLAG_NO_MOVE = 1 << 3,
+    NAUI_PANEL_FLAG_NO_RESIZE = 1 << 4,
+    NAUI_PANEL_FLAG_NO_TITLE = 1 << 5,
+    NAUI_PANEL_FLAG_ALWAYS_TO_FRONT = 1 << 6 // still not implemented
 };
 
 #define NAUI_ATTACH_PANEL(type_name) naui_attach_panel(#type_name)
@@ -105,6 +111,7 @@ NAUI_API void         naui_register_panel_type(const char *name, Naui_PanelType 
 
 NAUI_API void         naui_panel_set_title      (Naui_PanelID panel_id, const char *title);
 NAUI_API void         naui_panel_set_size       (Naui_PanelID panel_id, Naui_Vec2 size);
+NAUI_API void         naui_panel_set_min_size   (Naui_PanelID panel_id, Naui_Vec2 size);
 NAUI_API void         naui_panel_enable_flags   (Naui_PanelID panel_id, Naui_PanelFlags flags);
 NAUI_API void         naui_panel_disable_flags  (Naui_PanelID panel_id, Naui_PanelFlags flags);
 
