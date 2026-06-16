@@ -58,7 +58,6 @@ static void on_render(Naui_PanelID panel_id, TestData *data)
             .color = leaf_rgb(255, 0, 0),
             .aspect_ratio = 1.0f
         });
-
     }
 }
 

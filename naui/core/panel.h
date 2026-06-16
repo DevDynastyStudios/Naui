@@ -42,6 +42,14 @@
     #define NAUI_PANEL_FONT_SIZE_TAG "naui_panel_font_size"
 #endif
 
+#ifndef NAUI_PANEL_CLOSE_BG_COLOR_TAG
+    #define NAUI_PANEL_CLOSE_BG_COLOR_TAG "naui_panel_close_bg_color"
+#endif
+
+#ifndef NAUI_PANEL_CLOSE_HOVERED_COLOR_TAG
+    #define NAUI_PANEL_CLOSE_HOVERED_COLOR_TAG "naui_panel_close_hovered_color"
+#endif
+
 #ifndef NAUI_VIEWPORT_BG_COLOR_TAG
     #define NAUI_VIEWPORT_BG_COLOR_TAG "naui_viewport_bg_color"
 #endif
