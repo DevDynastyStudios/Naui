@@ -343,7 +343,7 @@ bool naui_is_panel_hovered(Naui_PanelID panel_id)
 
 static inline bool naui_can_show_dock_guides(Naui_PanelNode *node)
 {
-    return pm.dragging_node && !pm.dragging_node->children[0] && pm.dragging_node != node && node->root != pm.dragging_node->root;
+    return pm.dragging_node && pm.dragging_node != node && node->root != pm.dragging_node->root;
 }
 
 static inline void naui_render_dock_guide_slot(const char *label, Naui_PanelNode *node, bool horizontal, bool occluded)
@@ -619,7 +619,7 @@ static void naui_render_main_viewport(void)
             naui_render_next_panel_child(node);
         else
         {
-            if (pm.dragging_node && !pm.dragging_node->children[0])
+            if (pm.dragging_node)
             leaf({
                 .positioning = LEAF_POSITIONING_FLOATING_TO_PARENT,
                 .size = {LEAF_SIZE_DERIVED, LEAF_SIZE_FIXED(200.0f)},
