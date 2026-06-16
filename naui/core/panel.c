@@ -328,7 +328,7 @@ static bool naui_point_occluded_above(float mx, float my, Naui_PanelNode *root)
     return naui_range_occludes_point(mx, my, from, NULL);
 }
 
-bool naui_is_panel_hovered(Naui_PanelID panel_id)
+bool naui_panel_hovered(Naui_PanelID panel_id)
 {
     Naui_PanelNode *node = (Naui_PanelNode*)panel_id;
     float mx = naui_mouse_x();
@@ -366,8 +366,9 @@ static inline void naui_render_dock_guide_slot(const char *label, Naui_PanelNode
     });
 }
 
-static void naui_render_dock_guides(Naui_PanelNode *node, bool occluded)
+static void naui_render_dock_guides(Naui_PanelNode *node)
 {
+    bool occluded = naui_point_occluded_by_higher_panel(node);
     leaf({
         .positioning = LEAF_POSITIONING_FLOATING_TO_PARENT,
         .size = {LEAF_SIZE_DERIVED, LEAF_SIZE_PERCENT(0.65f)},
@@ -404,7 +405,7 @@ static void naui_render_close_button(Naui_PanelNode *node, float size, Leaf_Colo
     Leaf_ID id = leaf_id_indexed(NAUI_CLOSE_BUTTON_ID, (Naui_PanelID)node);
     bool hovered = pm.resizing_node ? false : leaf_hovered(id);
 
-    if (hovered && naui_mouse_clicked(NAUI_MOUSE_LEFT) && naui_is_panel_hovered((Naui_PanelID)node))
+    if (hovered && naui_mouse_clicked(NAUI_MOUSE_LEFT) && naui_panel_hovered((Naui_PanelID)node))
         naui_detach_panel((Naui_PanelID)node);
 
     leaf({
@@ -533,7 +534,7 @@ static inline void naui_render_panel_body(Naui_PanelNode *node)
             node->type.on_render((Naui_PanelID)node, node->user_data);
         
         if (naui_can_show_dock_guides(node))
-            naui_render_dock_guides(node, naui_point_occluded_by_higher_panel(node));
+            naui_render_dock_guides(node);
     }
 }
 

@@ -103,10 +103,10 @@ NAUI_API void         naui_panel_disable_flags  (Naui_PanelID panel_id, Naui_Pan
 NAUI_API void         naui_dock_panel   (Naui_PanelID target_id, Naui_PanelID guest_id, Naui_DockDirection direction, float split_ratio);
 NAUI_API void         naui_undock_panel (Naui_PanelID id);
 
-NAUI_API void         naui_set_main_viewport(Naui_PanelID id);
-NAUI_API Naui_PanelID naui_get_main_viewport(void);
+NAUI_API void         naui_set_main_viewport    (Naui_PanelID id);
+NAUI_API Naui_PanelID naui_get_main_viewport    (void);
 
-NAUI_API bool         naui_is_panel_hovered(Naui_PanelID id);
+NAUI_API bool         naui_panel_hovered        (Naui_PanelID id);
 
 #ifdef _MSC_VER
   #pragma section(".CRT$XCU", read)
