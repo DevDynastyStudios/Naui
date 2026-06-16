@@ -482,7 +482,6 @@ static void naui_render_close_button(Naui_PanelNode *node, float size)
     leaf({
         .id = id,
         .size = {LEAF_SIZE_FIXED(size), LEAF_SIZE_FIXED(size)},
-        .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER},
         .padding = LEAF_PADDING_AXES(3.0f, 3.0f),
         .color = hovered ?
             naui_theme_leaf_color(NAUI_PANEL_CLOSE_BG_COLOR_TAG) :
