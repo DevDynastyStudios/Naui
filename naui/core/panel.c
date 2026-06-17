@@ -102,7 +102,7 @@ Naui_PanelID naui_attach_panel(const char *type_name)
     if (type_index < 0)
     {
         fprintf(stderr, "[Naui]: Panel of type `%s` not found!", type_name);
-        return NULL;
+        return 0;
     }
 
     Naui_PanelNode *node = naui_alloc_panel_node();
@@ -110,7 +110,7 @@ Naui_PanelID naui_attach_panel(const char *type_name)
     node->size = (Naui_Vec2) { NAUI_PANEL_DEFAULT_WIDTH, NAUI_PANEL_DEFAULT_HEIGHT };
     node->min_size = (Naui_Vec2) { 100.0f, 100.0f };
     node->root = node;
-    node->root_index = naui_list_len(pm.root_nodes);
+    node->root_index = (uint32_t)naui_list_len(pm.root_nodes);
 
     if (node->type.user_data_size)
         node->user_data = malloc(node->type.user_data_size);
@@ -170,7 +170,7 @@ static void naui_panel_bring_to_front(Naui_PanelNode *node)
     if (root == pm.main_viewport)
         return;
 
-    uint32_t last = naui_list_len(pm.root_nodes) - 1;
+    uint32_t last = (uint32_t)(naui_list_len(pm.root_nodes) - 1);
     if (root->root_index == last)
         return;
 
@@ -256,17 +256,15 @@ void naui_dock_panel(Naui_PanelID target_id, Naui_PanelID guest_id, Naui_DockDir
     dock_node->position = target->position;
 }
 
-static void naui_undock_panel_immediate(Naui_PanelID id)
+static void naui_undock_panel_immediate(Naui_PanelNode *node)
 {
-    Naui_PanelNode *node = (Naui_PanelNode*)id;
-
     if (node == pm.main_viewport)
     {
         pm.main_viewport = NULL;
 
         node->parent = NULL;
         node->root = node;
-        node->root_index = naui_list_len(pm.root_nodes);
+        node->root_index = (uint32_t)naui_list_len(pm.root_nodes);
         naui_list_push(pm.root_nodes, node);
         return;
     }
@@ -305,7 +303,7 @@ static void naui_undock_panel_immediate(Naui_PanelID id)
 
     node->parent = NULL;
     node->root = node;
-    node->root_index = naui_list_len(pm.root_nodes);
+    node->root_index = (uint32_t)naui_list_len(pm.root_nodes);
     naui_list_push(pm.root_nodes, node);
 }
 
@@ -347,7 +345,7 @@ static bool naui_point_occluded_by_higher_panel(Naui_PanelNode *node)
 {
     Naui_PanelNode *root = node->root;
     uint32_t from = (root == pm.main_viewport) ? 0 : root->root_index + 1;
-    return naui_range_occludes_point(naui_mouse_x(), naui_mouse_y(), from, pm.dragging_node);
+    return naui_range_occludes_point((float)naui_mouse_x(), (float)naui_mouse_y(), from, pm.dragging_node);
 }
 
 static bool naui_point_occluded_above(float mx, float my, Naui_PanelNode *root)
@@ -411,7 +409,7 @@ static inline void naui_render_dock_guide_slot(const char *label, Naui_PanelNode
 static void naui_render_dock_guides(Naui_PanelNode *node)
 {
     const bool occluded = naui_point_occluded_by_higher_panel(node);
-    const Leaf_BoundingBox box = leaf_get_bounding_box(leaf_id_indexed(NAUI_CHILD_PANEL_ID, node));
+    const Leaf_BoundingBox box = leaf_get_bounding_box(leaf_id_indexed(NAUI_CHILD_PANEL_ID, (Naui_PanelID)node));
 
     const Leaf_Size size = box.width > box.height ?
         (Leaf_Size){LEAF_SIZE_DERIVED, LEAF_SIZE_PERCENT(0.65f)} :
@@ -712,8 +710,8 @@ static void naui_render_main_viewport(void)
             })
             {
                 naui_render_dock_guide_slot(NAUI_DOCK_GUIDE_VIEWPORT_ID, NULL,
-                    (Leaf_BoundingBox){0, 0, naui_app_width(), naui_app_height()}, NAUI_DOCK_DIRECTION_CENTER, false,
-                    naui_range_occludes_point(naui_mouse_x(), naui_mouse_y(), 0, pm.dragging_node));
+                    (Leaf_BoundingBox){0, 0, (float)naui_app_width(), (float)naui_app_height()}, NAUI_DOCK_DIRECTION_CENTER, false,
+                    naui_range_occludes_point((float)naui_mouse_x(), (float)naui_mouse_y(), 0, pm.dragging_node));
             }
         }
     }
@@ -821,7 +819,7 @@ static void naui_update_panel_resizing(Naui_PanelNode *node)
         return;
 
     Leaf_BoundingBox b = leaf_get_bounding_box(leaf_id_indexed(NAUI_ROOT_PANEL_ID, (Naui_PanelID)root));
-    float mx = naui_mouse_x(), my = naui_mouse_y();
+    float mx = (float)naui_mouse_x(), my = (float)naui_mouse_y();
 
     int8_t ex = (mx < b.x + NAUI_PANEL_RESIZE_BORDER) ? -1 : (mx > b.x + b.width - NAUI_PANEL_RESIZE_BORDER) ? 1 : 0;
     int8_t ey = (my < b.y + NAUI_PANEL_RESIZE_BORDER) ? -1 : (my > b.y + b.height - NAUI_PANEL_RESIZE_BORDER) ? 1 : 0;
@@ -881,7 +879,7 @@ static void naui_update_split_resizing(Naui_PanelNode *node)
 
     Leaf_BoundingBox b = leaf_get_bounding_box(
         leaf_id_indexed(NAUI_SPLIT_HANDLE_ID, (Naui_PanelID)node));
-    float mx = naui_mouse_x(), my = naui_mouse_y();
+    float mx = (float)naui_mouse_x(), my = (float)naui_mouse_y();
 
     bool near_divider = node->split_axis == NAUI_SPLIT_AXIS_HORIZONTAL
         ? (fabsf(mx - b.x) < NAUI_PANEL_RESIZE_BORDER && my >= b.y && my <= b.y + b.height)
@@ -912,13 +910,13 @@ static void naui_update_panel_dock_guides(Naui_PanelNode *node)
     if (!naui_mouse_released(NAUI_MOUSE_LEFT))
         return;
     if (leaf_hovered(leaf_id_indexed(NAUI_DOCK_GUIDE_LEFT_ID, (Naui_PanelID)node)))
-        naui_dock_panel(node, pm.dragging_node, NAUI_DOCK_DIRECTION_LEFT, 0.5f);
+        naui_dock_panel((Naui_PanelID)node, (Naui_PanelID)pm.dragging_node, NAUI_DOCK_DIRECTION_LEFT, 0.5f);
     else if (leaf_hovered(leaf_id_indexed(NAUI_DOCK_GUIDE_RIGHT_ID, (Naui_PanelID)node)))
-        naui_dock_panel(node, pm.dragging_node, NAUI_DOCK_DIRECTION_RIGHT, 0.5f);
+        naui_dock_panel((Naui_PanelID)node, (Naui_PanelID)pm.dragging_node, NAUI_DOCK_DIRECTION_RIGHT, 0.5f);
     else if (leaf_hovered(leaf_id_indexed(NAUI_DOCK_GUIDE_TOP_ID, (Naui_PanelID)node)))
-        naui_dock_panel(node, pm.dragging_node, NAUI_DOCK_DIRECTION_TOP, 0.5f);
+        naui_dock_panel((Naui_PanelID)node, (Naui_PanelID)pm.dragging_node, NAUI_DOCK_DIRECTION_TOP, 0.5f);
     else if (leaf_hovered(leaf_id_indexed(NAUI_DOCK_GUIDE_BOTTOM_ID, (Naui_PanelID)node)))
-        naui_dock_panel(node, pm.dragging_node, NAUI_DOCK_DIRECTION_BOTTOM, 0.5f);
+        naui_dock_panel((Naui_PanelID)node, (Naui_PanelID)pm.dragging_node, NAUI_DOCK_DIRECTION_BOTTOM, 0.5f);
     //else if (leaf_hovered(leaf_id_indexed(NAUI_DOCK_GUIDE_CENTER_ID, (Naui_PanelID)node)))
         //naui_dock_panel(node, pm.dragging_node, NAUI_DOCK_DIRECTION_CENTER, 0.0f);
 }
@@ -934,7 +932,7 @@ static void naui_update_splits_only(Naui_PanelNode *node)
 static inline void naui_calculate_and_cache_panel_occlusion(Naui_PanelNode *node)
 {
     Leaf_BoundingBox box = leaf_get_bounding_box(leaf_id_indexed(NAUI_CHILD_PANEL_ID, (Naui_PanelID)node));
-    float mx = naui_mouse_x(), my = naui_mouse_y();
+    float mx = (float)naui_mouse_x(), my = (float)naui_mouse_y();
     bool in_bounds = mx >= box.x && mx <= box.x + box.width && my >= box.y && my <= box.y + box.height;
     node->occluded = !in_bounds || naui_point_occluded_above(mx, my, node->root);
 }
@@ -974,7 +972,7 @@ static void naui_update_main_viewport(void)
 
     if (!naui_mouse_released(NAUI_MOUSE_LEFT) || !pm.dragging_node)
         return;
-    if (leaf_hovered(leaf_id_indexed(NAUI_DOCK_GUIDE_VIEWPORT_ID, NULL)))
+    if (leaf_hovered(leaf_id_indexed(NAUI_DOCK_GUIDE_VIEWPORT_ID, 0)))
         naui_set_main_viewport((Naui_PanelID)pm.dragging_node);
 }
 
