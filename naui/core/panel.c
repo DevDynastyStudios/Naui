@@ -53,6 +53,7 @@ struct Naui_PanelNode
     float           split_ratio;
     Naui_SplitAxis  split_axis;
     bool            occluded;
+    bool            close_hovered;
 };
 
 typedef struct { char *key; Naui_PanelType value; } Naui_PanelTypeMapEntry;
@@ -314,8 +315,7 @@ void naui_undock_panel(Naui_PanelID id)
 
 static void naui_detach_panel_immediate(Naui_PanelNode *node)
 {
-    if (node->parent)
-        naui_undock_panel_immediate(node);
+    naui_undock_panel_immediate(node);
 
     if (node->type.on_detach)
         node->type.on_detach((Naui_PanelID)node, node->user_data);
@@ -469,12 +469,14 @@ static void naui_close_button_custom_draw(Leaf_BoundingBox box, void *user_data)
 static void naui_render_close_button(Naui_PanelNode *node, float size)
 {
     Leaf_ID id = leaf_id_indexed(NAUI_CLOSE_BUTTON_ID, (Naui_PanelID)node);
+
     bool hovered = pm.resizing_node ? false : leaf_hovered(id);
+    node->close_hovered = hovered;
 
     if (hovered && naui_mouse_clicked(NAUI_MOUSE_LEFT) && naui_panel_hovered((Naui_PanelID)node))
     {
         naui_detach_panel((Naui_PanelID)node);
-        pm.dragging_node = false;
+        pm.dragging_node = NULL;
     }
 
     leaf({
@@ -729,6 +731,15 @@ static void naui_render_dock_guide_area(void)
     });
 }
 
+static bool naui_subtree_has_close_hovered(Naui_PanelNode *node)
+{
+    if (!node) return false;
+    if (!node->children[0])
+        return node->close_hovered;
+    return naui_subtree_has_close_hovered(node->children[0]) ||
+           naui_subtree_has_close_hovered(node->children[1]);
+}
+
 static void naui_update_panel_dragging(Naui_PanelNode *node)
 {
     static Naui_Vec2 drag_offset;
@@ -741,20 +752,23 @@ static void naui_update_panel_dragging(Naui_PanelNode *node)
     {
         Naui_PanelNode *drag_target = NULL;
 
-        if (!(node->flags & NAUI_PANEL_FLAG_NO_UNDOCK) && leaf_hovered(leaf_id_indexed(NAUI_PANEL_TAB_ID, (Naui_PanelID)node)))
+        if (!naui_subtree_has_close_hovered(root))
         {
-            naui_undock_panel((Naui_PanelID)node);
-            Leaf_BoundingBox box = leaf_get_bounding_box(leaf_id_indexed(NAUI_CHILD_PANEL_ID, (Naui_PanelID)node));
-            box.width = fmaxf(box.width, node->min_size.x);
-            box.height = fmaxf(box.height, node->min_size.y);
-            node->position = (Naui_Vec2){ box.x, box.y };
-            node->size = node == pm.main_viewport ?
-                (Naui_Vec2){ box.width * 0.5f, box.height * 0.5f } :
-                (Naui_Vec2){ box.width, box.height };
-            drag_target = node;
+            if (!(node->flags & NAUI_PANEL_FLAG_NO_UNDOCK) && leaf_hovered(leaf_id_indexed(NAUI_PANEL_TAB_ID, (Naui_PanelID)node)))
+            {
+                naui_undock_panel((Naui_PanelID)node);
+                Leaf_BoundingBox box = leaf_get_bounding_box(leaf_id_indexed(NAUI_CHILD_PANEL_ID, (Naui_PanelID)node));
+                box.width = fmaxf(box.width, node->min_size.x);
+                box.height = fmaxf(box.height, node->min_size.y);
+                node->position = (Naui_Vec2){ box.x, box.y };
+                node->size = node == pm.main_viewport ?
+                    (Naui_Vec2){ box.width * 0.5f, box.height * 0.5f } :
+                    (Naui_Vec2){ box.width, box.height };
+                drag_target = node;
+            }
+            else if (!pm.dragging_node && leaf_hovered(leaf_id_indexed(NAUI_ROOT_PANEL_ID, (Naui_PanelID)root)))
+                drag_target = root;
         }
-        else if (!pm.dragging_node && leaf_hovered(leaf_id_indexed(NAUI_ROOT_PANEL_ID, (Naui_PanelID)root)))
-            drag_target = root;
 
         if (drag_target)
         {
