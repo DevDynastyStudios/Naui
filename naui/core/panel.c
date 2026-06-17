@@ -745,6 +745,8 @@ static void naui_update_panel_dragging(Naui_PanelNode *node)
         {
             naui_undock_panel((Naui_PanelID)node);
             Leaf_BoundingBox box = leaf_get_bounding_box(leaf_id_indexed(NAUI_CHILD_PANEL_ID, (Naui_PanelID)node));
+            box.width = fmaxf(box.width, node->min_size.x);
+            box.height = fmaxf(box.height, node->min_size.y);
             node->position = (Naui_Vec2){ box.x, box.y };
             node->size = node == pm.main_viewport ?
                 (Naui_Vec2){ box.width * 0.5f, box.height * 0.5f } :
