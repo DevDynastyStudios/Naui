@@ -751,7 +751,7 @@ static void naui_update_panel_dragging(Naui_PanelNode *node)
 
     Naui_PanelNode *root = node->root;
 
-    if (naui_mouse_clicked(NAUI_MOUSE_LEFT) && (!pm.dragging_node || pm.dragging_node->root == root))
+    if (naui_mouse_clicked(NAUI_MOUSE_LEFT) && !node->occluded && (!pm.dragging_node || pm.dragging_node->root == root))
     {
         Naui_PanelNode *drag_target = NULL;
 
