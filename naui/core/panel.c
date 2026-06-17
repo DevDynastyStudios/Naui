@@ -19,6 +19,7 @@
 #define NAUI_ROOT_PANEL_ID "__naui_root_panel"
 #define NAUI_CHILD_PANEL_ID "__naui_child_panel"
 #define NAUI_PANEL_TAB_ID "__naui_panel_tab"
+#define NAUI_PANEL_TITLEBAR_ID "__naui_panel_titlebar"
 
 #define NAUI_CLOSE_BUTTON_ID "__naui_close_button"
 
@@ -85,6 +86,7 @@ typedef struct
     Naui_PanelNode *split_resizing_node;
 
     Leaf_BoundingBox docking_guide_area;
+    bool has_undocked;
 }
 Naui_PanelManager;
 static Naui_PanelManager pm = { 0 };
@@ -584,6 +586,7 @@ static inline void naui_render_panel_titlebar(Naui_PanelNode *node)
     const Leaf_Color bg_color = naui_theme_leaf_color(NAUI_PANEL_TITLEBAR_BG_COLOR_TAG);
 
     leaf({
+        .id = leaf_id_indexed(NAUI_PANEL_TITLEBAR_ID, (Naui_PanelID)node),
         .size = {LEAF_SIZE_FULL, LEAF_SIZE_FIT},
         .color = bg_color,
         .rounding = {
@@ -754,7 +757,7 @@ static void naui_update_panel_dragging(Naui_PanelNode *node)
 
         if (!naui_subtree_has_close_hovered(root))
         {
-            if (!(node->flags & NAUI_PANEL_FLAG_NO_UNDOCK) && leaf_hovered(leaf_id_indexed(NAUI_PANEL_TAB_ID, (Naui_PanelID)node)))
+            if (!(node->flags & NAUI_PANEL_FLAG_NO_UNDOCK) && !pm.has_undocked && leaf_hovered(leaf_id_indexed(NAUI_PANEL_TAB_ID, (Naui_PanelID)node)))
             {
                 naui_undock_panel((Naui_PanelID)node);
                 Leaf_BoundingBox box = leaf_get_bounding_box(leaf_id_indexed(NAUI_CHILD_PANEL_ID, (Naui_PanelID)node));
@@ -765,9 +768,15 @@ static void naui_update_panel_dragging(Naui_PanelNode *node)
                     (Naui_Vec2){ box.width * 0.5f, box.height * 0.5f } :
                     (Naui_Vec2){ box.width, box.height };
                 drag_target = node;
+                pm.has_undocked = true;
             }
-            else if (!pm.dragging_node && leaf_hovered(leaf_id_indexed(NAUI_ROOT_PANEL_ID, (Naui_PanelID)root)))
-                drag_target = root;
+            else if (!pm.dragging_node)
+            {
+                if (leaf_hovered(leaf_id_indexed(NAUI_PANEL_TITLEBAR_ID, (Naui_PanelID)node)))
+                    drag_target = root;
+                else if (leaf_hovered(leaf_id_indexed(NAUI_ROOT_PANEL_ID, (Naui_PanelID)root)))
+                    naui_panel_bring_to_front(root);
+            }
         }
 
         if (drag_target)
@@ -1027,6 +1036,7 @@ void naui_panel_manager_frame(void)
         pm.dragging_node = NULL;
         pm.resizing_node = NULL;
         pm.split_resizing_node = NULL;
+        pm.has_undocked = false;
     }
 
     naui_render_main_viewport();
