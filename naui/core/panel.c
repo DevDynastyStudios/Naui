@@ -734,7 +734,7 @@ static void naui_render_dock_guide_area(void)
 static void naui_update_panel_dragging(Naui_PanelNode *node)
 {
     static Naui_Vec2 drag_offset;
-    if (node->flags & NAUI_PANEL_FLAG_NO_MOVE || pm.resizing_node || pm.split_resizing_node)
+    if (pm.resizing_node || pm.split_resizing_node)
         return;
 
     Naui_PanelNode *root = node->root;
@@ -743,7 +743,7 @@ static void naui_update_panel_dragging(Naui_PanelNode *node)
     {
         Naui_PanelNode *drag_target = NULL;
 
-        if (leaf_hovered(leaf_id_indexed(NAUI_PANEL_TAB_ID, (Naui_PanelID)node)))
+        if (!(node->flags & NAUI_PANEL_FLAG_NO_UNDOCK) && leaf_hovered(leaf_id_indexed(NAUI_PANEL_TAB_ID, (Naui_PanelID)node)))
         {
             naui_undock_panel((Naui_PanelID)node);
             Leaf_BoundingBox box = leaf_get_bounding_box(leaf_id_indexed(NAUI_CHILD_PANEL_ID, (Naui_PanelID)node));
@@ -765,7 +765,7 @@ static void naui_update_panel_dragging(Naui_PanelNode *node)
         }
     }
 
-    if (root == pm.main_viewport)
+    if (root == pm.main_viewport || root->flags & NAUI_PANEL_FLAG_NO_MOVE)
         return;
 
     if (pm.dragging_node == root)
