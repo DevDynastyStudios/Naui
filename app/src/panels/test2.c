@@ -29,6 +29,7 @@ static void on_render(Naui_PanelID panel_id, TestData *data)
     leaf({
         .direction = LEAF_DIRECTION_HORIZONAL,
         .size = {LEAF_SIZE_FULL, LEAF_SIZE_FULL},
+        .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER},
         .wrap_children = true,
         .child_gap = 4.0f,
         .child_cross_gap = 4.0f

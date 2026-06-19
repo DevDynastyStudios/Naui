@@ -434,7 +434,9 @@ struct Leaf_Node
     Leaf_Node *first_child;
     Leaf_Node *last_child;
     Leaf_Node *next_sibling;
+
     float row_cross_offset;
+    float row_cross_size;
 };
 
 #define LEAF_ASSERT(x, msg) if (!(x)) {fprintf(stderr, "[Leaf]: %s", msg); return;}
@@ -1188,7 +1190,10 @@ static void leaf_assign_wrap_offsets(Leaf_Node *parent)
             {
                 if (n->type == LEAF_NODE_TYPE_TEXT ||
                     n->element.config.positioning == LEAF_POSITIONING_RELATIVE)
+                {
                     n->row_cross_offset = cross_cursor;
+                    n->row_cross_size   = row_cross;
+                }
             }
 
             cross_cursor += row_cross + cfg->child_cross_gap;
@@ -1199,7 +1204,7 @@ static void leaf_assign_wrap_offsets(Leaf_Node *parent)
         }
 
         if (!row_start) row_start = child;
-        row_main  += gap + child_main;
+        row_main += gap + child_main;
         row_cross  = leaf_maxf(row_cross, child_cross);
     }
 
@@ -1209,7 +1214,10 @@ static void leaf_assign_wrap_offsets(Leaf_Node *parent)
         {
             if (n->type == LEAF_NODE_TYPE_TEXT ||
                 n->element.config.positioning == LEAF_POSITIONING_RELATIVE)
+            {
                 n->row_cross_offset = cross_cursor;
+                n->row_cross_size = row_cross;
+            }
         }
     }
 }
@@ -1222,7 +1230,7 @@ static void leaf_position_render(Leaf_Node *parent)
     const Leaf_ElementConfig *parent_config = &parent->element.config;
     bool h = parent_config->direction == LEAF_DIRECTION_HORIZONAL;
 
-    float available_main  =
+    float available_main =
         LEAF_MAIN (h, parent->bounding_box.width,  parent->bounding_box.height) -
         LEAF_MAIN (h, parent_config->padding.left + parent_config->padding.right,
                       parent_config->padding.top  + parent_config->padding.bottom);
@@ -1257,7 +1265,7 @@ static void leaf_position_render(Leaf_Node *parent)
             LEAF_MAIN(h, LEAF_ALIGN_X_CENTER,  LEAF_ALIGN_Y_CENTER),
             free_main);
 
-    float prev_row_cross = -1.f;
+    float prev_row_cross = -1.0f;
 
     LEAF_FOREACH_CHILD(child, parent)
     {
@@ -1301,12 +1309,40 @@ static void leaf_position_render(Leaf_Node *parent)
             if (child->row_cross_offset != prev_row_cross)
             {
                 prev_row_cross = child->row_cross_offset;
-                main_offset    = LEAF_MAIN(h, parent_config->padding.left, parent_config->padding.top);
+
+                float row_main = 0.0f;
+                int32_t row_child_count = 0;
+                for (Leaf_Node *n = child; n != NULL; n = n->next_sibling)
+                {
+                    if (n->type == LEAF_NODE_TYPE_ELEMENT &&
+                        n->element.config.positioning != LEAF_POSITIONING_RELATIVE)
+                        continue;
+                    if (n->row_cross_offset != prev_row_cross)
+                        break;
+                    row_main += LEAF_MAIN(h, n->bounding_box.width, n->bounding_box.height);
+                    row_child_count++;
+                }
+                row_main += leaf_max(row_child_count - 1, 0) * parent_config->child_gap;
+
+                float row_free_main = available_main - row_main;
+                main_offset =
+                    LEAF_MAIN(h, parent_config->padding.left, parent_config->padding.top) +
+                    LEAF_ALIGN_OFFSET(
+                        LEAF_MAIN(h, parent_config->child_alignment.x, parent_config->child_alignment.y),
+                        LEAF_MAIN(h, LEAF_ALIGN_X_RIGHT,  LEAF_ALIGN_Y_BOTTOM),
+                        LEAF_MAIN(h, LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER),
+                        row_free_main);
             }
 
+            float free_cross = child->row_cross_size - LEAF_CROSS(h, child->bounding_box.width, child->bounding_box.height);
             float cross_base =
                 LEAF_CROSS(h, parent_config->padding.left, parent_config->padding.top) +
-                child->row_cross_offset;
+                child->row_cross_offset +
+                LEAF_ALIGN_OFFSET(
+                    LEAF_CROSS(h, parent_config->child_alignment.x, parent_config->child_alignment.y),
+                    LEAF_CROSS(h, LEAF_ALIGN_X_RIGHT,  LEAF_ALIGN_Y_BOTTOM),
+                    LEAF_CROSS(h, LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER),
+                    free_cross);
 
             child->bounding_box.x = parent->bounding_box.x +
                 LEAF_MAIN (h, main_offset, cross_base) -
