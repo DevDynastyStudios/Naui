@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include <math.h>
 
-#define NAUI_RENDERER_MAX_GEOMETRY (1 << 15)
+#define NAUI_RENDERER_MAX_GEOMETRY (1 << 14)
 #define NAUI_RENDERER_CORNER_SEGMENTS 8
 
 #define NAUI_FONT_ATLAS_SIZE_SMALL  1024
