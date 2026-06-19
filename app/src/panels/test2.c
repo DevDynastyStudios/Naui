@@ -27,15 +27,22 @@ static void on_update(Naui_PanelID panel_id, TestData *data)
 static void on_render(Naui_PanelID panel_id, TestData *data)
 {
     leaf({
+        .direction = LEAF_DIRECTION_HORIZONAL,
         .size = {LEAF_SIZE_FULL, LEAF_SIZE_FULL},
-        .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_TOP}
+        .wrap_children = true,
+        .child_gap = 4.0f,
+        .child_cross_gap = 4.0f
+    })
+    for (int i = 0; i < 8; i++)
+    leaf({
+        .size = {LEAF_SIZE_FIXED(256.0f), LEAF_SIZE_DERIVED},
+        .image = { naui_get_image("dude") },
+        .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_TOP},
+        .color = LEAF_COLOR_WHITE,
+        .aspect_ratio = 1.0f,
     })
     {
-        leaf_text("Yipeee :3", {
-            .color = LEAF_COLOR_WHITE,
-            .font_size = 24.0f,
-            .alignment = LEAF_TEXT_ALIGN_CENTER
-        });
+
     }
 }
 
