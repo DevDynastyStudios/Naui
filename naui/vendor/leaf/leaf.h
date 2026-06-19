@@ -1168,6 +1168,46 @@ static void leaf_assign_wrap_offsets(Leaf_Node *parent)
     float avail_main =
         LEAF_MAIN(h, parent->bounding_box.width,  parent->bounding_box.height) -
         LEAF_MAIN(h, cfg->padding.left + cfg->padding.right, cfg->padding.top  + cfg->padding.bottom);
+    float avail_cross =
+        LEAF_CROSS(h, parent->bounding_box.width,  parent->bounding_box.height) -
+        LEAF_CROSS(h, cfg->padding.left + cfg->padding.right, cfg->padding.top  + cfg->padding.bottom);
+
+    Leaf_LayoutAlignmentY cross_align = LEAF_CROSS(h, cfg->child_alignment.x, cfg->child_alignment.y);
+    bool reverse = (cross_align == LEAF_ALIGN_Y_BOTTOM);
+
+    float total_cross = 0.0f;
+    {
+        float row_main = 0.0f, row_cross = 0.0f;
+        bool in_row = false;
+
+        LEAF_FOREACH_CHILD(child, parent)
+        {
+            if (child->type == LEAF_NODE_TYPE_ELEMENT &&
+                child->element.config.positioning != LEAF_POSITIONING_RELATIVE)
+                continue;
+
+            float child_main  = LEAF_MAIN (h, child->bounding_box.width, child->bounding_box.height);
+            float child_cross = LEAF_CROSS(h, child->bounding_box.width, child->bounding_box.height);
+            float gap = in_row ? cfg->child_gap : 0.0f;
+
+            if (in_row && row_main + gap + child_main > avail_main)
+            {
+                total_cross += row_cross + cfg->child_cross_gap;
+                row_main = 0.0f;
+                row_cross = 0.0f;
+                in_row = false;
+                gap = 0.0f;
+            }
+
+            row_main += gap + child_main;
+            row_cross = leaf_maxf(row_cross, child_cross);
+            in_row = true;
+        }
+        if (in_row) total_cross += row_cross;
+    }
+
+    float free_cross_total = avail_cross - total_cross;
+    float start_offset = LEAF_ALIGN_OFFSET(cross_align, LEAF_ALIGN_Y_BOTTOM, LEAF_ALIGN_Y_CENTER, free_cross_total);
 
     float cross_cursor = 0.0f;
     float row_main = 0.0f;
@@ -1186,12 +1226,17 @@ static void leaf_assign_wrap_offsets(Leaf_Node *parent)
 
         if (row_start && row_main + gap + child_main > avail_main)
         {
+            float row_offset = reverse
+                ? (total_cross - cross_cursor - row_cross)
+                : cross_cursor;
+            row_offset += start_offset;
+
             for (Leaf_Node *n = row_start; n != child; n = n->next_sibling)
             {
                 if (n->type == LEAF_NODE_TYPE_TEXT ||
                     n->element.config.positioning == LEAF_POSITIONING_RELATIVE)
                 {
-                    n->row_cross_offset = cross_cursor;
+                    n->row_cross_offset = row_offset;
                     n->row_cross_size   = row_cross;
                 }
             }
@@ -1210,12 +1255,17 @@ static void leaf_assign_wrap_offsets(Leaf_Node *parent)
 
     if (row_start)
     {
+        float row_offset = reverse
+            ? (total_cross - cross_cursor - row_cross)
+            : cross_cursor;
+        row_offset += start_offset;
+
         for (Leaf_Node *n = row_start; n != NULL; n = n->next_sibling)
         {
             if (n->type == LEAF_NODE_TYPE_TEXT ||
                 n->element.config.positioning == LEAF_POSITIONING_RELATIVE)
             {
-                n->row_cross_offset = cross_cursor;
+                n->row_cross_offset = row_offset;
                 n->row_cross_size = row_cross;
             }
         }
