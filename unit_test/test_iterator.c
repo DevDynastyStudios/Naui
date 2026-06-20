@@ -3,6 +3,7 @@
 #include "naui/filesystem/iterator.h"
 
 #include <stdbool.h>
+#include <stdio.h>
 
 void test_dir_iterator_basic()
 {
