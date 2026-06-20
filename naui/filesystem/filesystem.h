@@ -19,7 +19,7 @@ typedef struct Naui_Path
 	char data[NAUI_PATH_MAX];
 } Naui_Path;
 
-#define NAUI_PATH(str) naui_path_from_cstr(str) 
+#define NAUI_PATH(...) naui_path_join_parts((const char*[]){ __VA_ARGS__, NULL })
 
 typedef uint8_t Naui_Dir;
 enum
@@ -136,6 +136,11 @@ Naui_Path naui_path_parent(const Naui_Path path);
 
 /* Join two path components, inserting a separator as needed. */
 Naui_Path naui_path_join(const Naui_Path a, const Naui_Path b);
+
+/* Join an arbitrary number of C-string path parts into one Naui_Path.
+ * `parts` must be NULL-terminated.
+ * Prefer the NAUI_PATH macro over calling this directly. */
+Naui_Path naui_path_join_parts(const char** parts);
 
 /* Resolve `.` and `..` components without hitting the filesystem. */
 Naui_Path naui_path_normalize(const Naui_Path path);

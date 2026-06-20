@@ -778,16 +778,65 @@ Naui_Path naui_path_parent(const Naui_Path path)
 
 Naui_Path naui_path_join(const Naui_Path a, const Naui_Path b)
 {
-	if (b.data[0] == '/' || b.data[0] == '\\' || (b.data[0] && b.data[1] == ':'))
-		return b;
-
+	const char* parts[] = { a.data, b.data, NULL };
+	return naui_path_join_parts(parts);
+}
+ 
+Naui_Path naui_path_join_parts(const char** parts)
+{
 	Naui_Path result;
-	size_t a_len = strlen(a.data);
-	if (a_len == 0)
-		return b;
-
-	const char* expr = is_separator(a.data[a_len - 1]) ? "%s%s" : "%s\\%s";
-	snprintf(result.data, NAUI_PATH_MAX, expr, a.data, b.data);
+	result.data[0] = '\0';
+	if (!parts)
+		return result;
+ 
+	size_t out_len = 0;
+	for (int i = 0; parts[i] != NULL; ++i)
+	{
+		const char* part = parts[i];
+		if (!part)
+			continue;
+ 
+		size_t part_len = strlen(part);
+		if (part_len == 0)
+			continue;
+ 
+		size_t start = 0;
+		if (out_len > 0)
+		{
+			while (start < part_len && is_separator(part[start]))
+			{
+				++start;
+			}
+		}
+ 
+		size_t end = part_len;
+		while (end > start && is_separator(part[end - 1]))
+		{
+			--end;
+		}
+ 
+		if (start >= end)
+			continue;
+ 
+		if (out_len > 0 && !is_separator(result.data[out_len - 1]))
+		{
+			if (out_len + 1 >= NAUI_PATH_MAX)
+				break;
+ 
+			result.data[out_len++] = '\\';
+		}
+ 
+		size_t copy_len = end - start;
+		if (out_len + copy_len >= NAUI_PATH_MAX)
+			copy_len = NAUI_PATH_MAX - 1 - out_len;
+ 
+		memcpy(result.data + out_len, part + start, copy_len);
+		out_len += copy_len;
+		if (out_len >= NAUI_PATH_MAX - 1)
+			break;
+	}
+ 
+	result.data[out_len] = '\0';
 	return result;
 }
 
