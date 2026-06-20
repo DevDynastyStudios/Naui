@@ -40,7 +40,7 @@ typedef struct
  * Attempts fall back to en-US if the requested code fails. */
 void naui_localization_set_current(const char* language_code);
 
-void naui_localization_set_current_lang(const Naui_Language* language);
+void naui_localization_set_current_lang(Naui_Language* language);
 
 /* Returns the currently active language, or NULL if none loaded. */
 Naui_Language* naui_localization_get_current(void);
