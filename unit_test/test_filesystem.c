@@ -417,10 +417,10 @@ static void test_path_join(void)
         Naui_Path joined = naui_path_join(base, rel);
         ASSERT_STR_EQ(joined.data, "/foo/bar" SEP "baz.txt");
 
-        /* Absolute b replaces a */
+		// Confusing names, but filesystem no longer replaces param1 with param2 if param2 is absolute
         Naui_Path abs_b = NAUI_PATH("/absolute/path");
-        Naui_Path replaced = naui_path_join(base, abs_b);
-        ASSERT_STR_EQ(replaced.data, "/absolute/path");
+        Naui_Path joined_abs = naui_path_join(base, abs_b);
+        ASSERT_STR_EQ(joined_abs.data, "/foo/bar" SEP "absolute/path");
 
         /* Empty a returns b */
         Naui_Path empty = NAUI_PATH("");
@@ -433,6 +433,82 @@ static void test_path_join(void)
     }
 
     TEST_END();
+}
+
+static void test_path_variadic_join(void)
+{
+	TEST_BEGIN("NAUI_PATH variadic join");
+
+	{
+		/* Single argument behaves like the old naui_path_from_cstr. */
+		Naui_Path p = NAUI_PATH("file.txt");
+		ASSERT_STR_EQ(p.data, "file.txt");
+	}
+
+	{
+		/* Two plain parts. */
+		Naui_Path p = NAUI_PATH("Language\\", "/en-US.lang");
+		ASSERT_STR_EQ(p.data, "Language" SEP "en-US.lang");
+	}
+
+	{
+		/* Three parts, the classic motivating example. */
+		Naui_Path p = NAUI_PATH("Some/", "Folder", "file.txt");
+		ASSERT_STR_EQ(p.data, "Some" SEP "Folder" SEP "file.txt");
+	}
+
+	{
+		/* Trailing separator on an earlier part doesn't double up. */
+		Naui_Path p = NAUI_PATH("a" SEP, "b");
+		ASSERT_STR_EQ(p.data, "a" SEP "b");
+	}
+
+	{
+		/* Leading separator on a later part is normalized, not a
+		 * reset - consistent with naui_path_join's new no-reset
+		 * behavior, since NAUI_PATH(...) shares the same join logic. */
+		Naui_Path p = NAUI_PATH("a", SEP "b", SEP "c");
+		ASSERT_STR_EQ(p.data, "a" SEP "b" SEP "c");
+	}
+
+	{
+		/* Separators on both sides of a seam collapse to exactly one. */
+		Naui_Path p = NAUI_PATH("a" SEP, SEP "b");
+		ASSERT_STR_EQ(p.data, "a" SEP "b");
+	}
+
+	{
+		/* Empty string parts are skipped, no double separators. */
+		Naui_Path p = NAUI_PATH("a", "", "b");
+		ASSERT_STR_EQ(p.data, "a" SEP "b");
+	}
+
+	{
+		/* A leading separator on the FIRST part is preserved - that's
+		 * what makes an absolute path absolute. */
+		Naui_Path p = NAUI_PATH(SEP "root", "child");
+		ASSERT_STR_EQ(p.data, SEP "root" SEP "child");
+	}
+
+	{
+		/* Many parts, mixed separator placement at each seam. */
+		Naui_Path p = NAUI_PATH("one", "two" SEP, SEP "three", "four" SEP);
+		ASSERT_STR_EQ(p.data, "one" SEP "two" SEP "three" SEP "four");
+	}
+
+	{
+		/* Using NAUI_PATH(...) to build from an existing Naui_Path's
+		 * .data plus string literals - the realistic call pattern
+		 * (e.g. bin_dir.data, "Language", code, ".lang"). */
+		Naui_Path bin_dir = NAUI_PATH("usr", "local", "MyApp");
+		char filename[64];
+		snprintf(filename, sizeof(filename), "%s.lang", "en-US");
+
+		Naui_Path lang_file = NAUI_PATH(bin_dir.data, "Language", filename);
+		ASSERT_STR_EQ(lang_file.data, "usr" SEP "local" SEP "MyApp" SEP "Language" SEP "en-US.lang");
+	}
+
+	TEST_END();
 }
 
 static void test_path_normalize(void)
@@ -838,6 +914,7 @@ void filesystem_test()
     test_path_exists();
     test_path_parent();
     test_path_join();
+	test_path_variadic_join();
     test_path_normalize();
     test_path_absolute();
     test_path_canonical();
