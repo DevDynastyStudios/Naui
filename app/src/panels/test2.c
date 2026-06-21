@@ -40,10 +40,7 @@ static void on_render(Naui_PanelID panel_id, TestData *data)
         .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_TOP},
         .color = leaf_rgb(i, i, i),
         .aspect_ratio = 1.0f,
-    })
-    {
-
-    }
+    });
 }
 
 NAUI_DEFINE_PANEL_TYPE(test2, TestData);
