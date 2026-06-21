@@ -210,7 +210,7 @@ void naui_dock_panel(Naui_PanelID target_id, Naui_PanelID guest_id, Naui_DockDir
 
     if (direction == NAUI_DOCK_DIRECTION_CENTER)
     {
-        if (naui_can_dock_center(guest))
+        if (!naui_can_dock_center(guest))
             return;
         return;
     }
@@ -763,48 +763,72 @@ static bool naui_subtree_has_close_hovered(Naui_PanelNode *node)
            naui_subtree_has_close_hovered(node->children[1]);
 }
 
+static void naui_drag_undock_panel(Naui_PanelNode *node)
+{
+    naui_undock_panel((Naui_PanelID)node);
+    Leaf_BoundingBox box = leaf_get_bounding_box(leaf_id_indexed(NAUI_CHILD_PANEL_ID, (Naui_PanelID)node));
+    box.width = fmaxf(box.width, node->min_size.x);
+    box.height = fmaxf(box.height, node->min_size.y);
+    node->position = (Naui_Vec2){ box.x, box.y };
+    node->size = node == pm.main_viewport ?
+        (Naui_Vec2){ box.width * 0.5f, box.height * 0.5f } :
+        (Naui_Vec2){ box.width, box.height };
+    pm.has_undocked = true;
+}
+
 static void naui_update_panel_dragging(Naui_PanelNode *node)
 {
     static Naui_Vec2 drag_offset;
+    static Naui_PanelNode *pending_undock_node;
+
     if (pm.resizing_node || pm.split_resizing_node)
         return;
 
     Naui_PanelNode *root = node->root;
 
-    if (naui_mouse_clicked(NAUI_MOUSE_LEFT) && !node->occluded && (!pm.dragging_node || pm.dragging_node->root == root))
+    if (!node->occluded)
     {
-        Naui_PanelNode *drag_target = NULL;
-
-        if (!naui_subtree_has_close_hovered(root))
+        if (naui_mouse_clicked(NAUI_MOUSE_LEFT) && (!pm.dragging_node || pm.dragging_node->root == root))
         {
-            if (!(node->flags & NAUI_PANEL_FLAG_NO_UNDOCK) && !pm.has_undocked && leaf_hovered(leaf_id_indexed(NAUI_PANEL_TAB_ID, (Naui_PanelID)node)))
+            if (!naui_subtree_has_close_hovered(root))
             {
-                naui_undock_panel((Naui_PanelID)node);
-                Leaf_BoundingBox box = leaf_get_bounding_box(leaf_id_indexed(NAUI_CHILD_PANEL_ID, (Naui_PanelID)node));
-                box.width = fmaxf(box.width, node->min_size.x);
-                box.height = fmaxf(box.height, node->min_size.y);
-                node->position = (Naui_Vec2){ box.x, box.y };
-                node->size = node == pm.main_viewport ?
-                    (Naui_Vec2){ box.width * 0.5f, box.height * 0.5f } :
-                    (Naui_Vec2){ box.width, box.height };
-                drag_target = node;
-                pm.has_undocked = true;
-            }
-            else if (!pm.dragging_node)
-            {
-                if (leaf_hovered(leaf_id_indexed(NAUI_PANEL_TITLEBAR_ID, (Naui_PanelID)node)))
-                    drag_target = root;
-                else if (leaf_hovered(leaf_id_indexed(NAUI_ROOT_PANEL_ID, (Naui_PanelID)root)))
-                    naui_panel_bring_to_front(root);
+                bool tab_hovered = !(node->flags & NAUI_PANEL_FLAG_NO_UNDOCK)
+                    && leaf_hovered(leaf_id_indexed(NAUI_PANEL_TAB_ID, (uintptr_t)node));
+
+                if (tab_hovered)
+                {
+                    pending_undock_node = node;
+                }
+                else if (!pm.dragging_node && node != pm.main_viewport)
+                {
+                    if (leaf_hovered(leaf_id_indexed(NAUI_PANEL_TITLEBAR_ID, (Naui_PanelID)node)))
+                    {
+                        pm.dragging_node = root;
+                        drag_offset.x = naui_mouse_x() - root->position.x;
+                        drag_offset.y = naui_mouse_y() - root->position.y;
+                        naui_panel_bring_to_front(root);
+                    }
+                    else if (leaf_hovered(leaf_id_indexed(NAUI_ROOT_PANEL_ID, (Naui_PanelID)root)))
+                        naui_panel_bring_to_front(root);
+                }
             }
         }
+    }
 
-        if (drag_target)
+    if (pending_undock_node == node && !pm.has_undocked)
+    {
+        if (naui_mouse_released(NAUI_MOUSE_LEFT))
         {
-            pm.dragging_node = drag_target;
-            drag_offset.x = naui_mouse_x() - drag_target->position.x;
-            drag_offset.y = naui_mouse_y() - drag_target->position.y;
-            naui_panel_bring_to_front(drag_target);
+            pending_undock_node = NULL;
+        }
+        else if (naui_mouse_dragging(NAUI_MOUSE_LEFT))
+        {
+            naui_drag_undock_panel(node);
+            pm.dragging_node = node;
+            drag_offset.x = naui_mouse_x() - node->position.x;
+            drag_offset.y = naui_mouse_y() - node->position.y;
+            naui_panel_bring_to_front(node);
+            pending_undock_node = NULL;
         }
     }
 
