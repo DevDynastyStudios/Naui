@@ -47,10 +47,12 @@ struct Naui_PanelNode
     Naui_PanelNode *children[2];
     Naui_PanelNode *parent;
     Naui_PanelNode *root;
+    Naui_List(Naui_PanelNode*) tabs;
     void           *user_data;
     Naui_Vec2       position, size, min_size;
     Naui_PanelFlags flags;
     uint32_t        root_index;
+    int32_t         active_tab;
     float           split_ratio;
     Naui_SplitAxis  split_axis;
     bool            occluded;
@@ -196,6 +198,11 @@ static void naui_set_root_recursive(Naui_PanelNode *node, Naui_PanelNode *new_ro
     naui_set_root_recursive(node->children[1], new_root);
 }
 
+static inline bool naui_can_dock_center(Naui_PanelNode *node)
+{
+    return !pm.dragging_node->children[0];
+}
+
 void naui_dock_panel(Naui_PanelID target_id, Naui_PanelID guest_id, Naui_DockDirection direction, float split_ratio)
 {
     Naui_PanelNode *target = (Naui_PanelNode*)target_id;
@@ -203,6 +210,8 @@ void naui_dock_panel(Naui_PanelID target_id, Naui_PanelID guest_id, Naui_DockDir
 
     if (direction == NAUI_DOCK_DIRECTION_CENTER)
     {
+        if (naui_can_dock_center(guest))
+            return;
         return;
     }
 
@@ -413,9 +422,11 @@ static void naui_render_dock_guides(Naui_PanelNode *node)
     const bool occluded = naui_point_occluded_by_higher_panel(node);
     const Leaf_BoundingBox box = leaf_get_bounding_box(leaf_id_indexed(NAUI_CHILD_PANEL_ID, (Naui_PanelID)node));
 
+    const float scale = 0.5f;
+
     const Leaf_Size size = box.width > box.height ?
-        (Leaf_Size){LEAF_SIZE_DERIVED, LEAF_SIZE_PERCENT(0.65f)} :
-        (Leaf_Size){LEAF_SIZE_PERCENT(0.65f), LEAF_SIZE_DERIVED};
+        (Leaf_Size){LEAF_SIZE_DERIVED, LEAF_SIZE_PERCENT(scale)} :
+        (Leaf_Size){LEAF_SIZE_PERCENT(scale), LEAF_SIZE_DERIVED};
 
     leaf({
         .positioning = LEAF_POSITIONING_FLOATING_TO_PARENT,
@@ -427,8 +438,9 @@ static void naui_render_dock_guides(Naui_PanelNode *node)
     })
     {
         naui_render_dock_guide_slot(NAUI_DOCK_GUIDE_TOP_ID, node, box, NAUI_DOCK_DIRECTION_TOP, false, occluded);
-        leaf({.size = {LEAF_SIZE_DERIVED, LEAF_SIZE_GROW}, .aspect_ratio = 1.0f});
-        //naui_render_dock_guide_slot(NAUI_DOCK_GUIDE_CENTER_ID, node, box, NAUI_DOCK_DIRECTION_CENTER, false, occluded);
+        if (naui_can_dock_center(pm.dragging_node))
+            naui_render_dock_guide_slot(NAUI_DOCK_GUIDE_CENTER_ID, node, box, NAUI_DOCK_DIRECTION_CENTER, false, occluded);
+        else leaf({.size = {LEAF_SIZE_DERIVED, LEAF_SIZE_GROW}, .aspect_ratio = 1.0f});
         naui_render_dock_guide_slot(NAUI_DOCK_GUIDE_BOTTOM_ID, node, box, NAUI_DOCK_DIRECTION_BOTTOM, false, occluded);
     }
 
@@ -612,6 +624,10 @@ static inline void naui_render_panel_body(Naui_PanelNode *node)
             naui_theme_float(NAUI_PANEL_ROUNDING_TAG),
             LEAF_CORNER_BL | LEAF_CORNER_BR
         },
+        .inner_shadow = {
+            .blur_radius = 64.0f,
+            .color = naui_theme_leaf_color(NAUI_PANEL_INNER_SHADOW_COLOR_TAG)
+        },
         .clip_children = true
     })
     {
@@ -699,7 +715,11 @@ static void naui_render_main_viewport(void)
         .size = {LEAF_SIZE_FULL, LEAF_SIZE_FULL},
         .color = node ?
             naui_theme_leaf_color(NAUI_PANEL_BORDER_COLOR_TAG) :
-            naui_theme_leaf_color(NAUI_VIEWPORT_BG_COLOR_TAG)
+            naui_theme_leaf_color(NAUI_VIEWPORT_BG_COLOR_TAG),
+        .inner_shadow = {
+            .blur_radius = 128.0f,
+            .color = naui_theme_leaf_color(NAUI_PANEL_INNER_SHADOW_COLOR_TAG)
+        }
     })
     {
         if (node)

@@ -25,7 +25,7 @@
 #define NAUI_FONT_SIZE_LARGE        256.0f
 #define NAUI_FONT_SIZE_THRESHOLD    32.0f
 
-#define NAUI_CLIP_STACK_MAX 32
+#define NAUI_CLIP_STACK_MAX 1024
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -1129,4 +1129,83 @@ void naui_draw_shadow(Naui_Vec2 position, Naui_Vec2 scale, float blur_radius, Na
                 c_full, c_full, c_zero, c_zero, -1);
         }
     }
+}
+
+void naui_draw_inner_shadow(Naui_Vec2 position, Naui_Vec2 scale, float blur_radius, Naui_Color color)
+{
+    float x0 = position.x, y0 = position.y;
+    float x1 = position.x + scale.x, y1 = position.y + scale.y;
+    float br = blur_radius;
+
+    float half_w = scale.x * 0.5f;
+    float half_h = scale.y * 0.5f;
+    if (br > half_w) br = half_w;
+    if (br > half_h) br = half_h;
+
+    uint32_t c_full = naui_pack_color(color);
+    uint32_t c_zero = naui_pack_color((Naui_Color){ color.r, color.g, color.b, 0 });
+
+    naui_push_gradient_quad4(
+        (Naui_Vec2){x0+br, y0   }, (Naui_Vec2){x1-br, y0   },
+        (Naui_Vec2){x1-br, y0+br}, (Naui_Vec2){x0+br, y0+br},
+        c_full, c_full, c_zero, c_zero, -1);
+
+    naui_push_gradient_quad4(
+        (Naui_Vec2){x0+br, y1-br}, (Naui_Vec2){x1-br, y1-br},
+        (Naui_Vec2){x1-br, y1   }, (Naui_Vec2){x0+br, y1   },
+        c_zero, c_zero, c_full, c_full, -1);
+
+    naui_push_gradient_quad4(
+        (Naui_Vec2){x0,    y0+br}, (Naui_Vec2){x0+br, y0+br},
+        (Naui_Vec2){x0+br, y1-br}, (Naui_Vec2){x0,    y1-br},
+        c_full, c_zero, c_zero, c_full, -1);
+
+    naui_push_gradient_quad4(
+        (Naui_Vec2){x1-br, y0+br}, (Naui_Vec2){x1,    y0+br},
+        (Naui_Vec2){x1,    y1-br}, (Naui_Vec2){x1-br, y1-br},
+        c_zero, c_full, c_full, c_zero, -1);
+
+    naui_push_gradient_triangle(
+        (Naui_Vec2){x0,    y0   },
+        (Naui_Vec2){x0+br, y0   },
+        (Naui_Vec2){x0+br, y0+br},
+        c_full, c_full, c_zero);
+    naui_push_gradient_triangle(
+        (Naui_Vec2){x0,    y0   },
+        (Naui_Vec2){x0+br, y0+br},
+        (Naui_Vec2){x0,    y0+br},
+        c_full, c_zero, c_full);
+
+    naui_push_gradient_triangle(
+        (Naui_Vec2){x1,    y0   },
+        (Naui_Vec2){x1-br, y0+br},
+        (Naui_Vec2){x1-br, y0   },
+        c_full, c_zero, c_full);
+    naui_push_gradient_triangle(
+        (Naui_Vec2){x1,    y0   },
+        (Naui_Vec2){x1,    y0+br},
+        (Naui_Vec2){x1-br, y0+br},
+        c_full, c_full, c_zero);
+
+    naui_push_gradient_triangle(
+        (Naui_Vec2){x1,    y1   },
+        (Naui_Vec2){x1-br, y1-br},
+        (Naui_Vec2){x1,    y1-br},
+        c_full, c_zero, c_full);
+    naui_push_gradient_triangle(
+        (Naui_Vec2){x1,    y1   },
+        (Naui_Vec2){x1-br, y1   },
+        (Naui_Vec2){x1-br, y1-br},
+        c_full, c_full, c_zero);
+
+    naui_push_gradient_triangle(
+        (Naui_Vec2){x0,    y1   },
+        (Naui_Vec2){x0,    y1-br},
+        (Naui_Vec2){x0+br, y1-br},
+        c_full, c_full, c_zero);
+    naui_push_gradient_triangle(
+        (Naui_Vec2){x0,    y1   },
+        (Naui_Vec2){x0+br, y1-br},
+        (Naui_Vec2){x0+br, y1   },
+        c_full, c_zero, c_full);
 }

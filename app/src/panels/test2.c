@@ -29,17 +29,16 @@ static void on_render(Naui_PanelID panel_id, TestData *data)
     leaf({
         .direction = LEAF_DIRECTION_HORIZONAL,
         .size = {LEAF_SIZE_FULL, LEAF_SIZE_FULL},
-        .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_TOP},
+        .child_alignment = {LEAF_ALIGN_X_LEFT, LEAF_ALIGN_Y_TOP},
         .wrap_children = true,
         .child_gap = 4.0f,
         .child_cross_gap = 4.0f
     })
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < 256; i++)
     leaf({
-        .size = {LEAF_SIZE_FIXED(256.0f), LEAF_SIZE_DERIVED},
-        .image = { naui_get_image("dude") },
+        .size = {LEAF_SIZE_FIXED(64.0f), LEAF_SIZE_DERIVED},
         .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_TOP},
-        .color = LEAF_COLOR_WHITE,
+        .color = leaf_rgb(i, i, i),
         .aspect_ratio = 1.0f,
     })
     {

@@ -38,6 +38,10 @@
     #define NAUI_PANEL_SHADOW_COLOR_TAG "naui_panel_shadow_color"
 #endif
 
+#ifndef NAUI_PANEL_INNER_SHADOW_COLOR_TAG
+    #define NAUI_PANEL_INNER_SHADOW_COLOR_TAG "naui_panel_inner_shadow_color"
+#endif
+
 #ifndef NAUI_PANEL_FONT_SIZE_TAG
     #define NAUI_PANEL_FONT_SIZE_TAG "naui_panel_font_size"
 #endif

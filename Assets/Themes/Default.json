@@ -8,6 +8,8 @@
     "naui_panel_text_disabled_color": "#5A5A5F",
 
     "naui_panel_shadow_color": "#00000015",
+    "naui_panel_inner_shadow_color": "#00000003",
+
     "naui_dock_guide_color": "#1464A030",
     "naui_dock_guide_hovered_color": "#1E8FD050",
     "naui_dock_guide_outline_color": "#1E8FD080",
