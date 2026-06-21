@@ -896,8 +896,6 @@ static void naui_update_panel_dragging(Naui_PanelNode *node)
     Naui_PanelNode *root = node->root;
     Naui_PanelNode *tab = node->tabs ? node->tabs[node->active_tab] : node;
 
-    static Leaf_BoundingBox dragged_tab_box;
-
     if (!node->occluded)
     {
         if (naui_mouse_clicked(NAUI_MOUSE_LEFT) && (!pm.dragging_node || pm.dragging_node->root == root))
@@ -934,10 +932,7 @@ static void naui_update_panel_dragging(Naui_PanelNode *node)
                 }
 
                 if (hovered_tab)
-                {
-                    dragged_tab_box = leaf_get_bounding_box(hovered_tab_id);
                     pending_undock_node = hovered_tab;
-                }
                 else if (!pm.dragging_node && node != pm.main_viewport)
                 {
                     if (leaf_hovered(leaf_id_indexed(NAUI_PANEL_TITLEBAR_ID, (Naui_PanelID)node)))
@@ -972,8 +967,8 @@ static void naui_update_panel_dragging(Naui_PanelNode *node)
                 (Naui_Vec2){ box.width, box.height };
             pm.has_already_undocked = true;
             pm.dragging_node = tab;
-            drag_offset.x = naui_mouse_x() - dragged_tab_box.x;
-            drag_offset.y = naui_mouse_y() - dragged_tab_box.y;
+            drag_offset.x = naui_mouse_x() - tab->position.x;
+            drag_offset.y = naui_mouse_y() - tab->position.y;
             naui_panel_bring_to_front(tab);
             pending_undock_node = NULL;
         }
