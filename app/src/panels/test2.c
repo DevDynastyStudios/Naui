@@ -26,7 +26,7 @@ static void on_update(Naui_PanelID panel_id, TestData *data)
 
 static void on_render(Naui_PanelID panel_id, TestData *data)
 {
-    leaf({
+    /*leaf({
         .direction = LEAF_DIRECTION_HORIZONAL,
         .size = {LEAF_SIZE_FULL, LEAF_SIZE_FULL},
         .child_alignment = {LEAF_ALIGN_X_LEFT, LEAF_ALIGN_Y_TOP},
@@ -40,7 +40,7 @@ static void on_render(Naui_PanelID panel_id, TestData *data)
         .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_TOP},
         .color = leaf_rgb(i, i, i),
         .aspect_ratio = 1.0f,
-    });
+    });*/
 }
 
 NAUI_DEFINE_PANEL_TYPE(test2, TestData);

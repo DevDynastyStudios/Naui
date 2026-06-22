@@ -128,6 +128,8 @@ NAUI_API Naui_PanelID naui_get_main_viewport    (void);
 
 NAUI_API bool         naui_panel_hovered        (Naui_PanelID id);
 
+NAUI_API void         naui_render_panels_and_viewport   (void);
+
 #ifdef _MSC_VER
   #pragma section(".CRT$XCU", read)
   #define NAUI_CONSTRUCTOR_NAMED(fn) \

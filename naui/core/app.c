@@ -27,7 +27,6 @@ extern void naui_renderer_resize(int32_t width, int32_t height);
 extern void naui_renderer_begin(void);
 extern void naui_renderer_end(void);
 
-extern void naui_panel_manager_frame(void);
 extern void naui_input_update(void);
 
 void naui_themes_initialize(void);
@@ -124,7 +123,6 @@ static void render(void)
     leaf_begin_frame(mg_app_width(), mg_app_height());
     leaf_set_pointer_pos((float)mg_app_mouse_x(), (float)mg_app_mouse_y());
     state.events.update();
-    naui_panel_manager_frame();
     Leaf_RenderCmdList cmd_list = leaf_end_frame();
     render_leaf_cmd_list(&cmd_list);
     naui_renderer_end();
