@@ -885,103 +885,144 @@ static bool naui_subtree_has_close_hovered(Naui_PanelNode *node)
            naui_subtree_has_close_hovered(node->children[1]);
 }
 
+static Naui_PanelNode *naui_find_hovered_tab(Naui_PanelNode *node, Naui_PanelNode *active_tab, Leaf_ID *out_id)
+{
+    if (node->flags & NAUI_PANEL_FLAG_NO_UNDOCK)
+        return NULL;
+ 
+    if (node->tabs)
+    {
+        for (int32_t i = 0; i < naui_list_len(node->tabs); i++)
+        {
+            Leaf_ID id = leaf_id_indexed(NAUI_PANEL_TAB_ID, (uintptr_t)node->tabs[i]);
+            if (leaf_hovered(id))
+            {
+                if (out_id) *out_id = id;
+                return node->tabs[i];
+            }
+        }
+        return NULL;
+    }
+ 
+    Leaf_ID id = leaf_id_indexed(NAUI_PANEL_TAB_ID, (uintptr_t)active_tab);
+    if (leaf_hovered(id))
+    {
+        if (out_id) *out_id = id;
+        return active_tab;
+    }
+    return NULL;
+}
+
+
+static inline bool naui_try_begin_panel_move(Naui_PanelNode *node, Naui_Vec2 *drag_offset)
+{
+    Naui_PanelNode *root = node->root;
+ 
+    if (pm.dragging_node || node == pm.main_viewport)
+    {
+        if (leaf_hovered(leaf_id_indexed(NAUI_ROOT_PANEL_ID, (Naui_PanelID)root)))
+            naui_panel_bring_to_front(root);
+        return false;
+    }
+ 
+    if (leaf_hovered(leaf_id_indexed(NAUI_PANEL_TITLEBAR_ID, (Naui_PanelID)node)))
+    {
+        pm.dragging_node = root;
+        drag_offset->x = naui_mouse_x() - root->position.x;
+        drag_offset->y = naui_mouse_y() - root->position.y;
+        naui_panel_bring_to_front(root);
+        return true;
+    }
+ 
+    if (leaf_hovered(leaf_id_indexed(NAUI_ROOT_PANEL_ID, (Naui_PanelID)root)))
+        naui_panel_bring_to_front(root);
+ 
+    return false;
+}
+
+static inline void naui_handle_panel_click(Naui_PanelNode *node, Naui_PanelNode *active_tab, Naui_Vec2 *drag_offset, Naui_PanelNode **pending_undock_node)
+{
+    Naui_PanelNode *root = node->root;
+ 
+    if (node->occluded)
+        return;
+    if (!naui_mouse_clicked(NAUI_MOUSE_LEFT))
+        return;
+    if (pm.dragging_node && pm.dragging_node->root != root)
+        return;
+    if (naui_subtree_has_close_hovered(root))
+        return;
+ 
+    Naui_PanelNode *hovered_tab = naui_find_hovered_tab(node, active_tab, NULL);
+    if (hovered_tab)
+    {
+        *pending_undock_node = hovered_tab;
+        return;
+    }
+ 
+    if (!pm.dragging_node && node != pm.main_viewport)
+        naui_try_begin_panel_move(node, drag_offset);
+}
+
+static inline void naui_apply_pending_undock(Naui_PanelNode *node, Naui_PanelNode *active_tab, Naui_Vec2 *drag_offset, Naui_PanelNode **pending_undock_node)
+{
+    if (*pending_undock_node != active_tab || pm.has_already_undocked)
+        return;
+ 
+    if (naui_mouse_released(NAUI_MOUSE_LEFT))
+    {
+        *pending_undock_node = NULL;
+        return;
+    }
+ 
+    if (!naui_mouse_dragging(NAUI_MOUSE_LEFT))
+        return;
+ 
+    naui_undock_panel((Naui_PanelID)active_tab);
+ 
+    Leaf_BoundingBox box = leaf_get_bounding_box(leaf_id_indexed(NAUI_CHILD_PANEL_ID, (Naui_PanelID)node));
+    box.width  = fmaxf(box.width,  active_tab->min_size.x);
+    box.height = fmaxf(box.height, active_tab->min_size.y);
+ 
+    active_tab->position = (Naui_Vec2){ box.x, box.y };
+    active_tab->size = (node == pm.main_viewport)
+        ? (Naui_Vec2){ box.width * 0.5f, box.height * 0.5f }
+        : (Naui_Vec2){ box.width, box.height };
+ 
+    pm.has_already_undocked = true;
+    pm.dragging_node = active_tab;
+    drag_offset->x = naui_mouse_x() - active_tab->position.x;
+    drag_offset->y = naui_mouse_y() - active_tab->position.y;
+    naui_panel_bring_to_front(active_tab);
+ 
+    *pending_undock_node = NULL;
+}
+ 
+static inline void naui_apply_panel_move(Naui_PanelNode *root, Naui_Vec2 drag_offset)
+{
+    if (root == pm.main_viewport || root->flags & NAUI_PANEL_FLAG_NO_MOVE)
+        return;
+    if (pm.dragging_node != root)
+        return;
+ 
+    root->position.x = naui_mouse_x() - drag_offset.x;
+    root->position.y = naui_mouse_y() - drag_offset.y;
+}
+ 
 static void naui_update_panel_dragging(Naui_PanelNode *node)
 {
     static Naui_Vec2 drag_offset;
     static Naui_PanelNode *pending_undock_node;
-
+ 
     if (pm.resizing_node || pm.split_resizing_node)
         return;
-
+ 
     Naui_PanelNode *root = node->root;
-    Naui_PanelNode *tab = node->tabs ? node->tabs[node->active_tab] : node;
-
-    if (!node->occluded)
-    {
-        if (naui_mouse_clicked(NAUI_MOUSE_LEFT) && (!pm.dragging_node || pm.dragging_node->root == root))
-        {
-            if (!naui_subtree_has_close_hovered(root))
-            {
-                Naui_PanelNode *hovered_tab = NULL;
-                Leaf_ID hovered_tab_id = {0};
-
-                if (!(node->flags & NAUI_PANEL_FLAG_NO_UNDOCK))
-                {
-                    if (node->tabs)
-                    {
-                        for (int32_t i = 0; i < naui_list_len(node->tabs); i++)
-                        {
-                            Leaf_ID id = leaf_id_indexed(NAUI_PANEL_TAB_ID, (uintptr_t)node->tabs[i]);
-                            if (leaf_hovered(id))
-                            {
-                                hovered_tab = node->tabs[i];
-                                hovered_tab_id = id;
-                                break;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        Leaf_ID id = leaf_id_indexed(NAUI_PANEL_TAB_ID, (uintptr_t)tab);
-                        if (leaf_hovered(id))
-                        {
-                            hovered_tab = tab;
-                            hovered_tab_id = id;
-                        }
-                    }
-                }
-
-                if (hovered_tab)
-                    pending_undock_node = hovered_tab;
-                else if (!pm.dragging_node && node != pm.main_viewport)
-                {
-                    if (leaf_hovered(leaf_id_indexed(NAUI_PANEL_TITLEBAR_ID, (Naui_PanelID)node)))
-                    {
-                        pm.dragging_node = root;
-                        drag_offset.x = naui_mouse_x() - root->position.x;
-                        drag_offset.y = naui_mouse_y() - root->position.y;
-                        naui_panel_bring_to_front(root);
-                    }
-                    else if (leaf_hovered(leaf_id_indexed(NAUI_ROOT_PANEL_ID, (Naui_PanelID)root)))
-                        naui_panel_bring_to_front(root);
-                }
-            }
-        }
-    }
-
-    if (pending_undock_node == tab && !pm.has_already_undocked)
-    {
-        if (naui_mouse_released(NAUI_MOUSE_LEFT))
-        {
-            pending_undock_node = NULL;
-        }
-        else if (naui_mouse_dragging(NAUI_MOUSE_LEFT))
-        {
-            naui_undock_panel((Naui_PanelID)tab);
-            Leaf_BoundingBox box = leaf_get_bounding_box(leaf_id_indexed(NAUI_CHILD_PANEL_ID, (Naui_PanelID)node));
-            box.width = fmaxf(box.width, tab->min_size.x);
-            box.height = fmaxf(box.height, tab->min_size.y);
-            tab->position = (Naui_Vec2){ box.x, box.y };
-            tab->size = node == pm.main_viewport ?
-                (Naui_Vec2){ box.width * 0.5f, box.height * 0.5f } :
-                (Naui_Vec2){ box.width, box.height };
-            pm.has_already_undocked = true;
-            pm.dragging_node = tab;
-            drag_offset.x = naui_mouse_x() - tab->position.x;
-            drag_offset.y = naui_mouse_y() - tab->position.y;
-            naui_panel_bring_to_front(tab);
-            pending_undock_node = NULL;
-        }
-    }
-
-    if (root == pm.main_viewport || root->flags & NAUI_PANEL_FLAG_NO_MOVE)
-        return;
-
-    if (pm.dragging_node == root)
-    {
-        root->position.x = naui_mouse_x() - drag_offset.x;
-        root->position.y = naui_mouse_y() - drag_offset.y;
-    }
+    Naui_PanelNode *active_tab = node->tabs ? node->tabs[node->active_tab] : node;
+ 
+    naui_handle_panel_click(node, active_tab, &drag_offset, &pending_undock_node);
+    naui_apply_pending_undock(node, active_tab, &drag_offset, &pending_undock_node);
+    naui_apply_panel_move(root, drag_offset);
 }
 
 static inline Naui_Cursor naui_resize_cursor(int8_t ex, int8_t ey)
