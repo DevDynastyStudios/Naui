@@ -464,8 +464,8 @@ struct Leaf_Node
     #define LEAF_CONFIG_MAX_RENDER_CMDS (1<<13)
 #endif
 
-#ifndef LEAF_CONFIG_TEXT_WRAP_CACHE
-    #define LEAF_CONFIG_TEXT_WRAP_CACHE (1<<14)
+#ifndef LEAF_CONFIG_MAX_TEXT_CACHE
+    #define LEAF_CONFIG_MAX_TEXT_CACHE (1<<14)
 #endif
 
 typedef struct
@@ -481,8 +481,8 @@ typedef struct
     Leaf_RenderCmd render_cmds[LEAF_CONFIG_MAX_RENDER_CMDS];
     uint32_t render_cmd_count;
 
-    char text_wrap_cache[LEAF_CONFIG_TEXT_WRAP_CACHE];
-    uint32_t wrap_cache_cursor;
+    char text_cache[LEAF_CONFIG_MAX_TEXT_CACHE];
+    uint32_t text_cache_cursor;
 
     Leaf_Vec2 pointer_pos;
     Leaf_MeasureTextFn measure_text;
@@ -577,6 +577,17 @@ static Leaf_LayoutFrameEntry leaf_get_layout_entry(Leaf_ID id)
     if (entry->frame != leaf_ctx->frame - 1)
         return (Leaf_LayoutFrameEntry){0};
     return *entry;
+}
+
+static const char *leaf_cache_str(const char *src, uint32_t size)
+{
+    LEAF_ASSERT_NULL(leaf_ctx->text_cache_cursor + size + 1 <= LEAF_CONFIG_MAX_TEXT_CACHE,
+        "Text wrap cache limit exceeded. Increase LEAF_CONFIG_MAX_TEXT_CACHE.");
+    char *dst = &leaf_ctx->text_cache[leaf_ctx->text_cache_cursor];
+    memcpy(dst, src, size);
+    dst[size] = '\0';
+    leaf_ctx->text_cache_cursor += size + 1;
+    return dst;
 }
 
 static inline bool leaf_point_in_box(float px, float py, Leaf_BoundingBox bb)
@@ -732,10 +743,12 @@ void __leaf_text(const char *text, Leaf_TextConfig config)
     Leaf_Node *parent = leaf_stack_top();
     Leaf_Node *node = leaf_alloc_node();
 
+    uint32_t len = (uint32_t)strlen(text);
+
     node->type = LEAF_NODE_TYPE_TEXT;
     node->text.config = config;
-    node->text.text = text;
-    node->text.size = (uint32_t)strlen(text);
+    node->text.text = leaf_cache_str(text, len);
+    node->text.size = len;
     node->text.resolved_font_size = leaf_resolve_font_size(&config.font_size, parent, text, node->text.size, &config);
 
     Leaf_Dimensions size = leaf_ctx->measure_text(text, node->text.size, node->text.resolved_font_size, &config);
@@ -918,17 +931,6 @@ static void leaf_render_node(Leaf_Node *node)
         break;
     }
     }
-}
-
-static const char *leaf_cache_str(const char *src, uint32_t size)
-{
-    LEAF_ASSERT_NULL(leaf_ctx->wrap_cache_cursor + size + 1 <= LEAF_CONFIG_TEXT_WRAP_CACHE,
-        "Text wrap cache limit exceeded. Increase LEAF_CONFIG_TEXT_WRAP_CACHE.");
-    char *dst = &leaf_ctx->text_wrap_cache[leaf_ctx->wrap_cache_cursor];
-    memcpy(dst, src, size);
-    dst[size] = '\0';
-    leaf_ctx->wrap_cache_cursor += size + 1;
-    return dst;
 }
 
 static inline void leaf_char_from_utf8(const char *str, uint32_t i, int *out_cp, int *out_bytes)
@@ -1490,7 +1492,7 @@ void leaf_begin_frame(int32_t width, int32_t height)
     leaf_ctx->stack_top = 0;
     leaf_ctx->node_count = 0;
     leaf_ctx->render_cmd_count = 0;
-    leaf_ctx->wrap_cache_cursor = 0;
+    leaf_ctx->text_cache_cursor = 0;
     leaf_ctx->frame++;
 
     Leaf_Node *root = leaf_alloc_node();
