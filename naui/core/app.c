@@ -28,6 +28,7 @@ extern void naui_renderer_begin(void);
 extern void naui_renderer_end(void);
 
 extern void naui_input_update(void);
+extern void naui_input_post_update(void);
 
 void naui_themes_initialize(void);
 void naui_themes_shutdown(void);
@@ -51,7 +52,7 @@ static void render_leaf_cmd_list(const Leaf_RenderCmdList *list)
             Naui_Vec2 size = (Naui_Vec2){cmd.bounding_box.width, cmd.bounding_box.height};
             Naui_Color color1 = (Naui_Color){cmd.color.color1.r, cmd.color.color1.g, cmd.color.color1.b, cmd.color.color1.a};
             if (cmd.color.type == LEAF_GRADIENT_LINEAR_COLOR_FILL)
-                naui_fill_gradient_rect(position, size, (Naui_Gradient){ color1, (Naui_Color){cmd.color.color2.r, cmd.color.color2.g, cmd.color.color2.b, cmd.color.color2.a}, cmd.color.angle }, cmd.rect.rounding.value, (Naui_CornerFlags)cmd.rect.rounding.corners);
+                naui_fill_gradient_rect(position, size, (Naui_Gradient){ color1, (Naui_Color){cmd.color.color2.r, cmd.color.color2.g, cmd.color.color2.b, cmd.color.color2.a}, cmd.color.percent1, cmd.color.percent2, cmd.color.angle }, cmd.rect.rounding.value, (Naui_CornerFlags)cmd.rect.rounding.corners);
             else naui_fill_rect(position, size, color1, cmd.rect.rounding.value, (Naui_CornerFlags)cmd.rect.rounding.corners);
             break;
         }
@@ -60,7 +61,7 @@ static void render_leaf_cmd_list(const Leaf_RenderCmdList *list)
             Naui_Vec2 size = (Naui_Vec2){cmd.bounding_box.width, cmd.bounding_box.height};
             Naui_Color color1 = (Naui_Color){cmd.color.color1.r, cmd.color.color1.g, cmd.color.color1.b, cmd.color.color1.a};
             if (cmd.color.type == LEAF_GRADIENT_LINEAR_COLOR_FILL)
-                naui_draw_gradient_rect(position, size, (Naui_Gradient){ color1, (Naui_Color){cmd.color.color2.r, cmd.color.color2.g, cmd.color.color2.b, cmd.color.color2.a}, cmd.color.angle }, cmd.rect.line_width, cmd.rect.rounding.value, (Naui_CornerFlags)cmd.rect.rounding.corners);
+                naui_draw_gradient_rect(position, size, (Naui_Gradient){ color1, (Naui_Color){cmd.color.color2.r, cmd.color.color2.g, cmd.color.color2.b, cmd.color.color2.a}, cmd.color.percent1, cmd.color.percent2, cmd.color.angle }, cmd.rect.line_width, cmd.rect.rounding.value, (Naui_CornerFlags)cmd.rect.rounding.corners);
             else naui_draw_rect(position, size, color1, cmd.rect.line_width, cmd.rect.rounding.value, (Naui_CornerFlags)cmd.rect.rounding.corners);
             break;
         case LEAF_RENDER_CMD_IMAGE:
@@ -70,7 +71,7 @@ static void render_leaf_cmd_list(const Leaf_RenderCmdList *list)
             Naui_Vec2 size = (Naui_Vec2){cmd.bounding_box.width, cmd.bounding_box.height};
             Naui_Color color1 = (Naui_Color){cmd.color.color1.r, cmd.color.color1.g, cmd.color.color1.b, cmd.color.color1.a};
             if (cmd.color.type == LEAF_GRADIENT_LINEAR_COLOR_FILL)
-                naui_draw_gradient_image(image, position, size, (Naui_Gradient){ color1, (Naui_Color){cmd.color.color2.r, cmd.color.color2.g, cmd.color.color2.b, cmd.color.color2.a}, cmd.color.angle }, cmd.image.rounding.value, (Naui_CornerFlags)cmd.rect.rounding.corners);
+                naui_draw_gradient_image(image, position, size, (Naui_Gradient){ color1, (Naui_Color){cmd.color.color2.r, cmd.color.color2.g, cmd.color.color2.b, cmd.color.color2.a}, cmd.color.percent1, cmd.color.percent2, cmd.color.angle }, cmd.image.rounding.value, (Naui_CornerFlags)cmd.rect.rounding.corners);
             else naui_draw_image(image, position, size, color1, cmd.image.rounding.value, (Naui_CornerFlags)cmd.rect.rounding.corners);
             break;
         }
@@ -160,6 +161,7 @@ static void __naui_app_update(void)
 {
     naui_input_update();
     render();
+    naui_app_set_caption_height(32);
 }
 
 int32_t naui_app_width(void)
@@ -170,6 +172,11 @@ int32_t naui_app_width(void)
 int32_t naui_app_height(void)
 {
     return mg_app_height();
+}
+
+void naui_app_set_caption_height(int32_t height)
+{
+    mg_app_set_caption_height(height);
 }
 
 void naui_app_run(
@@ -185,6 +192,9 @@ void naui_app_run(
 
     mg_app_run(&(mg_app_init_info){
         .title = title,
+        .flags = MG_APP_FLAG_NO_TITLEBAR,
+        .width = 1920,
+        .height = 1080,
         .events = {
             .start = __naui_app_start,
             .end = __naui_app_end,

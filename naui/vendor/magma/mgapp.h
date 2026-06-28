@@ -233,10 +233,16 @@ typedef struct
 }
 mg_app_event;
 
+typedef uint32_t mg_app_flags;
+enum
+{
+    MG_APP_FLAG_NO_TITLEBAR = 1 << 0,
+};
+
 typedef struct
 {
     const char *title;
-    uint32_t flags;
+    mg_app_flags flags;
     uint32_t width, height;
     struct
     {
@@ -265,6 +271,8 @@ MG_APP_API bool mg_app_mouse_released(mg_mouse_button button);
 MG_APP_API int8_t mg_app_mouse_scroll_delta(void);
 MG_APP_API int32_t mg_app_mouse_x(void);
 MG_APP_API int32_t mg_app_mouse_y(void);
+
+MG_APP_API void mg_app_set_caption_height(int32_t height);
 
 MG_APP_API void *mg_app_handle(void);
 
@@ -508,6 +516,9 @@ typedef struct mg_win32_platform
     float time, delta_time;
 
     HCURSOR cursors[MG_CURSOR_MAX];
+    WNDPROC original_proc;
+    int32_t caption_height;
+    bool no_titlebar;
 }
 mg_win32_platform;
 
@@ -633,6 +644,49 @@ static LRESULT CALLBACK mg_win32_process_message(HWND hwnd, uint32_t msg, WPARAM
     return DefWindowProcA(hwnd, msg, w_param, l_param);
 }
 
+static LRESULT CALLBACK mg_win32_custom_proc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    switch (uMsg)
+    {
+        case WM_NCCALCSIZE:
+        {
+            if (!wParam) break;
+            NCCALCSIZE_PARAMS *params = (NCCALCSIZE_PARAMS *)lParam;
+            RECT *r = params->rgrc;
+            int32_t bx = GetSystemMetrics(SM_CXFRAME);
+            int32_t by = GetSystemMetrics(SM_CYFRAME);
+            r->right -= bx;
+            r->left += bx;
+            r->bottom -= by;
+            r->top += IsZoomed(hWnd) ? by : 0;
+            return WVR_ALIGNTOP | WVR_ALIGNLEFT;
+        }
+        case WM_NCHITTEST:
+        {
+            POINTS mp = MAKEPOINTS(lParam);
+            POINT  sp = { mp.x, mp.y };
+            RECT   wr;
+            GetWindowRect(hWnd, &wr);
+            const int bw = 8;
+            int rx = sp.x - wr.left;
+            int ry = sp.y - wr.top;
+            int w  = wr.right  - wr.left;
+            int h  = wr.bottom - wr.top;
+
+            if (ry >= h - bw) return (rx <= bw) ? HTBOTTOMLEFT : (rx >= w - bw) ? HTBOTTOMRIGHT : HTBOTTOM;
+            if (ry <= bw) return (rx <= bw) ? HTTOPLEFT : (rx >= w - bw) ? HTTOPRIGHT    : HTTOP;
+            if (rx <= bw) return HTLEFT;
+            if (rx >= w - bw) return HTRIGHT;
+            if (ry <= platform.caption_height)
+                return HTCAPTION;
+            break;
+        }
+        case WM_NCACTIVATE:
+            break;
+    }
+    return CallWindowProc(platform.original_proc, hWnd, uMsg, wParam, lParam);
+}
+
 int32_t mg_app_run(const mg_app_init_info *info)
 {
     const char *CLASS_NAME = "MAGMA";
@@ -693,6 +747,24 @@ int32_t mg_app_run(const mg_app_init_info *info)
     }
 
     ShowWindow(platform.hwnd, SW_SHOW);
+    if (info->flags & MG_APP_FLAG_NO_TITLEBAR)
+    {
+        platform.no_titlebar = true;
+
+        LONG_PTR style = GetWindowLongPtr(platform.hwnd, GWL_STYLE);
+        style |= WS_THICKFRAME | WS_CAPTION;
+        SetWindowLongPtr(platform.hwnd, GWL_STYLE, style);
+
+        RECT wr;
+        GetWindowRect(platform.hwnd, &wr);
+        int w = wr.right - wr.left;
+        int h = wr.bottom - wr.top;
+
+        platform.original_proc = (WNDPROC)GetWindowLongPtr(platform.hwnd, GWLP_WNDPROC);
+        SetWindowLongPtr(platform.hwnd, GWLP_WNDPROC, (LONG_PTR)mg_win32_custom_proc);
+        SetWindowPos(platform.hwnd, NULL, 0, 0, w, h, SWP_FRAMECHANGED | SWP_NOMOVE);
+    }
+
     UpdateWindow(platform.hwnd);
 
     platform.on_event_call = info->events.event;
@@ -769,6 +841,11 @@ int32_t mg_app_width(void)
 int32_t mg_app_height(void)
 {
     return platform.window_height;
+}
+
+void mg_app_set_caption_height(int32_t height)
+{
+    platform.caption_height = height;
 }
 
 void *mg_app_handle(void)

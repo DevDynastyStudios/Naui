@@ -51,12 +51,15 @@ typedef struct
 {
     Leaf_Color color1;
     Leaf_Color color2;
+    float percent1;
+    float percent2;
     float angle;
     Leaf_ColorFillType type;
 }
 Leaf_ColorFill;
 
-#define leaf_gradient(c1, c2, angle) (Leaf_ColorFill){ (c1), (c2), angle, LEAF_GRADIENT_LINEAR_COLOR_FILL }
+#define leaf_gradient(c1, c2, angle) (Leaf_ColorFill){ (c1), (c2), 0.0f, 1.0f, angle, LEAF_GRADIENT_LINEAR_COLOR_FILL }
+#define leaf_gradient_percent(c1, p1, c2, p2, angle) (Leaf_ColorFill){ (c1), (c2), (p1), (p2), angle, LEAF_GRADIENT_LINEAR_COLOR_FILL }
 
 #define leaf_deg(v) ((v) * 0.0174532925f)
 #define leaf_rad(v) (v)

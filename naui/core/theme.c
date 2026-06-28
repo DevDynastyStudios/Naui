@@ -53,7 +53,11 @@ void naui_load_theme(const char *file_name)
 {
     naui_arena_reset(&tm.key_arena);
 
-    Naui_Json json = naui_json_parse_file(NAUI_PATH(file_name));
+    char final_file_name[64];
+    strncpy(final_file_name, file_name, strlen(file_name) + 1);
+    strncat(final_file_name, ".json", sizeof(final_file_name));
+    Naui_Json json = naui_json_parse_file(NAUI_PATH("Assets/Themes", final_file_name));
+
     NAUI_JSON_FOREACH(json.root, key, val)
     {
         char *key_str = naui_arena_alloc(&tm.key_arena, 64);

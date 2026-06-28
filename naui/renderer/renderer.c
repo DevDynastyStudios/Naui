@@ -139,8 +139,19 @@ static Naui_GradientAxis naui_gradient_axis(Naui_Vec2 tl, Naui_Vec2 br, float an
 static inline uint32_t naui_gradient_color_at(const Naui_Gradient *g, const Naui_GradientAxis *axis, float px, float py)
 {
     float t = (px * axis->dx + py * axis->dy - axis->mn) / axis->range;
-    if (t < 0.0f) t = 0.0f;
-    if (t > 1.0f) t = 1.0f;
+    t = naui_clamp01(t);
+
+    float p1 = g->percent1;
+    float p2 = g->percent2;
+
+    if (p2 <= p1)
+        t = (t < p1) ? 0.0f : 1.0f;
+    else
+    {
+        t = (t - p1) / (p2 - p1);
+        t = naui_clamp01(t);
+    }
+
     return naui_pack_color(naui_lerp_color(g->color1, g->color2, t));
 }
 

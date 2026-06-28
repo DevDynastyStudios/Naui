@@ -13,6 +13,7 @@ Naui_Color;
 typedef struct
 {
     Naui_Color color1, color2;
+    float percent1, percent2;
     float angle;
 }
 Naui_Gradient;

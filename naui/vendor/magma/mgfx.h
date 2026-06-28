@@ -297,14 +297,6 @@ enum
 
 typedef struct
 {
-    bool sample_shading_enable;
-    bool alpha_to_coverage_enable;
-    bool alpha_to_one_enable;
-}
-mgfx_multisample_state;
-
-typedef struct
-{
     mgfx_blend_factor src_color_blend_factor;
     mgfx_blend_factor dst_color_blend_factor;
     mgfx_blend_op color_blend_op;

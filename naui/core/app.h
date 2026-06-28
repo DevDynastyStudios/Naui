@@ -11,8 +11,10 @@ NAUI_API void naui_app_run(
     Naui_AppEvent update
 );
 
-NAUI_API int32_t naui_app_width(void);
-NAUI_API int32_t naui_app_height(void);
+NAUI_API int32_t    naui_app_width  (void);
+NAUI_API int32_t    naui_app_height (void);
+
+NAUI_API void       naui_app_set_caption_height (int32_t height);
 
 #define NAUI_APP(title) \
 void naui_app_start(void); \

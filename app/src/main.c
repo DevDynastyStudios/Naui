@@ -4,7 +4,7 @@ NAUI_APP("Sandbox")
 
 void naui_app_start(void)
 {
-	naui_load_theme("Assets/Themes/Default.json");
+	naui_load_theme("Default");
 	NAUI_ATTACH_PANEL(test);
 }
 

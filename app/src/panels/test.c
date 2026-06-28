@@ -52,10 +52,15 @@ static void on_render(Naui_PanelID panel_id, TestData *data)
     })
     {
         leaf({
-            .size = {LEAF_SIZE_FIXED(32.0f), LEAF_SIZE_DERIVED},
+            .size = {LEAF_SIZE_FIXED(64.0f), LEAF_SIZE_DERIVED},
             .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER},
-            .color = leaf_rgb(255, 0, 0),
-            .aspect_ratio = 1.0f
+            .color = leaf_gradient_percent(leaf_hex(0x353535), 0.0f, leaf_hex(0x181818), 1.0f, leaf_deg(90.0f)),
+            .aspect_ratio = 1.0f,
+            .border = {
+                .width = 4.0f,
+                .color = leaf_gradient_percent(leaf_hex(0x5C5C5C), 0.0f, leaf_hex(0x171717), 0.59f, leaf_deg(90.0f))
+            },
+            .rounding = {INT_MAX, LEAF_CORNER_ALL}
         });
     }
 }

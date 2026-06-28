@@ -90,6 +90,7 @@ typedef struct
     NauiPanelEvent on_update;
     NauiPanelEvent on_render;
     size_t user_data_size;
+    const char *type_name;
 }
 Naui_PanelType;
 
@@ -105,7 +106,8 @@ enum
     NAUI_PANEL_FLAG_NO_MOVE = 1 << 4,
     NAUI_PANEL_FLAG_NO_RESIZE = 1 << 5,
     NAUI_PANEL_FLAG_NO_TITLE = 1 << 6,
-    NAUI_PANEL_FLAG_ALWAYS_TO_FRONT = 1 << 7 // still not implemented
+    NAUI_PANEL_FLAG_ALWAYS_TO_FRONT = 1 << 7, // still not implemented
+    NAUI_PANEL_FLAG_SERIALIZABLE = 1 << 8
 };
 
 #define NAUI_ATTACH_PANEL(type_name) naui_attach_panel(#type_name)
@@ -147,7 +149,8 @@ NAUI_API void         naui_render_panels_and_viewport   (void);
         (NauiPanelEvent)on_detach, \
         (NauiPanelEvent)on_update, \
         (NauiPanelEvent)on_render, \
-        data_size \
+        data_size, \
+        #name \
     }; \
     NAUI_CONSTRUCTOR_NAMED(_register_##name) { \
         naui_register_panel_type(#name, _##name##_events); \
