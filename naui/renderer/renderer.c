@@ -103,7 +103,7 @@ typedef struct
     mgfx_sampler  font_sampler;
     Naui_FontTier font_small[NAUI_FONT_MAX_SLOTS];
     Naui_FontTier font_large[NAUI_FONT_MAX_SLOTS];
-    uint8_t       font_loaded[NAUI_FONT_MAX_SLOTS];
+    bool          font_loaded[NAUI_FONT_MAX_SLOTS];
     int8_t        font_current_index;
 
     Naui_ClipRect clip_stack[NAUI_CLIP_STACK_MAX];
@@ -725,19 +725,26 @@ void naui_load_font(uint8_t index, const char *file_name)
     fread(ttf_buf, 1, size, f);
     fclose(f);
 
-    if (rdata->font_loaded[index])
-    {
-        naui_free_tier(&rdata->font_small[index]);
-        naui_free_tier(&rdata->font_large[index]);
-        mgfx_destroy_image(rdata->font_small[index].atlas);
-        mgfx_destroy_image(rdata->font_large[index].atlas);
-    }
+    naui_unload_font(index);
 
     naui_bake_font_tier(ttf_buf, NAUI_FONT_SIZE_SMALL, NAUI_FONT_ATLAS_SIZE_SMALL, &rdata->font_small[index]);
     naui_bake_font_tier(ttf_buf, NAUI_FONT_SIZE_LARGE, NAUI_FONT_ATLAS_SIZE_LARGE, &rdata->font_large[index]);
 
     free(ttf_buf);
-    rdata->font_loaded[index] = 1;
+    rdata->font_loaded[index] = true;
+}
+
+void naui_unload_font(uint8_t index)
+{
+    if (!rdata->font_loaded[index])
+        return;
+
+    naui_free_tier(&rdata->font_small[index]);
+    naui_free_tier(&rdata->font_large[index]);
+    mgfx_destroy_image(rdata->font_small[index].atlas);
+    mgfx_destroy_image(rdata->font_large[index].atlas);
+
+    rdata->font_loaded[index] = false;
 }
 
 Naui_Vec2 naui_measure_text(const char *text, uint32_t length, float font_size, uint8_t font_index)

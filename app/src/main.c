@@ -15,17 +15,25 @@ void naui_app_end(void)
 
 }
 
-void naui_app_update(void)
+static void render_main_titlebar(void)
 {
 	leaf({
-		.size = {LEAF_SIZE_FULL, LEAF_SIZE_FIXED(32.0f)}
+		.size = {LEAF_SIZE_FULL, LEAF_SIZE_FIXED(32.0f)},
+		.child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER},
+		.color = {naui_theme_leaf_color(NAUI_PANEL_TITLEBAR_BG_COLOR_TAG)}
 	})
 	{
-		leaf_text("ありがとございます", {
+		leaf_text("ありがとございます.png", {
 			.font_id = 1,
 			.font_size = 20.0f,
-			.color = LEAF_COLOR_WHITE
+			.color = naui_theme_leaf_color(NAUI_PANEL_TITLEBAR_TEXT_COLOR_TAG),
+			.alignment = LEAF_TEXT_ALIGN_CENTER
 		});
 	}
+}
+
+void naui_app_update(void)
+{
+	render_main_titlebar();
 	naui_render_panels_and_viewport();
 }

@@ -80,7 +80,7 @@ enum
     NAUI_DOCK_DIRECTION_RIGHT,
     NAUI_DOCK_DIRECTION_TOP,
     NAUI_DOCK_DIRECTION_BOTTOM,
-    NAUI_DOCK_DIRECTION_CENTER // For tabs (don't use it for now)
+    NAUI_DOCK_DIRECTION_CENTER
 };
 
 typedef struct
