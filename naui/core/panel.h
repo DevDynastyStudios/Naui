@@ -71,7 +71,7 @@
 #endif
 
 typedef uint64_t Naui_PanelID;
-typedef void(*NauiPanelEvent)(Naui_PanelID panel_id, void *data);
+typedef void(*NauiPanelEvent)(void *data);
 
 typedef uint8_t Naui_DockDirection;
 enum
@@ -131,6 +131,7 @@ NAUI_API Naui_PanelID naui_get_main_viewport    (void);
 NAUI_API bool         naui_panel_hovered        (Naui_PanelID id);
 
 NAUI_API void         naui_render_panels_and_viewport   (void);
+NAUI_API Naui_PanelID naui_current_panel(void);
 
 #ifdef _MSC_VER
   #pragma section(".CRT$XCU", read)

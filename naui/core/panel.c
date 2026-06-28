@@ -90,6 +90,8 @@ typedef struct
     Naui_PanelNode *resizing_node;
     Naui_PanelNode *split_resizing_node;
 
+    Naui_PanelNode *current_panel;
+
     Leaf_BoundingBox dock_guide_area;
 }
 Naui_PanelManager;
@@ -124,8 +126,12 @@ Naui_PanelID naui_attach_panel(const char *type_name)
         node->user_data = malloc(node->type.user_data_size);
     
     naui_list_push(pm.root_nodes, node);
+
+    Naui_PanelNode *prev = pm.current_panel;
+    pm.current_panel = node;
     if (node->type.on_attach)
-        node->type.on_attach((Naui_PanelID)node, node->user_data);
+        node->type.on_attach(node->user_data);
+    pm.current_panel = prev;
 
     return (Naui_PanelID)node;
 }
@@ -441,8 +447,11 @@ static void naui_detach_panel_immediate(Naui_PanelNode *node)
 {
     naui_undock_panel_immediate(node);
 
+    Naui_PanelNode *prev = pm.current_panel;
+    pm.current_panel = node;
     if (node->type.on_detach)
-        node->type.on_detach((Naui_PanelID)node, node->user_data);
+        node->type.on_detach(node->user_data);
+    pm.current_panel = prev;
 
     if (node->user_data)
         free(node->user_data);
@@ -481,6 +490,11 @@ static bool naui_point_occluded_above(float mx, float my, Naui_PanelNode *root)
 bool naui_panel_hovered(Naui_PanelID panel_id)
 {
     return !((Naui_PanelNode*)panel_id)->occluded;
+}
+
+Naui_PanelID naui_current_panel(void)
+{
+    return (Naui_PanelID)pm.current_panel;
 }
 
 static inline bool naui_can_show_dock_guides(Naui_PanelNode *node)
@@ -756,8 +770,9 @@ static inline void naui_render_panel_body(Naui_PanelNode *node)
     })
     {
         Naui_PanelNode *tab = node->tabs ? node->tabs[node->active_tab] : node;
+        pm.current_panel = tab;
         if (tab->type.on_render)
-            tab->type.on_render((Naui_PanelID)tab, tab->user_data);
+            tab->type.on_render(tab->user_data);
         if (naui_can_show_dock_guides(node))
             naui_render_dock_guides(node);
     }
@@ -1228,8 +1243,9 @@ static void naui_update_panel(Naui_PanelNode *node)
         naui_update_panel_dock_guides(node);
 
     Naui_PanelNode *tab = node->tabs ? node->tabs[node->active_tab] : node;
+    pm.current_panel = tab;
     if (tab->type.on_update)
-        tab->type.on_update((Naui_PanelID)tab, tab->user_data);
+        tab->type.on_update(tab->user_data);
 }
 
 static void naui_update_main_viewport(void)

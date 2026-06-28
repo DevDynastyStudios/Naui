@@ -51,7 +51,7 @@ NAUI_API void naui_draw_line(Naui_Vec2 a, Naui_Vec2 b, Naui_Color color, float l
 NAUI_API void naui_draw_image(const Naui_Image *image, Naui_Vec2 position, Naui_Vec2 scale, Naui_Color tint, float rounding, Naui_CornerFlags flags);
 NAUI_API void naui_draw_gradient_image(const Naui_Image *image, Naui_Vec2 position, Naui_Vec2 scale, Naui_Gradient tint, float rounding, Naui_CornerFlags flags);
 
-NAUI_API void naui_set_font(uint8_t index, const char *file_path);
+NAUI_API void naui_load_font(uint8_t index, const char *file_path);
 NAUI_API void naui_draw_text(Naui_Vec2 position, const char *text, float size, uint8_t font_index, Naui_Color color);
 NAUI_API Naui_Vec2 naui_measure_text(const char *text, uint32_t length, float font_size, uint8_t font_index);
 

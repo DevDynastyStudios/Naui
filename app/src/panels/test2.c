@@ -1,30 +1,25 @@
 #include <naui.h>
 
-typedef struct
-{
-    float time;
-}
-TestData;
-
 #include <stdio.h>
 
-static void on_attach(Naui_PanelID panel_id, TestData *data)
+static void on_attach(void)
 {
-    naui_panel_set_title(panel_id, "grguahergaefg");
-    naui_panel_set_size(panel_id, (Naui_Vec2){ 256, 256 });
+    Naui_PanelID this = naui_current_panel();
+    naui_panel_set_title(this, "grguahergaefg");
+    naui_panel_set_size(this, (Naui_Vec2){ 256, 256 });
 }
 
-static void on_detach(Naui_PanelID panel_id, TestData *data)
+static void on_detach(void)
 {
     
 }
 
-static void on_update(Naui_PanelID panel_id, TestData *data)
+static void on_update(void)
 {
-    data->time = naui_time();
+    
 }
 
-static void on_render(Naui_PanelID panel_id, TestData *data)
+static void on_render(void)
 {
     /*leaf({
         .direction = LEAF_DIRECTION_HORIZONAL,
@@ -43,4 +38,4 @@ static void on_render(Naui_PanelID panel_id, TestData *data)
     });*/
 }
 
-NAUI_DEFINE_PANEL_TYPE(test2, TestData);
+NAUI_DEFINE_PANEL_TYPE_NO_DATA(test2);

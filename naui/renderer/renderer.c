@@ -19,17 +19,35 @@
 #define NAUI_FONT_ATLAS_SIZE_SMALL  1024
 #define NAUI_FONT_ATLAS_SIZE_LARGE  4096
 #define NAUI_FONT_MAX_SLOTS         4
-#define NAUI_FONT_FIRST_CHAR        32
-#define NAUI_FONT_CHAR_COUNT        96
 #define NAUI_FONT_SIZE_SMALL        32.0f
-#define NAUI_FONT_SIZE_LARGE        256.0f
+#define NAUI_FONT_SIZE_LARGE        128.0f
 #define NAUI_FONT_SIZE_THRESHOLD    32.0f
+
+#define NAUI_FONT_MAX_RANGES        64
+#define NAUI_FONT_MAX_GLYPHS        4096
 
 #define NAUI_CLIP_STACK_MAX 1024
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
+
+static const struct { int start; int count; } k_unicode_blocks[] =
+{
+    { 0x0020,   96 },   /* Basic Latin                    */
+    { 0x00A0,   96 },   /* Latin-1 Supplement             */
+    { 0x0100,  128 },   /* Latin Extended-A/B             */
+    { 0x0370,  144 },   /* Greek & Coptic                 */
+    { 0x0400,  128 },   /* Cyrillic                       */
+    { 0x3000,   64 },   /* CJK Symbols & Punctuation      */
+    { 0x3040,   96 },   /* Hiragana                       */
+    { 0x30A0,   96 },   /* Katakana                       */
+    { 0x3400, 6592 },   /* CJK Extension A                */
+    { 0x4E00,20902 },   /* CJK Unified Ideographs         */
+    { 0xF900,  512 },   /* CJK Compatibility Ideographs   */
+    { 0xFF00,   94 },   /* Halfwidth/Fullwidth Forms       */
+};
+#define K_NUM_UNICODE_BLOCKS (int)(sizeof(k_unicode_blocks)/sizeof(k_unicode_blocks[0]))
 
 typedef struct
 {
@@ -54,6 +72,23 @@ Naui_ClipRect;
 
 typedef struct
 {
+    int               first_codepoint;
+    int               num_chars;
+    stbtt_packedchar *chars;
+}
+Naui_FontRange;
+
+typedef struct
+{
+    Naui_FontRange ranges[NAUI_FONT_MAX_RANGES];
+    int            range_count;
+    mgfx_image     atlas;
+    int            atlas_size;
+}
+Naui_FontTier;
+
+typedef struct
+{
     Naui_BatchGeometry geometry_vertices[NAUI_RENDERER_MAX_GEOMETRY];
     uint32_t geometry_indices[NAUI_RENDERER_MAX_GEOMETRY * 6];
     uint32_t geometry_count;
@@ -65,13 +100,11 @@ typedef struct
     mgfx_sampler image_sampler;
     mgfx_image image_atlas;
 
-    mgfx_sampler        font_sampler;
-    mgfx_image          font_atlases_small[NAUI_FONT_MAX_SLOTS];
-    mgfx_image          font_atlases_large[NAUI_FONT_MAX_SLOTS];
-    stbtt_bakedchar     font_chars_small[NAUI_FONT_MAX_SLOTS][NAUI_FONT_CHAR_COUNT];
-    stbtt_bakedchar     font_chars_large[NAUI_FONT_MAX_SLOTS][NAUI_FONT_CHAR_COUNT];
-    uint8_t             font_loaded[NAUI_FONT_MAX_SLOTS];
-    int8_t              font_current_index;
+    mgfx_sampler  font_sampler;
+    Naui_FontTier font_small[NAUI_FONT_MAX_SLOTS];
+    Naui_FontTier font_large[NAUI_FONT_MAX_SLOTS];
+    uint8_t       font_loaded[NAUI_FONT_MAX_SLOTS];
+    int8_t        font_current_index;
 
     Naui_ClipRect clip_stack[NAUI_CLIP_STACK_MAX];
     int32_t       clip_stack_depth;
@@ -102,6 +135,51 @@ static inline Naui_Color naui_lerp_color(Naui_Color a, Naui_Color b, float t)
         (uint8_t)(a.b + (b.b - a.b) * t),
         (uint8_t)(a.a + (b.a - a.a) * t),
     };
+}
+
+static const char *naui_utf8_decode(const char *s, int *cp_out)
+{
+    unsigned char c = (unsigned char)*s++;
+
+    if (c < 0x80)
+    {
+        *cp_out = c;
+    }
+    else if (c < 0xC0)
+    {
+        *cp_out = c;
+    }
+    else if (c < 0xE0)
+    {
+        *cp_out = (c & 0x1F) << 6;
+        if ((*s & 0xC0) == 0x80) *cp_out |= (*s++ & 0x3F);
+    }
+    else if (c < 0xF0)
+    {
+        *cp_out = (c & 0x0F) << 12;
+        if ((*s   & 0xC0) == 0x80) *cp_out |= (*s++   & 0x3F) << 6;
+        if ((*s   & 0xC0) == 0x80) *cp_out |= (*s++   & 0x3F);
+    }
+    else
+    {
+        *cp_out = (c & 0x07) << 18;
+        if ((*s   & 0xC0) == 0x80) *cp_out |= (*s++   & 0x3F) << 12;
+        if ((*s   & 0xC0) == 0x80) *cp_out |= (*s++   & 0x3F) << 6;
+        if ((*s   & 0xC0) == 0x80) *cp_out |= (*s++   & 0x3F);
+    }
+
+    return s;
+}
+
+static const stbtt_packedchar *naui_tier_lookup(const Naui_FontTier *tier, int cp)
+{
+    for (int i = 0; i < tier->range_count; i++)
+    {
+        const Naui_FontRange *r = &tier->ranges[i];
+        if (cp >= r->first_codepoint && cp < r->first_codepoint + r->num_chars)
+            return &r->chars[cp - r->first_codepoint];
+    }
+    return NULL;
 }
 
 typedef struct
@@ -438,6 +516,13 @@ void naui_renderer_initialize(void)
     rdata->height = mg_app_height();
 }
 
+static void naui_free_tier(Naui_FontTier *tier)
+{
+    for (int i = 0; i < tier->range_count; i++)
+        free(tier->ranges[i].chars);
+    tier->range_count = 0;
+}
+
 void naui_renderer_shutdown(void)
 {
     mgfx_destroy_sampler(rdata->image_sampler);
@@ -445,8 +530,10 @@ void naui_renderer_shutdown(void)
     {
         if (rdata->font_loaded[i])
         {
-            mgfx_destroy_image(rdata->font_atlases_small[i]);
-            mgfx_destroy_image(rdata->font_atlases_large[i]);
+            naui_free_tier(&rdata->font_small[i]);
+            naui_free_tier(&rdata->font_large[i]);
+            mgfx_destroy_image(rdata->font_small[i].atlas);
+            mgfx_destroy_image(rdata->font_large[i].atlas);
         }
     }
     mgfx_destroy_sampler(rdata->font_sampler);
@@ -522,15 +609,69 @@ void naui_pop_clip_rect(void)
     naui_apply_scissor();
 }
 
-static mgfx_image naui_bake_font_atlas(uint8_t *ttf_buf, float bake_size, int atlas_size, stbtt_bakedchar *chars_out)
+static int naui_bake_font_tier(
+    const uint8_t  *ttf_buf,
+    float           bake_size,
+    int             atlas_size,
+    Naui_FontTier  *tier)
 {
-    uint8_t *alpha = calloc(atlas_size * atlas_size, 1);
+    stbtt_fontinfo info;
+    if (!stbtt_InitFont(&info, ttf_buf, 0)) return 0;
 
-    stbtt_BakeFontBitmap(ttf_buf, 0, bake_size,
-        alpha, atlas_size, atlas_size,
-        NAUI_FONT_FIRST_CHAR, NAUI_FONT_CHAR_COUNT, chars_out);
+    stbtt_pack_range  tmp_ranges[NAUI_FONT_MAX_RANGES];
+    int               range_count = 0;
+
+    for (int b = 0; b < K_NUM_UNICODE_BLOCKS && range_count < NAUI_FONT_MAX_RANGES; b++)
+    {
+        int block_start = k_unicode_blocks[b].start;
+        int block_end   = block_start + k_unicode_blocks[b].count;
+        int run_start   = -1;
+
+        for (int cp = block_start; cp <= block_end && range_count < NAUI_FONT_MAX_RANGES; cp++)
+        {
+            int present = (cp < block_end) && (stbtt_FindGlyphIndex(&info, cp) != 0);
+
+            if (present && run_start < 0)
+            {
+                run_start = cp;
+            }
+            else if (!present && run_start >= 0)
+            {
+                int num = cp - run_start;
+                stbtt_packedchar *chars = malloc(num * sizeof(stbtt_packedchar));
+                if (!chars) { run_start = -1; continue; }
+
+                tmp_ranges[range_count].font_size                         = bake_size;
+                tmp_ranges[range_count].first_unicode_codepoint_in_range  = run_start;
+                tmp_ranges[range_count].array_of_unicode_codepoints        = NULL;
+                tmp_ranges[range_count].num_chars                          = num;
+                tmp_ranges[range_count].chardata_for_range                 = chars;
+                range_count++;
+                run_start = -1;
+            }
+        }
+    }
+
+    if (range_count == 0) return 0;
+
+    uint8_t *alpha = calloc(atlas_size * atlas_size, 1);
+    if (!alpha) goto fail_alpha;
+
+    stbtt_pack_context pc;
+    stbtt_PackBegin(&pc, alpha, atlas_size, atlas_size, 0, 1, NULL);
+    stbtt_PackSetOversampling(&pc, 1, 1);
+    int ok = stbtt_PackFontRanges(&pc, ttf_buf, 0, tmp_ranges, range_count);
+    stbtt_PackEnd(&pc);
+
+    if (!ok)
+    {
+        free(alpha);
+        goto fail_alpha;
+    }
 
     uint32_t *rgba = malloc(atlas_size * atlas_size * 4);
+    if (!rgba) { free(alpha); goto fail_alpha; }
+
     for (int p = 0; p < atlas_size * atlas_size; p++)
     {
         uint8_t v = alpha[p];
@@ -538,7 +679,7 @@ static mgfx_image naui_bake_font_atlas(uint8_t *ttf_buf, float bake_size, int at
     }
     free(alpha);
 
-    mgfx_image img = mgfx_create_image(&(mgfx_image_create_info){
+    tier->atlas = mgfx_create_image(&(mgfx_image_create_info){
         .type   = MGFX_IMAGE_TYPE_2D,
         .format = MGFX_FORMAT_RGBA8_UNORM,
         .usage  = MGFX_IMAGE_USAGE_COLOR_ATTACHMENT,
@@ -547,31 +688,53 @@ static mgfx_image naui_bake_font_atlas(uint8_t *ttf_buf, float bake_size, int at
         .data   = rgba,
     });
     free(rgba);
-    return img;
+
+    tier->atlas_size  = atlas_size;
+    tier->range_count = range_count;
+    for (int i = 0; i < range_count; i++)
+    {
+        tier->ranges[i].first_codepoint = tmp_ranges[i].first_unicode_codepoint_in_range;
+        tier->ranges[i].num_chars       = tmp_ranges[i].num_chars;
+        tier->ranges[i].chars           = tmp_ranges[i].chardata_for_range;
+    }
+
+    return 1;
+
+fail_alpha:
+    for (int i = 0; i < range_count; i++)
+        free(tmp_ranges[i].chardata_for_range);
+    return 0;
 }
 
-void naui_set_font(uint8_t index, const char *file_path)
+#include <filesystem/filesystem.h>
+void naui_load_font(uint8_t index, const char *file_name)
 {
     if (index >= NAUI_FONT_MAX_SLOTS) return;
+    char final_file_name[64];
+    strncpy(final_file_name, file_name, strlen(file_name) + 1);
+    strncat(final_file_name, ".ttf", sizeof(final_file_name));
 
-    FILE *f = fopen(file_path, "rb");
+    FILE *f = fopen(NAUI_PATH("Assets/Fonts", final_file_name).data, "rb");
     if (!f) return;
 
     fseek(f, 0, SEEK_END);
     long size = ftell(f);
     fseek(f, 0, SEEK_SET);
     uint8_t *ttf_buf = malloc(size);
+    if (!ttf_buf) { fclose(f); return; }
     fread(ttf_buf, 1, size, f);
     fclose(f);
 
     if (rdata->font_loaded[index])
     {
-        mgfx_destroy_image(rdata->font_atlases_small[index]);
-        mgfx_destroy_image(rdata->font_atlases_large[index]);
+        naui_free_tier(&rdata->font_small[index]);
+        naui_free_tier(&rdata->font_large[index]);
+        mgfx_destroy_image(rdata->font_small[index].atlas);
+        mgfx_destroy_image(rdata->font_large[index].atlas);
     }
 
-    rdata->font_atlases_small[index] = naui_bake_font_atlas(ttf_buf, NAUI_FONT_SIZE_SMALL, NAUI_FONT_ATLAS_SIZE_SMALL, rdata->font_chars_small[index]);
-    rdata->font_atlases_large[index] = naui_bake_font_atlas(ttf_buf, NAUI_FONT_SIZE_LARGE, NAUI_FONT_ATLAS_SIZE_LARGE, rdata->font_chars_large[index]);
+    naui_bake_font_tier(ttf_buf, NAUI_FONT_SIZE_SMALL, NAUI_FONT_ATLAS_SIZE_SMALL, &rdata->font_small[index]);
+    naui_bake_font_tier(ttf_buf, NAUI_FONT_SIZE_LARGE, NAUI_FONT_ATLAS_SIZE_LARGE, &rdata->font_large[index]);
 
     free(ttf_buf);
     rdata->font_loaded[index] = 1;
@@ -585,25 +748,31 @@ Naui_Vec2 naui_measure_text(const char *text, uint32_t length, float font_size, 
 
     int use_large = (font_size > NAUI_FONT_SIZE_THRESHOLD);
     float bake_size = use_large ? NAUI_FONT_SIZE_LARGE : NAUI_FONT_SIZE_SMALL;
-    stbtt_bakedchar *chars = use_large ? rdata->font_chars_large[font_index] : rdata->font_chars_small[font_index];
+    const Naui_FontTier *tier = use_large
+        ? &rdata->font_large[font_index]
+        : &rdata->font_small[font_index];
 
-    float scale = font_size / bake_size;
-    float x = 0.0f;
-    float max_x = 0.0f;
-    float y_min = 1e30f;
-    float y_max = -1e30f;
+    float scale  = font_size / bake_size;
+    float x      = 0.0f;
+    float max_x  = 0.0f;
+    float y_min  = 1e30f;
+    float y_max  = -1e30f;
     int has_glyph = 0;
 
-    for (uint32_t i = 0; i < length; i++)
+    const char *p   = text;
+    const char *end = text + length;
+
+    while (p < end)
     {
-        int cp = (unsigned char)text[i];
-        if (cp < NAUI_FONT_FIRST_CHAR || cp >= NAUI_FONT_FIRST_CHAR + NAUI_FONT_CHAR_COUNT)
+        int cp;
+        p = naui_utf8_decode(p, &cp);
+
+        const stbtt_packedchar *bc = naui_tier_lookup(tier, cp);
+        if (!bc)
         {
             x += font_size * 0.25f;
             continue;
         }
-
-        stbtt_bakedchar *bc = &chars[cp - NAUI_FONT_FIRST_CHAR];
 
         float glyph_top    = bc->yoff * scale;
         float glyph_bottom = glyph_top + (bc->y1 - bc->y0) * scale;
@@ -623,54 +792,64 @@ Naui_Vec2 naui_measure_text(const char *text, uint32_t length, float font_size, 
 
 void naui_draw_text(Naui_Vec2 position, const char *text, float size, uint8_t font_index, Naui_Color color)
 {
+    if (!text || !*text) return;
     if (font_index >= NAUI_FONT_MAX_SLOTS) return;
     if (!rdata->font_loaded[font_index]) return;
 
     int use_large = (size > NAUI_FONT_SIZE_THRESHOLD);
     float bake_size = use_large ? NAUI_FONT_SIZE_LARGE : NAUI_FONT_SIZE_SMALL;
-    stbtt_bakedchar *chars = use_large ? rdata->font_chars_large[font_index] : rdata->font_chars_small[font_index];
+    const Naui_FontTier *tier = use_large
+        ? &rdata->font_large[font_index]
+        : &rdata->font_small[font_index];
 
     int8_t wanted = (int8_t)(font_index * 2 + use_large);
     if (rdata->font_current_index != wanted)
     {
         naui_renderer_flush();
         mgfx_bind_image(
-            use_large ? rdata->font_atlases_large[font_index] : rdata->font_atlases_small[font_index],
+            use_large ? rdata->font_large[font_index].atlas
+                      : rdata->font_small[font_index].atlas,
             rdata->font_sampler, 1);
         rdata->font_current_index = wanted;
     }
 
-    float scale = size / bake_size;
+    float scale     = size / bake_size;
+    float atlas_sz  = (float)tier->atlas_size;
 
     float ascent = 0.0f;
-    for (const char *ch = text; *ch; ch++)
     {
-        int cp = (unsigned char)*ch;
-        if (cp < NAUI_FONT_FIRST_CHAR || cp >= NAUI_FONT_FIRST_CHAR + NAUI_FONT_CHAR_COUNT)
-            continue;
-        stbtt_bakedchar *bc = &chars[cp - NAUI_FONT_FIRST_CHAR];
-        float top = bc->yoff * scale;
-        if (top < ascent) ascent = top;
+        const char *p = text;
+        while (*p)
+        {
+            int cp;
+            p = naui_utf8_decode(p, &cp);
+            const stbtt_packedchar *bc = naui_tier_lookup(tier, cp);
+            if (bc)
+            {
+                float top = bc->yoff * scale;
+                if (top < ascent) ascent = top;
+            }
+        }
     }
 
     float x = position.x;
     float y = position.y - ascent;
     uint32_t c = naui_pack_color(color);
-    float atlas_sz = (float)(use_large ? NAUI_FONT_ATLAS_SIZE_LARGE : NAUI_FONT_ATLAS_SIZE_SMALL);
 
-    for (const char *ch = text; *ch; ch++)
+    for (const char *p = text; *p; )
     {
-        int cp = (unsigned char)*ch;
-        if (cp < NAUI_FONT_FIRST_CHAR || cp >= NAUI_FONT_FIRST_CHAR + NAUI_FONT_CHAR_COUNT)
+        int cp;
+        p = naui_utf8_decode(p, &cp);
+
+        const stbtt_packedchar *bc = naui_tier_lookup(tier, cp);
+        if (!bc)
         {
             x += size * 0.25f;
             continue;
         }
 
-        stbtt_bakedchar *bc = &chars[cp - NAUI_FONT_FIRST_CHAR];
-
-        float gx0 = x + bc->xoff * scale;
-        float gy0 = y + bc->yoff * scale;
+        float gx0 = x + bc->xoff  * scale;
+        float gy0 = y + bc->yoff  * scale;
         float gx1 = gx0 + (bc->x1 - bc->x0) * scale;
         float gy1 = gy0 + (bc->y1 - bc->y0) * scale;
         float gu0 = bc->x0 / atlas_sz, gv0 = bc->y0 / atlas_sz;
@@ -712,11 +891,6 @@ void naui_fill_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color, float
     int tr = (flags & NAUI_CORNER_TR) != 0;
     int br = (flags & NAUI_CORNER_BR) != 0;
     int bl = (flags & NAUI_CORNER_BL) != 0;
-
-    float x0l = x0 + (tl ? r : 0), x0r = x0 + (bl ? r : 0);
-    float x1l = x1 - (tr ? r : 0), x1r = x1 - (br ? r : 0);
-    float y0t = y0 + (tl ? r : 0), y0b = y0 + (tr ? r : 0);
-    float y1t = y1 - (bl ? r : 0), y1b = y1 - (br ? r : 0);
 
     naui_push_rect((Naui_Vec2){x0+r, y0}, (Naui_Vec2){x1-r, y1}, c, -1);
     naui_push_rect((Naui_Vec2){x0, y0 + (tl ? r : 0)}, (Naui_Vec2){x0+r, y1 - (bl ? r : 0)}, c, -1);
