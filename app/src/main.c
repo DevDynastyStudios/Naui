@@ -1,5 +1,6 @@
 #include <naui/naui.h>
 #include <stdio.h>
+#include <widgets/widgets.h>
 
 NAUI_APP("Sandbox")
 
@@ -52,7 +53,6 @@ static void render_main_titlebar(const char *title)
 void naui_app_update(void)
 {
 	render_main_titlebar("Naui Editor");
-	naui_render_panels_and_viewport();
 	if (naui_key_pressed(NAUI_KEY_ESCAPE))
 		naui_app_close();
 }

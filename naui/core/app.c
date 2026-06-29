@@ -147,9 +147,9 @@ static void __naui_app_start(void)
     naui_themes_initialize();
     leaf_initialize();
     leaf_set_measure_text(measure_text_bridge);
+	naui_widget_init();
     state.events.start();
     render();
-	naui_widget_init();
     mg_app_show(true);
 }
 
