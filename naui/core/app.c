@@ -1,5 +1,6 @@
 #include "app.h"
 #include "theme.h"
+#include "widgets/widgets_internal.h"
 
 #include <stddef.h>
 
@@ -127,6 +128,7 @@ static void render(void)
     Leaf_RenderCmdList cmd_list = leaf_end_frame();
     render_leaf_cmd_list(&cmd_list);
     naui_renderer_end();
+	naui_widget_reset();
 }
 
 static void __naui_app_event(const mg_app_event* event)
@@ -146,6 +148,7 @@ static void __naui_app_start(void)
     leaf_initialize();
     leaf_set_measure_text(measure_text_bridge);
     state.events.start();
+	naui_widget_init();
 }
 
 static void __naui_app_end(void)
