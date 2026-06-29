@@ -775,6 +775,7 @@ Naui_Vec2 naui_measure_text(const char *text, uint32_t length, float font_size, 
         p = naui_utf8_decode(p, &cp);
 
         const stbtt_packedchar *bc = naui_tier_lookup(tier, cp);
+        if (!bc) bc = naui_tier_lookup(tier, '?');
         if (!bc)
         {
             x += font_size * 0.25f;
@@ -831,6 +832,7 @@ void naui_draw_text(Naui_Vec2 position, const char *text, float size, uint8_t fo
             int cp;
             p = naui_utf8_decode(p, &cp);
             const stbtt_packedchar *bc = naui_tier_lookup(tier, cp);
+            if (!bc) bc = naui_tier_lookup(tier, '?');
             if (bc)
             {
                 float top = bc->yoff * scale;
@@ -849,6 +851,7 @@ void naui_draw_text(Naui_Vec2 position, const char *text, float size, uint8_t fo
         p = naui_utf8_decode(p, &cp);
 
         const stbtt_packedchar *bc = naui_tier_lookup(tier, cp);
+        if (!bc) bc = naui_tier_lookup(tier, '?');
         if (!bc)
         {
             x += size * 0.25f;

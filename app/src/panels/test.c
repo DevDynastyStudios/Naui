@@ -8,19 +8,11 @@ typedef struct
 }
 TestData;
 
-Naui_PanelID child_panel;
-Naui_PanelID panel_slot;
-
 static void on_attach(TestData *data)
 {
     Naui_PanelID this = naui_current_panel();
     naui_panel_set_title(this, "Panel");
     naui_panel_enable_flags(this, NAUI_PANEL_FLAG_SERIALIZABLE);
-    // panel_id and child_panel are now sibling panels docked horizonatly next to eachother
-
-    //Naui_PanelID child_panel_2 = NAUI_ATTACH_PANEL(test2);
-    //naui_dock_panel(panel_slot, child_panel_2, NAUI_DOCK_DIRECTION_TOP);
-    panel_slot = this;
 }
 
 static void on_detach(TestData *data)
@@ -30,21 +22,7 @@ static void on_detach(TestData *data)
 
 static void on_update(TestData *data)
 {
-    Naui_PanelID this = naui_current_panel();
-    data->time = naui_time();
-    if (naui_key_pressed(NAUI_KEY_W))
-    {
-        child_panel = NAUI_ATTACH_PANEL(test2);
-        //naui_dock_panel(panel_slot, child_panel, NAUI_DOCK_DIRECTION_CENTER, 0.5f);
-    }
-    if (naui_key_pressed(NAUI_KEY_S))
-    {
-        if (panel_slot)
-        {
-            naui_undock_panel(child_panel);
-            panel_slot = this;
-        }
-    }
+
 }
 
 static void on_render(TestData *data)
