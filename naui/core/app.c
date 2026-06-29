@@ -160,7 +160,6 @@ static void __naui_app_update(void)
 {
     naui_input_update();
     render();
-    naui_app_set_caption_height(32);
 }
 
 int32_t naui_app_width(void)
@@ -171,6 +170,11 @@ int32_t naui_app_width(void)
 int32_t naui_app_height(void)
 {
     return mg_app_height();
+}
+
+void naui_app_close(void)
+{
+    mg_app_close();
 }
 
 void naui_app_set_caption_height(int32_t height)
@@ -192,8 +196,6 @@ void naui_app_run(
     mg_app_run(&(mg_app_init_info){
         .title = title,
         .flags = MG_APP_FLAG_NO_TITLEBAR,
-        .width = 1920,
-        .height = 1080,
         .events = {
             .start = __naui_app_start,
             .end = __naui_app_end,

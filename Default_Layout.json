@@ -1,0 +1,26 @@
+{
+    "child0": 
+    {
+        "child0": 
+        {
+            "kind": "panel",
+            "type": "test2"
+        },
+        "child1": 
+        {
+            "kind": "panel",
+            "type": "test"
+        },
+        "kind": "split",
+        "axis": "horizontal",
+        "ratio": 0.5
+    },
+    "child1": 
+    {
+        "kind": "panel",
+        "type": "test2"
+    },
+    "kind": "split",
+    "axis": "vertical",
+    "ratio": 0.5
+}

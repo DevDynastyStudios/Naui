@@ -58,8 +58,8 @@ typedef struct
 }
 Leaf_ColorFill;
 
-#define leaf_gradient(c1, c2, angle) (Leaf_ColorFill){ (c1), (c2), 0.0f, 1.0f, angle, LEAF_GRADIENT_LINEAR_COLOR_FILL }
-#define leaf_gradient_percent(c1, p1, c2, p2, angle) (Leaf_ColorFill){ (c1), (c2), (p1), (p2), angle, LEAF_GRADIENT_LINEAR_COLOR_FILL }
+#define LEAF_GRADIENT(c1, c2, angle) (Leaf_ColorFill){ (c1), (c2), 0.0f, 1.0f, angle, LEAF_GRADIENT_LINEAR_COLOR_FILL }
+#define LEAF_GRADIENT_PERCENT(c1, p1, c2, p2, angle) (Leaf_ColorFill){ (c1), (c2), (p1), (p2), angle, LEAF_GRADIENT_LINEAR_COLOR_FILL }
 
 #define leaf_deg(v) ((v) * 0.0174532925f)
 #define leaf_rad(v) (v)
@@ -1069,6 +1069,76 @@ static void leaf_resolve_aspect_ratio(Leaf_Node *node)
         node->bounding_box.height = node->bounding_box.width  / cfg->aspect_ratio;
 }
 
+#define LEAF_MAIN(horizontal, a, b)   ((horizontal) ? (a) : (b))
+#define LEAF_CROSS(horizontal, a, b)  ((horizontal) ? (b) : (a))
+#define LEAF_ALIGN_OFFSET(align, end_val, center_val, free) \
+    ((align) == (end_val)    ? (free) :                     \
+     (align) == (center_val) ? (free) * 0.5f : 0.0f)
+
+static void leaf_recompute_fit_for_wrap(Leaf_Node *parent)
+{
+    if (parent->type != LEAF_NODE_TYPE_ELEMENT)
+        return;
+
+    const Leaf_ElementConfig *cfg = &parent->element.config;
+    if (!cfg->wrap_children)
+        return;
+
+    bool fit_w = cfg->size.width.type == LEAF_SIZE_TYPE_FIT;
+    bool fit_h = cfg->size.height.type == LEAF_SIZE_TYPE_FIT;
+    if (!fit_w && !fit_h)
+        return;
+
+    bool h = cfg->direction == LEAF_DIRECTION_HORIZONAL;
+
+    float avail_main =
+        LEAF_MAIN(h, parent->bounding_box.width,  parent->bounding_box.height) -
+        LEAF_MAIN(h, cfg->padding.left + cfg->padding.right,
+                     cfg->padding.top  + cfg->padding.bottom);
+
+    float cross_total = 0.0f;
+    float row_main = 0.0f;
+    float row_cross = 0.0f;
+    bool  in_row = false;
+
+    LEAF_FOREACH_CHILD(child, parent)
+    {
+        if (child->type == LEAF_NODE_TYPE_ELEMENT &&
+            child->element.config.positioning != LEAF_POSITIONING_RELATIVE)
+            continue;
+
+        float child_main  = LEAF_MAIN (h, child->bounding_box.width, child->bounding_box.height);
+        float child_cross = LEAF_CROSS(h, child->bounding_box.width, child->bounding_box.height);
+        float gap = in_row ? cfg->child_gap : 0.0f;
+
+        if (in_row && row_main + gap + child_main > avail_main)
+        {
+            cross_total += row_cross + cfg->child_cross_gap;
+            row_main = 0.0f;
+            row_cross = 0.0f;
+            in_row = false;
+            gap = 0.0f;
+        }
+
+        row_main += gap + child_main;
+        row_cross = LEAF_MAX(row_cross, child_cross);
+        in_row = true;
+    }
+    if (in_row)
+        cross_total += row_cross;
+
+    cross_total += LEAF_CROSS(h, cfg->padding.left + cfg->padding.right, cfg->padding.top  + cfg->padding.bottom);
+
+    if (fit_h)
+    {
+        if (h) parent->bounding_box.height = cross_total;
+        else parent->bounding_box.width  = cross_total;
+    }
+
+    if (fit_w && !h)
+        parent->bounding_box.width = cross_total;
+}
+
 static void leaf_size_pass(Leaf_Node *parent)
 {
     if (parent->type != LEAF_NODE_TYPE_ELEMENT)
@@ -1171,13 +1241,8 @@ static void leaf_size_pass(Leaf_Node *parent)
 
     leaf_wrap_text_children(parent);
     leaf_resolve_aspect_ratio(parent);
+    leaf_recompute_fit_for_wrap(parent);
 }
-
-#define LEAF_MAIN(horizontal, a, b)   ((horizontal) ? (a) : (b))
-#define LEAF_CROSS(horizontal, a, b)  ((horizontal) ? (b) : (a))
-#define LEAF_ALIGN_OFFSET(align, end_val, center_val, free) \
-    ((align) == (end_val)    ? (free) :                     \
-     (align) == (center_val) ? (free) * 0.5f : 0.0f)
 
 static void leaf_assign_wrap_offsets(Leaf_Node *parent)
 {

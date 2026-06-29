@@ -93,6 +93,7 @@ typedef struct
     Naui_PanelNode *current_panel;
 
     Leaf_BoundingBox dock_guide_area;
+    bool any_panel_hovered;
 }
 Naui_PanelManager;
 static Naui_PanelManager pm = { 0 };
@@ -166,10 +167,18 @@ void naui_panel_disable_flags(Naui_PanelID panel_id, Naui_PanelFlags flags)
     ((Naui_PanelNode*)panel_id)->flags &= ~flags;
 }
 
+static inline void naui_reset_root_indexes(uint32_t from)
+{
+    for (uint32_t i = from; i < naui_list_len(pm.root_nodes); i++)
+        pm.root_nodes[i]->root_index = i;
+}
+
 void naui_set_main_viewport(Naui_PanelID id)
 {
     pm.main_viewport = (Naui_PanelNode*)id;
-    naui_list_remove(pm.root_nodes, pm.main_viewport->root_index);
+    uint32_t removed_index = pm.main_viewport->root_index;
+    naui_list_remove(pm.root_nodes, removed_index);
+    naui_reset_root_indexes(removed_index);
 }
 
 Naui_PanelID naui_get_main_viewport(void)
@@ -490,6 +499,11 @@ static bool naui_point_occluded_above(float mx, float my, Naui_PanelNode *root)
 bool naui_panel_hovered(Naui_PanelID panel_id)
 {
     return !((Naui_PanelNode*)panel_id)->occluded;
+}
+
+bool naui_any_panel_hovered(void)
+{
+    return pm.any_panel_hovered;
 }
 
 Naui_PanelID naui_current_panel(void)
@@ -1205,6 +1219,8 @@ static inline void naui_calculate_and_cache_panel_occlusion(Naui_PanelNode *node
     float mx = (float)naui_mouse_x(), my = (float)naui_mouse_y();
     bool in_bounds = mx >= box.x && mx <= box.x + box.width && my >= box.y && my <= box.y + box.height;
     node->occluded = !in_bounds || naui_point_occluded_above(mx, my, node->root);
+    if (!node->occluded)
+        pm.any_panel_hovered = true;
 }
 
 static void naui_update_panel_tabs(Naui_PanelNode *node)
@@ -1284,6 +1300,8 @@ static void naui_process_events(void)
 
 void naui_render_panels_and_viewport(void)
 {
+    pm.any_panel_hovered = false;
+
     for (int32_t i = (int32_t)naui_list_len(pm.root_nodes); i-- > 0;)
         naui_update_splits_only(pm.root_nodes[i]);
     if (pm.main_viewport)
@@ -1313,46 +1331,79 @@ void naui_render_panels_and_viewport(void)
 #pragma region Serialization
 #include <serialization/json.h>
 
-static void naui_serialize_panel_node(Naui_Json *json, Naui_JsonValue *jnode, Naui_PanelNode *node)
+static inline const char *naui_get_panel_type(Naui_PanelNode *node)
 {
-    if (node->children[0])
-    {
-        naui_json_set_string(json, jnode, "type", "split");
-        naui_json_set_int(json, jnode, "axis", node->split_axis);
-        naui_json_set_number(json, jnode, "ratio", node->split_ratio);
-
-        Naui_JsonValue *jchildren = naui_json_set_array(json, jnode, "children");
-        Naui_JsonValue *jchild0 = naui_json_push_object(json, jchildren);
-        Naui_JsonValue *jchild1 = naui_json_push_object(json, jchildren);
-        naui_serialize_panel_node(json, jchild0, node->children[0]);
-        naui_serialize_panel_node(json, jchild1, node->children[1]);
-    }
-    else
-    {
-        naui_json_set_string(json, jnode, "type", "leaf");
-
-        if (node->tabs)
-        {
-            Naui_JsonValue *jtabs = naui_json_set_array(json, jnode, "tabs");
-            int32_t serializable_active = 0;
-            int32_t serialized_count = 0;
-            for (int32_t i = 0; i < naui_list_len(node->tabs); i++)
-            {
-                if (!(node->tabs[i]->flags & NAUI_PANEL_FLAG_SERIALIZABLE))
-                    continue;
-                if (i <= node->active_tab)
-                    serializable_active = serialized_count;
-                naui_json_push_string(json, jtabs, node->tabs[i]->type.type_name);
-                serialized_count++;
-            }
-            naui_json_set_int(json, jnode, "active_tab", serializable_active);
-        }
-        else if (node->flags & NAUI_PANEL_FLAG_SERIALIZABLE)
-            naui_json_set_string(json, jnode, "panel", node->type.type_name);
-    }
+    return node->type.type_name;
 }
 
-bool naui_serialize_viewport(const Naui_Path path)
+static inline Naui_PanelNode *naui_find_panel_of_type(const char *type_name)
+{
+    for (int32_t i = 0; i < (int32_t)naui_list_len(pm.root_nodes); i++)
+        if (!strcmp(pm.root_nodes[i]->type.type_name, type_name))
+            return pm.root_nodes[i];
+    return NULL;
+}
+
+static bool naui_serialize_panel_node(Naui_Json *json, Naui_JsonValue *out, Naui_PanelNode *node)
+{
+    if (!node)
+        return false;
+
+    if (node->children[0])
+    {
+        Naui_JsonValue *child0 = naui_json_set_object(json, out, "child0");
+        Naui_JsonValue *child1 = naui_json_set_object(json, out, "child1");
+
+        bool ok0 = naui_serialize_panel_node(json, child0, node->children[0]);
+        bool ok1 = naui_serialize_panel_node(json, child1, node->children[1]);
+
+        if (!ok0 && !ok1)
+            return false;
+
+        naui_json_set_string(json, out, "kind", "split");
+        naui_json_set_string(json, out, "axis",
+            node->split_axis == NAUI_SPLIT_AXIS_VERTICAL ? "vertical" : "horizontal");
+        naui_json_set_number(json, out, "ratio", node->split_ratio);
+        return true;
+    }
+
+    if (node->tabs)
+    {
+        Naui_JsonValue *tabs_arr = naui_json_set_array(json, out, "tabs");
+        bool any = false;
+        for (int32_t i = 0; i < naui_list_len(node->tabs); i++)
+        {
+            Naui_PanelNode *tab = node->tabs[i];
+            if (!(tab->flags & NAUI_PANEL_FLAG_SERIALIZABLE))
+                continue;
+            const char *name = naui_get_panel_type(tab);
+            if (!name)
+                continue;
+            naui_json_push_string(json, tabs_arr, name);
+            any = true;
+        }
+        if (!any)
+            return false;
+
+        naui_json_set_string(json, out, "kind", "tabs");
+        naui_json_set_int(json, out, "active_tab", node->active_tab);
+        return true;
+    }
+
+    if (!(node->flags & NAUI_PANEL_FLAG_SERIALIZABLE))
+        return false;
+
+    const char *name = naui_get_panel_type(node);
+    if (!name)
+        return false;
+
+    naui_json_set_string(json, out, "kind", "panel");
+    naui_json_set_string(json, out, "type", name);
+
+    return true;
+}
+
+bool naui_serialize_viewport(const char *file_path)
 {
     if (!pm.main_viewport)
         return false;
@@ -1360,173 +1411,22 @@ bool naui_serialize_viewport(const Naui_Path path)
     Naui_Json json = naui_json_result_create();
     Naui_JsonValue *root = naui_json_object(&json);
     naui_serialize_panel_node(&json, root, pm.main_viewport);
-    bool ok = naui_json_write_file(root, path, true);
+    naui_json_write_file(root, NAUI_PATH(file_path), true);
     naui_json_free(&json);
-    return ok;
 }
 
-static Naui_PanelNode *naui_find_root_panel_by_type(const char *type_name)
+bool naui_deserialize_viewport(const char *file_path)
 {
-    for (int32_t i = 0; i < (int32_t)naui_list_len(pm.root_nodes); i++)
+    Naui_Json json = naui_json_parse_file(NAUI_PATH(file_path));
+
+    // hardcoded example of loading and force docking panels based on type names
+    Naui_PanelNode *test = naui_find_panel_of_type("test");
+    Naui_PanelNode *test2 = naui_find_panel_of_type("test2");
+    if (test && test2)
     {
-        Naui_PanelNode *n = pm.root_nodes[i];
-        if (n->type.type_name && strcmp(n->type.type_name, type_name) == 0)
-            return n;
+        naui_set_main_viewport(test);
+        naui_dock_panel((Naui_PanelID)test, (Naui_PanelID)test2, NAUI_DOCK_DIRECTION_LEFT, 0.5f); // crashes
     }
-    return NULL;
-}
-
-static Naui_PanelID naui_deserialize_panel_node(const Naui_JsonValue *jnode, Naui_PanelID target_id)
-{
-    const char *kind = naui_json_get_string(naui_json_object_get(jnode, "type"), "");
-
-    if (strcmp(kind, "split") == 0)
-    {
-        int    axis  = naui_json_get_int(naui_json_object_get(jnode, "axis"),  0);
-        double ratio = naui_json_get_number(naui_json_object_get(jnode, "ratio"), 0.5);
-
-        const Naui_JsonValue *jchildren = naui_json_object_get(jnode, "children");
-        const Naui_JsonValue *jchild0 = naui_json_array_get(jchildren, 0);
-        const Naui_JsonValue *jchild1 = naui_json_array_get(jchildren, 1);
-
-        if (!jchild0 || !jchild1)
-            return target_id;
-
-        Naui_PanelID left_id = naui_deserialize_panel_node(jchild0, target_id);
-        if (!left_id)
-            return target_id;
-
-        const char *right_kind = naui_json_get_string(naui_json_object_get(jchild1, "type"), "");
-
-        Naui_PanelID right_id = 0;
-        if (strcmp(right_kind, "leaf") == 0)
-        {
-            const Naui_JsonValue *jtabs = naui_json_object_get(jchild1, "tabs");
-            if (jtabs)
-            {
-                const Naui_JsonValue *first_tab_name = naui_json_array_get(jtabs, 0);
-                right_id = (Naui_PanelID)naui_find_root_panel_by_type(
-                    naui_json_get_string(first_tab_name, ""));
-            }
-            else
-            {
-                right_id = (Naui_PanelID)naui_find_root_panel_by_type(
-                    naui_json_get_string(naui_json_object_get(jchild1, "panel"), ""));
-            }
-        }
-        else if (strcmp(right_kind, "split") == 0)
-        {
-            const Naui_JsonValue *walk = jchild1;
-            while (naui_json_get_string(naui_json_object_get(walk, "type"), "")[0] == 's')
-                walk = naui_json_array_get(naui_json_object_get(walk, "children"), 0);
-
-            const char *anchor_name = naui_json_get_string(naui_json_object_get(walk, "panel"), "");
-            Naui_PanelID anchor = (Naui_PanelID)naui_find_root_panel_by_type(anchor_name);
-            if (!anchor)
-                return left_id;
-
-            right_id = naui_deserialize_panel_node(jchild1, anchor);
-        }
-
-        if (!right_id)
-            return left_id;
-
-        Naui_DockDirection dir = (axis == NAUI_SPLIT_AXIS_HORIZONTAL)
-            ? NAUI_DOCK_DIRECTION_RIGHT
-            : NAUI_DOCK_DIRECTION_BOTTOM;
-
-        naui_dock_panel(left_id, right_id, dir, (float)ratio);
-        return left_id;
-    }
-    else if (strcmp(kind, "leaf") == 0)
-    {
-        const Naui_JsonValue *jtabs = naui_json_object_get(jnode, "tabs");
-        if (jtabs)
-        {
-            int active = naui_json_get_int(naui_json_object_get(jnode, "active_tab"), 0);
-
-            const char *first_name = naui_json_get_string(naui_json_array_get(jtabs, 0), "");
-            Naui_PanelID anchor = (Naui_PanelID)naui_find_root_panel_by_type(first_name);
-            if (!anchor) anchor = target_id;
-
-            for (size_t i = 1; i < jtabs->array.count; i++)
-            {
-                const char *tab_name = naui_json_get_string(naui_json_array_get(jtabs, i), "");
-                Naui_PanelID guest = (Naui_PanelID)naui_find_root_panel_by_type(tab_name);
-                if (guest && guest != anchor)
-                    naui_dock_panel(anchor, guest, NAUI_DOCK_DIRECTION_CENTER, 0.0f);
-            }
-
-            Naui_PanelNode *anchor_node = (Naui_PanelNode*)anchor;
-            if (anchor_node->tabs && active < naui_list_len(anchor_node->tabs))
-                anchor_node->active_tab = active;
-
-            return anchor;
-        }
-        else
-        {
-            const char *name = naui_json_get_string(naui_json_object_get(jnode, "panel"), "");
-            Naui_PanelID found = (Naui_PanelID)naui_find_root_panel_by_type(name);
-            return found ? found : target_id;
-        }
-    }
-
-    return target_id;
-}
-
-bool naui_deserialize_viewport(const Naui_Path path)
-{
-    Naui_Json json = naui_json_parse_file(path);
-    if (json.error || !json.root)
-    {
-        naui_json_free(&json);
-        return false;
-    }
-
-    if (pm.main_viewport)
-    {
-        naui_undock_panel_immediate(pm.main_viewport);
-        pm.main_viewport = NULL;
-    }
-
-    const Naui_JsonValue *jroot = json.root;
-    const char *kind = naui_json_get_string(naui_json_object_get(jroot, "type"), "");
-
-    Naui_PanelID anchor_id = 0;
-    if (strcmp(kind, "leaf") == 0)
-    {
-        const Naui_JsonValue *jtabs = naui_json_object_get(jroot, "tabs");
-        const char *name = jtabs
-            ? naui_json_get_string(naui_json_array_get(jtabs, 0), "")
-            : naui_json_get_string(naui_json_object_get(jroot, "panel"), "");
-        anchor_id = (Naui_PanelID)naui_find_root_panel_by_type(name);
-    }
-    else if (strcmp(kind, "split") == 0)
-    {
-        const Naui_JsonValue *walk = jroot;
-        while (strcmp(naui_json_get_string(naui_json_object_get(walk, "type"), ""), "split") == 0)
-            walk = naui_json_array_get(naui_json_object_get(walk, "children"), 0);
-
-        const Naui_JsonValue *jtabs = naui_json_object_get(walk, "tabs");
-        const char *name = jtabs
-            ? naui_json_get_string(naui_json_array_get(jtabs, 0), "")
-            : naui_json_get_string(naui_json_object_get(walk, "panel"), "");
-        anchor_id = (Naui_PanelID)naui_find_root_panel_by_type(name);
-    }
-
-    if (!anchor_id)
-    {
-        naui_json_free(&json);
-        return false;
-    }
-
-    naui_deserialize_panel_node(jroot, anchor_id);
-
-    Naui_PanelNode *anchor_node = (Naui_PanelNode*)anchor_id;
-    naui_set_main_viewport((Naui_PanelID)anchor_node->root);
-
-    naui_json_free(&json);
-    return true;
 }
 
 #pragma endregion Serialization

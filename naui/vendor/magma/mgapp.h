@@ -518,7 +518,6 @@ typedef struct mg_win32_platform
     HCURSOR cursors[MG_CURSOR_MAX];
     WNDPROC original_proc;
     int32_t caption_height;
-    bool no_titlebar;
 }
 mg_win32_platform;
 
@@ -644,29 +643,29 @@ static LRESULT CALLBACK mg_win32_process_message(HWND hwnd, uint32_t msg, WPARAM
     return DefWindowProcA(hwnd, msg, w_param, l_param);
 }
 
-static LRESULT CALLBACK mg_win32_custom_proc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+static LRESULT CALLBACK mg_win32_no_titlebar_proc(HWND hwnd, UINT u_msg, WPARAM w_param, LPARAM l_param)
 {
-    switch (uMsg)
+    switch (u_msg)
     {
         case WM_NCCALCSIZE:
         {
-            if (!wParam) break;
-            NCCALCSIZE_PARAMS *params = (NCCALCSIZE_PARAMS *)lParam;
+            if (!w_param) break;
+            NCCALCSIZE_PARAMS *params = (NCCALCSIZE_PARAMS *)l_param;
             RECT *r = params->rgrc;
             int32_t bx = GetSystemMetrics(SM_CXFRAME);
             int32_t by = GetSystemMetrics(SM_CYFRAME);
             r->right -= bx;
             r->left += bx;
             r->bottom -= by;
-            r->top += IsZoomed(hWnd) ? by : 0;
+            r->top += IsZoomed(hwnd) ? by : 0;
             return WVR_ALIGNTOP | WVR_ALIGNLEFT;
         }
         case WM_NCHITTEST:
         {
-            POINTS mp = MAKEPOINTS(lParam);
+            POINTS mp = MAKEPOINTS(l_param);
             POINT  sp = { mp.x, mp.y };
             RECT   wr;
-            GetWindowRect(hWnd, &wr);
+            GetWindowRect(hwnd, &wr);
             const int bw = 8;
             int rx = sp.x - wr.left;
             int ry = sp.y - wr.top;
@@ -681,10 +680,23 @@ static LRESULT CALLBACK mg_win32_custom_proc(HWND hWnd, UINT uMsg, WPARAM wParam
                 return HTCAPTION;
             break;
         }
+        case WM_NCMOUSEMOVE:
+        {
+            POINT pt = { GET_X_LPARAM(l_param), GET_Y_LPARAM(l_param) };
+            ScreenToClient(platform.hwnd, &pt);
+            input_state.mouse.x = (int16_t)pt.x;
+            input_state.mouse.y = (int16_t)pt.y;
+            mg_app_call_event(&(mg_app_event){
+                .mouse_x = pt.x,
+                .mouse_y = pt.y,
+                .type = MG_APP_EVENT_MOUSE_MOVE
+            });
+            break;
+        }
         case WM_NCACTIVATE:
             break;
     }
-    return CallWindowProc(platform.original_proc, hWnd, uMsg, wParam, lParam);
+    return CallWindowProc(platform.original_proc, hwnd, u_msg, w_param, l_param);
 }
 
 int32_t mg_app_run(const mg_app_init_info *info)
@@ -749,8 +761,6 @@ int32_t mg_app_run(const mg_app_init_info *info)
     ShowWindow(platform.hwnd, SW_SHOW);
     if (info->flags & MG_APP_FLAG_NO_TITLEBAR)
     {
-        platform.no_titlebar = true;
-
         LONG_PTR style = GetWindowLongPtr(platform.hwnd, GWL_STYLE);
         style |= WS_THICKFRAME | WS_CAPTION;
         SetWindowLongPtr(platform.hwnd, GWL_STYLE, style);
@@ -761,7 +771,7 @@ int32_t mg_app_run(const mg_app_init_info *info)
         int h = wr.bottom - wr.top;
 
         platform.original_proc = (WNDPROC)GetWindowLongPtr(platform.hwnd, GWLP_WNDPROC);
-        SetWindowLongPtr(platform.hwnd, GWLP_WNDPROC, (LONG_PTR)mg_win32_custom_proc);
+        SetWindowLongPtr(platform.hwnd, GWLP_WNDPROC, (LONG_PTR)mg_win32_no_titlebar_proc);
         SetWindowPos(platform.hwnd, NULL, 0, 0, w, h, SWP_FRAMECHANGED | SWP_NOMOVE);
     }
 

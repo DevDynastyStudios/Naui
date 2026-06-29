@@ -112,26 +112,30 @@ enum
 
 #define NAUI_ATTACH_PANEL(type_name) naui_attach_panel(#type_name)
 
-NAUI_API Naui_PanelID naui_attach_panel(const char *type_name);
-NAUI_API void         naui_detach_panel(Naui_PanelID id);
-NAUI_API void         naui_register_panel_type(const char *name, Naui_PanelType type);
+NAUI_API Naui_PanelID   naui_attach_panel               (const char *type_name);
+NAUI_API void           naui_detach_panel               (Naui_PanelID id);
+NAUI_API void           naui_register_panel_type        (const char *name, Naui_PanelType type);
 
-NAUI_API void         naui_panel_set_title      (Naui_PanelID panel_id, const char *title);
-NAUI_API void         naui_panel_set_size       (Naui_PanelID panel_id, Naui_Vec2 size);
-NAUI_API void         naui_panel_set_min_size   (Naui_PanelID panel_id, Naui_Vec2 size);
-NAUI_API void         naui_panel_enable_flags   (Naui_PanelID panel_id, Naui_PanelFlags flags);
-NAUI_API void         naui_panel_disable_flags  (Naui_PanelID panel_id, Naui_PanelFlags flags);
+NAUI_API void           naui_panel_set_title            (Naui_PanelID panel_id, const char *title);
+NAUI_API void           naui_panel_set_size             (Naui_PanelID panel_id, Naui_Vec2 size);
+NAUI_API void           naui_panel_set_min_size         (Naui_PanelID panel_id, Naui_Vec2 size);
+NAUI_API void           naui_panel_enable_flags         (Naui_PanelID panel_id, Naui_PanelFlags flags);
+NAUI_API void           naui_panel_disable_flags        (Naui_PanelID panel_id, Naui_PanelFlags flags);
 
-NAUI_API void         naui_dock_panel   (Naui_PanelID target_id, Naui_PanelID guest_id, Naui_DockDirection direction, float split_ratio);
-NAUI_API void         naui_undock_panel (Naui_PanelID id);
+NAUI_API void           naui_dock_panel                 (Naui_PanelID target_id, Naui_PanelID guest_id, Naui_DockDirection direction, float split_ratio);
+NAUI_API void           naui_undock_panel               (Naui_PanelID id);
 
-NAUI_API void         naui_set_main_viewport    (Naui_PanelID id);
-NAUI_API Naui_PanelID naui_get_main_viewport    (void);
+NAUI_API void           naui_set_main_viewport          (Naui_PanelID id);
+NAUI_API Naui_PanelID   naui_get_main_viewport          (void);
 
-NAUI_API bool         naui_panel_hovered        (Naui_PanelID id);
+NAUI_API bool           naui_panel_hovered              (Naui_PanelID id);
+NAUI_API bool           naui_any_panel_hovered          (void);
 
-NAUI_API void         naui_render_panels_and_viewport   (void);
-NAUI_API Naui_PanelID naui_current_panel(void);
+NAUI_API void           naui_render_panels_and_viewport (void);
+NAUI_API Naui_PanelID   naui_current_panel              (void);
+
+NAUI_API bool           naui_serialize_viewport         (const char *file_path);
+NAUI_API bool           naui_deserialize_viewport       (const char *file_path);
 
 #ifdef _MSC_VER
   #pragma section(".CRT$XCU", read)
