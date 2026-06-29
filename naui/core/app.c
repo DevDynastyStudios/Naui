@@ -146,6 +146,8 @@ static void __naui_app_start(void)
     leaf_initialize();
     leaf_set_measure_text(measure_text_bridge);
     state.events.start();
+    render();
+    mg_app_show(true);
 }
 
 static void __naui_app_end(void)
@@ -195,7 +197,7 @@ void naui_app_run(
 
     mg_app_run(&(mg_app_init_info){
         .title = title,
-        .flags = MG_APP_FLAG_NO_TITLEBAR,
+        .flags = MG_APP_FLAG_NO_TITLEBAR | MG_APP_FLAG_HIDDEN,
         .events = {
             .start = __naui_app_start,
             .end = __naui_app_end,
