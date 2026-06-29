@@ -31,7 +31,6 @@ project "Naui"
         defines { "MGFX_OPENGL" }
 
 project "NauiApp"
-    kind "ConsoleApp"
     language "C"
     architecture "x64"
     targetdir "build/%{cfg.buildcfg}"
@@ -42,19 +41,22 @@ project "NauiApp"
     }
 
     links { "Naui" }
+
     includedirs {
         ".",
         "app/src",
         "app/vendor",
-		"naui",
+        "naui",
         "naui/vendor"
     }
 
     filter "configurations:Debug"
+        kind "ConsoleApp"
         defines { "DEBUG" }
         symbols "On"
 
     filter "configurations:Release"
+        kind "WindowedApp"
         defines { "NDEBUG" }
         optimize "On"
 

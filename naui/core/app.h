@@ -18,11 +18,25 @@ NAUI_API void       naui_app_close  (void);
 
 NAUI_API void       naui_app_set_caption_height (int32_t height);
 
+
+#if defined(_WIN32) && defined(NDEBUG)
+#include <windows.h>
+#define _NAUI_ENTRY_POINT(title) \
+     int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) { \
+         (void)hInstance; (void)hPrevInstance; (void)lpCmdLine; (void)nCmdShow; \
+         naui_app_run(title, naui_app_start, naui_app_end, naui_app_update); \
+         return 0; \
+     }
+#else
+#  define _NAUI_ENTRY_POINT(title) \
+     int main(void) { \
+         naui_app_run(title, naui_app_start, naui_app_end, naui_app_update); \
+         return 0; \
+     }
+#endif
+
 #define NAUI_APP(title) \
-void naui_app_start(void); \
-void naui_app_end(void); \
-void naui_app_update(void); \
-int main(void) { \
-    naui_app_run(title, naui_app_start, naui_app_end, naui_app_update); \
-    return 0; \
-}
+    void naui_app_start(void); \
+    void naui_app_end(void); \
+    void naui_app_update(void); \
+    _NAUI_ENTRY_POINT(title)

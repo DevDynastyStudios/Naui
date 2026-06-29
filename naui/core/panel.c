@@ -1418,7 +1418,8 @@ bool naui_serialize_viewport(const char *file_path)
 bool naui_deserialize_viewport(const char *file_path)
 {
     Naui_Json json = naui_json_parse_file(NAUI_PATH(file_path));
-
+    Naui_JsonValue *child0 = naui_json_object_get(json.root, "child0");
+    naui_json_get_string(child0, naui_json_object_get(child0, "type"));
     // hardcoded example of loading and force docking panels based on type names
     Naui_PanelNode *test = naui_find_panel_of_type("test");
     Naui_PanelNode *test2 = naui_find_panel_of_type("test2");

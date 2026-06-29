@@ -237,6 +237,7 @@ typedef uint32_t mg_app_flags;
 enum
 {
     MG_APP_FLAG_NO_TITLEBAR = 1 << 0,
+    MG_APP_FLAG_HIDDEN = 1 << 1
 };
 
 typedef struct
@@ -261,6 +262,7 @@ MG_APP_API float mg_app_time(void);
 MG_APP_API float mg_app_delta_time(void);
 MG_APP_API int32_t mg_app_width(void);
 MG_APP_API int32_t mg_app_height(void);
+MG_APP_API void mg_app_show(bool value);
 MG_APP_API void mg_app_set_cursor(mg_cursor cursor);
 
 MG_APP_API bool mg_app_key_down(mg_key key);
@@ -758,7 +760,6 @@ int32_t mg_app_run(const mg_app_init_info *info)
         return 1;
     }
 
-    ShowWindow(platform.hwnd, SW_SHOW);
     if (info->flags & MG_APP_FLAG_NO_TITLEBAR)
     {
         LONG_PTR style = GetWindowLongPtr(platform.hwnd, GWL_STYLE);
@@ -775,6 +776,7 @@ int32_t mg_app_run(const mg_app_init_info *info)
         SetWindowPos(platform.hwnd, NULL, 0, 0, w, h, SWP_FRAMECHANGED | SWP_NOMOVE);
     }
 
+    ShowWindow(platform.hwnd, info->flags & MG_APP_FLAG_HIDDEN ? SW_HIDE : SW_SHOW);
     UpdateWindow(platform.hwnd);
 
     platform.on_event_call = info->events.event;
@@ -851,6 +853,11 @@ int32_t mg_app_width(void)
 int32_t mg_app_height(void)
 {
     return platform.window_height;
+}
+
+void mg_app_show(bool value)
+{
+    ShowWindow(platform.hwnd, value);
 }
 
 void mg_app_set_caption_height(int32_t height)

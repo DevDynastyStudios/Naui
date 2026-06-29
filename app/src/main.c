@@ -42,7 +42,7 @@ static void render_main_titlebar(const char *title)
 			.child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER}
 		})
 		leaf_text(title, {
-			.font_size = naui_theme_float(NAUI_PANEL_FONT_SIZE_TAG),
+			.font_size = naui_theme_float(NAUI_PANEL_FONT_SIZE_TAG) * 2,
 			.color = naui_theme_leaf_color(NAUI_PANEL_TITLEBAR_TEXT_COLOR_TAG),
 			.alignment = LEAF_TEXT_ALIGN_CENTER
 		});
@@ -51,7 +51,7 @@ static void render_main_titlebar(const char *title)
 
 void naui_app_update(void)
 {
-	render_main_titlebar("Hello World :3");
+	render_main_titlebar("一人、　夏、　椅子繰む、なりたい、おいしいだよ");
 	naui_render_panels_and_viewport();
 	if (naui_key_pressed(NAUI_KEY_ESCAPE))
 		naui_app_close();
