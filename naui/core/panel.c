@@ -857,12 +857,12 @@ static void naui_render_main_viewport(void)
     Leaf_ID id = leaf_id(NAUI_MAIN_VIEWPORT_ID);
     leaf({
         .id = id,
-        .size = {LEAF_SIZE_FULL, LEAF_SIZE_FULL},
+        .size = {LEAF_SIZE_GROW, LEAF_SIZE_GROW},
         .color = node ?
             naui_theme_leaf_color(NAUI_PANEL_BORDER_COLOR_TAG) :
             naui_theme_leaf_color(NAUI_VIEWPORT_BG_COLOR_TAG),
         .inner_shadow = {
-            .blur_radius = 128.0f,
+            .blur_radius = 64.0f,
             .color = naui_theme_leaf_color(NAUI_PANEL_INNER_SHADOW_COLOR_TAG)
         }
     })

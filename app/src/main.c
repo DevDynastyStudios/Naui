@@ -11,6 +11,7 @@ void naui_app_start(void)
 	NAUI_ATTACH_PANEL(test);
 	NAUI_ATTACH_PANEL(test2);
 	NAUI_ATTACH_PANEL(test3);
+	NAUI_ATTACH_PANEL(test4);
 	naui_deserialize_viewport("Default_Layout.json");
 }
 

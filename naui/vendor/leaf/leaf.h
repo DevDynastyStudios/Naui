@@ -1577,6 +1577,8 @@ void leaf_begin_frame(int32_t width, int32_t height)
     leaf_ctx->frame++;
 
     Leaf_Node *root = leaf_alloc_node();
+    root->element.config.size.width.type = LEAF_SIZE_TYPE_FIXED;
+    root->element.config.size.height.type = LEAF_SIZE_TYPE_FIXED;
     root->bounding_box.width = (float)width;
     root->bounding_box.height = (float)height;
     leaf_stack_push(root);

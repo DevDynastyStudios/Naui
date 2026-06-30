@@ -1,26 +1,37 @@
 {
     "child0": 
     {
+        "kind": "panel",
+        "type": "test2"
+    },
+    "child1": 
+    {
         "child0": 
-        {
-            "kind": "panel",
-            "type": "test2"
-        },
-        "child1": 
         {
             "kind": "panel",
             "type": "test3"
         },
+        "child1": 
+        {
+            "child0": 
+            {
+                "kind": "panel",
+                "type": "test"
+            },
+            "child1": 
+            {
+                "kind": "panel",
+                "type": "test4"
+            },
+            "kind": "split",
+            "axis": "horizontal",
+            "ratio": 0.5
+        },
         "kind": "split",
-        "axis": "vertical",
-        "ratio": 0.462203025817871
-    },
-    "child1": 
-    {
-        "kind": "panel",
-        "type": "test"
+        "axis": "horizontal",
+        "ratio": 0.5
     },
     "kind": "split",
-    "axis": "horizontal",
-    "ratio": 0.663477957248688
+    "axis": "vertical",
+    "ratio": 0.529134571552277
 }
