@@ -191,13 +191,6 @@ void naui_app_close(void)
     mg_app_close();
 }
 
-static naui_app_maximize_internal(void)
-{
-    if (mg_app_maximized())
-        mg_app_restore();
-    else mg_app_maximize();
-}
-
 void naui_app_minimize(void)
 {
     state.deferred_action = mg_app_minimize;
@@ -205,7 +198,7 @@ void naui_app_minimize(void)
 
 void naui_app_maximize(void)
 {
-    state.deferred_action = naui_app_maximize_internal;
+    state.deferred_action = mg_app_maximize;
 }
 
 void naui_app_set_caption_height(int32_t height)

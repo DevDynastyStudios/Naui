@@ -261,7 +261,6 @@ MG_APP_API void mg_app_close(void);
 MG_APP_API void mg_app_show(bool value);
 MG_APP_API void mg_app_minimize(void);
 MG_APP_API void mg_app_maximize(void);
-MG_APP_API void mg_app_restore(void);
 MG_APP_API bool mg_app_maximized(void);
 
 MG_APP_API float mg_app_time(void);
@@ -352,6 +351,12 @@ static inline void mg_app_input_reset(void)
     memset(input_state.keyboard.keys_pressed, 0, sizeof(input_state.keyboard.keys_pressed));
     memset(input_state.mouse.buttons_pressed, 0, sizeof(input_state.mouse.buttons_pressed));
     memset(input_state.mouse.buttons_released, 0, sizeof(input_state.mouse.buttons_released));
+}
+
+static inline void mg_app_input_release(void)
+{
+    memset(input_state.keyboard.keys, 0, sizeof(input_state.keyboard.keys));
+    memset(input_state.mouse.buttons, 0, sizeof(input_state.mouse.buttons));
 }
 
 bool mg_app_key_down(mg_key key)
@@ -839,17 +844,16 @@ void mg_app_show(bool value)
 
 void mg_app_minimize(void)
 {
+    mg_app_input_release();
     ShowWindow(platform.hwnd, SW_MINIMIZE);
 }
 
 void mg_app_maximize(void)
 {
-    ShowWindow(platform.hwnd, SW_MAXIMIZE);
-}
-
-void mg_app_restore(void)
-{
-    ShowWindow(platform.hwnd, SW_RESTORE);
+    mg_app_input_release();
+    if (IsZoomed(platform.hwnd))
+        ShowWindow(platform.hwnd, SW_RESTORE);
+    else ShowWindow(platform.hwnd, SW_MAXIMIZE);
 }
 
 bool mg_app_maximized(void)
