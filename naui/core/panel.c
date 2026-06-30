@@ -969,7 +969,7 @@ static inline void naui_handle_panel_click(Naui_PanelNode *node, Naui_PanelNode 
 
     if (node->occluded)
         return;
-    if (!naui_mouse_clicked(NAUI_MOUSE_LEFT))
+    if (!naui_mouse_pressed(NAUI_MOUSE_LEFT))
         return;
     if (pm.dragging_node && pm.dragging_node->root != root)
         return;
@@ -1107,7 +1107,7 @@ static void naui_update_panel_resizing(Naui_PanelNode *node)
     if (naui_point_occluded_above(mx, my, root))
         return;
 
-    if (naui_mouse_clicked(NAUI_MOUSE_LEFT))
+    if (naui_mouse_pressed(NAUI_MOUSE_LEFT))
     {
         pm.resizing_node = root;
         drag_x = ex; drag_y = ey;
@@ -1168,7 +1168,7 @@ static void naui_update_split_resizing(Naui_PanelNode *node)
     naui_set_cursor(node->split_axis == NAUI_SPLIT_AXIS_HORIZONTAL
         ? NAUI_CURSOR_RESIZE_EW : NAUI_CURSOR_RESIZE_NS);
 
-    if (!naui_mouse_clicked(NAUI_MOUSE_LEFT))
+    if (!naui_mouse_pressed(NAUI_MOUSE_LEFT))
         return;
 
     pm.split_resizing_node = node;
@@ -1219,7 +1219,7 @@ static void naui_update_panel_tabs(Naui_PanelNode *node)
         return;
     for (int32_t i = 0; i < naui_list_len(node->tabs); i++)
     {
-        if (naui_mouse_clicked(NAUI_MOUSE_LEFT) && !node->tabs[i]->close_hovered && leaf_hovered(leaf_id_indexed(NAUI_PANEL_TAB_ID, (uintptr_t)node->tabs[i])))
+        if (naui_mouse_pressed(NAUI_MOUSE_LEFT) && !node->tabs[i]->close_hovered && leaf_hovered(leaf_id_indexed(NAUI_PANEL_TAB_ID, (uintptr_t)node->tabs[i])))
         {
             node->active_tab = i;
             break;

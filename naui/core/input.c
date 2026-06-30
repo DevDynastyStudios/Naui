@@ -10,19 +10,30 @@ bool naui_key_pressed(Naui_Key key)
 {
     return mg_app_key_pressed((mg_key)key);
 }
-bool naui_mouse_down(Naui_MouseButton button)
+
+bool naui_mouse_down(mg_mouse_button button)
 {
     return mg_app_mouse_down((mg_mouse_button)button);
 }
 
-bool naui_mouse_clicked(Naui_MouseButton button)
+bool naui_mouse_pressed(mg_mouse_button button)
+{
+    return mg_app_mouse_pressed((mg_mouse_button)button);
+}
+
+bool naui_mouse_released(mg_mouse_button button)
+{
+    return mg_app_mouse_released((mg_mouse_button)button);
+}
+
+bool naui_mouse_clicked(mg_mouse_button button)
 {
     return mg_app_mouse_clicked((mg_mouse_button)button);
 }
 
-bool naui_mouse_released(Naui_MouseButton button)
+bool naui_mouse_double_clicked(mg_mouse_button button)
 {
-    return mg_app_mouse_released((mg_mouse_button)button);
+    return mg_app_mouse_double_clicked((mg_mouse_button)button);
 }
 
 int8_t naui_mouse_scroll_delta(void)

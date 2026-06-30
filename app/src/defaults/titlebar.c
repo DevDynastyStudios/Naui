@@ -7,7 +7,6 @@ static void naui_render_titlebar_icon_button(Naui_Image *image, Leaf_ID id, Leaf
 	const bool hovered = leaf_hovered(id);
 	if (hovered)
 	{
-		naui_app_set_caption_height(0);
 		if (naui_mouse_clicked(NAUI_MOUSE_LEFT))
 			event();
 	}
@@ -31,7 +30,7 @@ static void naui_render_titlebar_icon_button(Naui_Image *image, Leaf_ID id, Leaf
 void naui_render_main_titlebar(const char *title)
 {
 	const float titlebar_height = 32.0f;
-	naui_app_set_caption_height(naui_any_panel_hovered() ? 0 : (int32_t)titlebar_height);
+	naui_app_set_caption_area(0, 0, naui_app_width() - 80, titlebar_height);
 
 	Naui_Vec2 padding = naui_theme_vec2(NAUI_PANEL_TITLEBAR_PADDING_TAG);
 	Leaf_Color text_color = naui_theme_leaf_color(NAUI_PANEL_TITLEBAR_TEXT_COLOR_TAG);

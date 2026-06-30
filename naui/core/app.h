@@ -18,7 +18,7 @@ NAUI_API void       naui_app_close      (void);
 NAUI_API void       naui_app_minimize   (void);
 NAUI_API void       naui_app_maximize   (void);
 
-NAUI_API void       naui_app_set_caption_height (int32_t height);
+NAUI_API void       naui_app_set_caption_area   (int32_t x, int32_t y, int32_t width, int32_t height);
 
 #if defined(_WIN32) && defined(NDEBUG)
 #include <windows.h>

@@ -273,14 +273,18 @@ MG_APP_API void mg_app_set_cursor(mg_cursor cursor);
 
 MG_APP_API bool mg_app_key_down(mg_key key);
 MG_APP_API bool mg_app_key_pressed(mg_key key);
+
 MG_APP_API bool mg_app_mouse_down(mg_mouse_button button);
-MG_APP_API bool mg_app_mouse_clicked(mg_mouse_button button);
+MG_APP_API bool mg_app_mouse_pressed(mg_mouse_button button);
 MG_APP_API bool mg_app_mouse_released(mg_mouse_button button);
+MG_APP_API bool mg_app_mouse_clicked(mg_mouse_button button);
+MG_APP_API bool mg_app_mouse_double_clicked(mg_mouse_button button);
+
 MG_APP_API int8_t mg_app_mouse_scroll_delta(void);
 MG_APP_API int32_t mg_app_mouse_x(void);
 MG_APP_API int32_t mg_app_mouse_y(void);
 
-MG_APP_API void mg_app_set_caption_height(int32_t height);
+MG_APP_API void mg_app_set_caption_area(int32_t x, int32_t y, int32_t width, int32_t height);
 
 MG_APP_API void *mg_app_handle(void);
 
@@ -306,6 +310,22 @@ int main(void) { \
 
 #include <string.h>
 
+#ifndef MG_CLICK_TIME_THRESHOLD
+    #define MG_CLICK_TIME_THRESHOLD 0.5f
+#endif
+
+#ifndef MG_CLICK_MOVE_THRESHOLD
+    #define MG_CLICK_MOVE_THRESHOLD 4
+#endif
+
+#ifndef MG_DOUBLE_CLICK_TIME_THRESHOLD
+    #define MG_DOUBLE_CLICK_TIME_THRESHOLD 0.4f
+#endif
+
+#ifndef MG_DOUBLE_CLICK_MOVE_THRESHOLD
+    #define MG_DOUBLE_CLICK_MOVE_THRESHOLD 6
+#endif
+
 typedef struct
 {
     struct
@@ -316,12 +336,22 @@ typedef struct
     keyboard;
     struct
     {
+        float down_time[4];
+        float last_click_time[4];
+        int16_t down_x[4];
+        int16_t down_y[4];
+        int16_t last_click_x[4];
+        int16_t last_click_y[4];
+
         int16_t x;
         int16_t y;
         int8_t delta;
+
         bool buttons[4];
         bool buttons_pressed[4];
         bool buttons_released[4];
+        bool buttons_clicked[4];
+        bool buttons_double_clicked[4];
     }
     mouse;
 }
@@ -336,12 +366,50 @@ static inline void mg_app_input_process_key(mg_key key, bool pressed)
     input_state.keyboard.keys[key] = pressed;
 }
 
-static inline void mg_app_input_process_mouse_button(mg_mouse_button button, bool pressed)
+static inline void mg_app_input_process_mouse_button(mg_mouse_button button, bool pressed, float time_now)
 {
     if (pressed && !input_state.mouse.buttons[button])
+    {
         input_state.mouse.buttons_pressed[button] = true;
+        input_state.mouse.down_time[button] = time_now;
+        input_state.mouse.down_x[button] = input_state.mouse.x;
+        input_state.mouse.down_y[button] = input_state.mouse.y;
+    }
+
     if (!pressed && input_state.mouse.buttons[button])
+    {
         input_state.mouse.buttons_released[button] = true;
+
+        float held = time_now - input_state.mouse.down_time[button];
+        int16_t dx = input_state.mouse.x - input_state.mouse.down_x[button];
+        int16_t dy = input_state.mouse.y - input_state.mouse.down_y[button];
+        int32_t move_sq = (int32_t)dx * dx + (int32_t)dy * dy;
+
+        if (held <= MG_CLICK_TIME_THRESHOLD &&
+            move_sq <= (MG_CLICK_MOVE_THRESHOLD * MG_CLICK_MOVE_THRESHOLD))
+        {
+            input_state.mouse.buttons_clicked[button] = true;
+
+            float since_last = time_now - input_state.mouse.last_click_time[button];
+            int16_t ldx = input_state.mouse.x - input_state.mouse.last_click_x[button];
+            int16_t ldy = input_state.mouse.y - input_state.mouse.last_click_y[button];
+            int32_t last_move_sq = (int32_t)ldx * ldx + (int32_t)ldy * ldy;
+
+            if (since_last <= MG_DOUBLE_CLICK_TIME_THRESHOLD &&
+                last_move_sq <= (MG_DOUBLE_CLICK_MOVE_THRESHOLD * MG_DOUBLE_CLICK_MOVE_THRESHOLD))
+            {
+                input_state.mouse.buttons_double_clicked[button] = true;
+                input_state.mouse.last_click_time[button] = -1000.0f;
+            }
+            else
+            {
+                input_state.mouse.last_click_time[button] = time_now;
+                input_state.mouse.last_click_x[button] = input_state.mouse.x;
+                input_state.mouse.last_click_y[button] = input_state.mouse.y;
+            }
+        }
+    }
+
     input_state.mouse.buttons[button] = pressed;
 }
 
@@ -351,12 +419,8 @@ static inline void mg_app_input_frame(void)
     memset(input_state.keyboard.keys_pressed, 0, sizeof(input_state.keyboard.keys_pressed));
     memset(input_state.mouse.buttons_pressed, 0, sizeof(input_state.mouse.buttons_pressed));
     memset(input_state.mouse.buttons_released, 0, sizeof(input_state.mouse.buttons_released));
-}
-
-static inline void mg_app_input_reset(void)
-{
-    memset(input_state.keyboard.keys, 0, sizeof(input_state.keyboard.keys));
-    memset(input_state.mouse.buttons, 0, sizeof(input_state.mouse.buttons));
+    memset(input_state.mouse.buttons_clicked, 0, sizeof(input_state.mouse.buttons_clicked));
+    memset(input_state.mouse.buttons_double_clicked, 0, sizeof(input_state.mouse.buttons_double_clicked));
 }
 
 bool mg_app_key_down(mg_key key)
@@ -374,7 +438,7 @@ bool mg_app_mouse_down(mg_mouse_button button)
     return input_state.mouse.buttons[button];
 }
 
-bool mg_app_mouse_clicked(mg_mouse_button button)
+bool mg_app_mouse_pressed(mg_mouse_button button)
 {
     return input_state.mouse.buttons_pressed[button];
 }
@@ -382,6 +446,16 @@ bool mg_app_mouse_clicked(mg_mouse_button button)
 bool mg_app_mouse_released(mg_mouse_button button)
 {
     return input_state.mouse.buttons_released[button];
+}
+
+bool mg_app_mouse_clicked(mg_mouse_button button)
+{
+    return input_state.mouse.buttons_clicked[button];
+}
+
+bool mg_app_mouse_double_clicked(mg_mouse_button button)
+{
+    return input_state.mouse.buttons_double_clicked[button];
 }
 
 int8_t mg_app_mouse_scroll_delta(void)
@@ -531,7 +605,7 @@ typedef struct mg_win32_platform
 
     HCURSOR cursors[MG_CURSOR_MAX];
     WNDPROC original_proc;
-    int32_t caption_height;
+    int32_t caption_x, caption_y, caption_width, caption_height;
 }
 mg_win32_platform;
 
@@ -646,7 +720,7 @@ static LRESULT CALLBACK mg_win32_process_message(HWND hwnd, uint32_t msg, WPARAM
                     break;
             }
 
-            mg_app_input_process_mouse_button(mouse_button, pressed);
+            mg_app_input_process_mouse_button(mouse_button, pressed, platform.time);
             mg_app_call_event(&(mg_app_event){
                 .mouse_button = mouse_button,
                 .type = pressed ? MG_APP_EVENT_MOUSE_DOWN : MG_APP_EVENT_MOUSE_UP
@@ -690,7 +764,9 @@ static LRESULT CALLBACK mg_win32_no_titlebar_proc(HWND hwnd, UINT msg, WPARAM w_
             if (ry <= bw) return (rx <= bw) ? HTTOPLEFT : (rx >= w - bw) ? HTTOPRIGHT    : HTTOP;
             if (rx <= bw) return HTLEFT;
             if (rx >= w - bw) return HTRIGHT;
-            if (ry <= platform.caption_height)
+
+            if (rx >= platform.caption_x && rx < platform.caption_x + platform.caption_width &&
+                ry >= platform.caption_y && ry < platform.caption_y + platform.caption_height)
                 return HTCAPTION;
             break;
         }
@@ -844,13 +920,11 @@ void mg_app_show(bool value)
 
 void mg_app_minimize(void)
 {
-    mg_app_input_reset();
     ShowWindow(platform.hwnd, SW_MINIMIZE);
 }
 
 void mg_app_maximize(void)
 {
-    mg_app_input_reset();
     if (IsZoomed(platform.hwnd))
         ShowWindow(platform.hwnd, SW_RESTORE);
     else ShowWindow(platform.hwnd, SW_MAXIMIZE);
@@ -886,8 +960,11 @@ int32_t mg_app_height(void)
     return platform.window_height;
 }
 
-void mg_app_set_caption_height(int32_t height)
+void mg_app_set_caption_area(int32_t x, int32_t y, int32_t width, int32_t height)
 {
+    platform.caption_x = x;
+    platform.caption_y = y;
+    platform.caption_width = width;
     platform.caption_height = height;
 }
 
@@ -1205,7 +1282,7 @@ int32_t mg_app_run(const mg_app_init_info *info)
 
                     if (mb != MG_MOUSE_BUTTON_MAX)
                     {
-                        mg_app_input_process_mouse_button(mb, pressed);
+                        mg_app_input_process_mouse_button(mb, pressed, platform.time);
                         mg_app_call_event(&(mg_app_event){
                             .mouse_button = mb,
                             .type         = pressed ? MG_APP_EVENT_MOUSE_DOWN : MG_APP_EVENT_MOUSE_UP

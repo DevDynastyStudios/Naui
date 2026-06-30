@@ -201,9 +201,9 @@ void naui_app_maximize(void)
     state.deferred_action = mg_app_maximize;
 }
 
-void naui_app_set_caption_height(int32_t height)
+void naui_app_set_caption_area(int32_t x, int32_t y, int32_t width, int32_t height)
 {
-    mg_app_set_caption_height(height);
+    mg_app_set_caption_area(x, y, width, height);
 }
 
 void naui_app_run(
