@@ -11,13 +11,14 @@ NAUI_API void naui_app_run(
     Naui_AppEvent update
 );
 
-NAUI_API int32_t    naui_app_width  (void);
-NAUI_API int32_t    naui_app_height (void);
+NAUI_API int32_t    naui_app_width      (void);
+NAUI_API int32_t    naui_app_height     (void);
 
-NAUI_API void       naui_app_close  (void);
+NAUI_API void       naui_app_close      (void);
+NAUI_API void       naui_app_minimize   (void);
+NAUI_API void       naui_app_maximize   (void);
 
 NAUI_API void       naui_app_set_caption_height (int32_t height);
-
 
 #if defined(_WIN32) && defined(NDEBUG)
 #include <windows.h>

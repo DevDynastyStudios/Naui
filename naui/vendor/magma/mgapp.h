@@ -258,11 +258,18 @@ mg_app_init_info;
 
 MG_APP_API int32_t mg_app_run(const mg_app_init_info *info);
 MG_APP_API void mg_app_close(void);
+MG_APP_API void mg_app_show(bool value);
+MG_APP_API void mg_app_minimize(void);
+MG_APP_API void mg_app_maximize(void);
+MG_APP_API void mg_app_restore(void);
+MG_APP_API bool mg_app_maximized(void);
+
 MG_APP_API float mg_app_time(void);
 MG_APP_API float mg_app_delta_time(void);
+
 MG_APP_API int32_t mg_app_width(void);
 MG_APP_API int32_t mg_app_height(void);
-MG_APP_API void mg_app_show(bool value);
+
 MG_APP_API void mg_app_set_cursor(mg_cursor cursor);
 
 MG_APP_API bool mg_app_key_down(mg_key key);
@@ -645,9 +652,9 @@ static LRESULT CALLBACK mg_win32_process_message(HWND hwnd, uint32_t msg, WPARAM
     return DefWindowProcA(hwnd, msg, w_param, l_param);
 }
 
-static LRESULT CALLBACK mg_win32_no_titlebar_proc(HWND hwnd, UINT u_msg, WPARAM w_param, LPARAM l_param)
+static LRESULT CALLBACK mg_win32_no_titlebar_proc(HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param)
 {
-    switch (u_msg)
+    switch (msg)
     {
         case WM_NCCALCSIZE:
         {
@@ -695,10 +702,11 @@ static LRESULT CALLBACK mg_win32_no_titlebar_proc(HWND hwnd, UINT u_msg, WPARAM 
             });
             break;
         }
+
         case WM_NCACTIVATE:
             break;
     }
-    return CallWindowProc(platform.original_proc, hwnd, u_msg, w_param, l_param);
+    return CallWindowProc(platform.original_proc, hwnd, msg, w_param, l_param);
 }
 
 int32_t mg_app_run(const mg_app_init_info *info)
@@ -799,12 +807,6 @@ int32_t mg_app_run(const mg_app_init_info *info)
             DispatchMessageA(&msg);
         }
 
-        if (IsIconic(platform.hwnd))
-        {
-            Sleep(10);
-            continue;
-        }
-
         LARGE_INTEGER now_time;
         QueryPerformanceCounter(&now_time);
         float new_time = (float)(now_time.QuadPart - start_time.QuadPart) * clock_frequency;
@@ -830,6 +832,31 @@ void mg_app_close(void)
     PostMessage(platform.hwnd, WM_CLOSE, 0, 0);
 }
 
+void mg_app_show(bool value)
+{
+    ShowWindow(platform.hwnd, value);
+}
+
+void mg_app_minimize(void)
+{
+    ShowWindow(platform.hwnd, SW_MINIMIZE);
+}
+
+void mg_app_maximize(void)
+{
+    ShowWindow(platform.hwnd, SW_MAXIMIZE);
+}
+
+void mg_app_restore(void)
+{
+    ShowWindow(platform.hwnd, SW_RESTORE);
+}
+
+bool mg_app_maximized(void)
+{
+    return IsZoomed(platform.hwnd);
+}
+
 void mg_app_set_cursor(mg_cursor cursor)
 {
     SetCursor(platform.cursors[cursor]);
@@ -853,11 +880,6 @@ int32_t mg_app_width(void)
 int32_t mg_app_height(void)
 {
     return platform.window_height;
-}
-
-void mg_app_show(bool value)
-{
-    ShowWindow(platform.hwnd, value);
 }
 
 void mg_app_set_caption_height(int32_t height)

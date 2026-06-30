@@ -23,6 +23,11 @@ static void on_update(void)
 static void on_render(void)
 {
     Naui_Image *image = naui_get_image("logo-large-light");
+    Leaf_ElementConfig config = {
+        .size = {LEAF_SIZE_FULL, LEAF_SIZE_FULL},
+        .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER}
+    };
+    leaf(config)
     leaf({
         .size = {LEAF_SIZE_FIXED(image->width), LEAF_SIZE_FIXED(image->height)},
         .image = image,

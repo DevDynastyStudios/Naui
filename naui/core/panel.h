@@ -46,28 +46,40 @@
     #define NAUI_PANEL_FONT_SIZE_TAG "naui_panel_font_size"
 #endif
 
-#ifndef NAUI_PANEL_CLOSE_BG_COLOR_TAG
-    #define NAUI_PANEL_CLOSE_BG_COLOR_TAG "naui_panel_close_bg_color"
+#ifndef NAUI_PANEL_BUTTON_HOVERED_BG_COLOR_TAG
+    #define NAUI_PANEL_BUTTON_HOVERED_BG_COLOR_TAG "naui_panel_button_hovered_bg_color"
 #endif
 
-#ifndef NAUI_PANEL_CLOSE_HOVERED_COLOR_TAG
-    #define NAUI_PANEL_CLOSE_HOVERED_COLOR_TAG "naui_panel_close_hovered_color"
+#ifndef NAUI_PANEL_CLOSE_HOVERED_BG_COLOR_TAG
+    #define NAUI_PANEL_CLOSE_HOVERED_BG_COLOR_TAG "naui_panel_close_hovered_bg_color"
 #endif
 
 #ifndef NAUI_VIEWPORT_BG_COLOR_TAG
     #define NAUI_VIEWPORT_BG_COLOR_TAG "naui_viewport_bg_color"
 #endif
 
-#ifndef NAUI_DOCK_GUIDE_COLOR
-    #define NAUI_DOCK_GUIDE_COLOR "naui_dock_guide_color"
+#ifndef NAUI_DOCK_GUIDE_COLOR_TAG
+    #define NAUI_DOCK_GUIDE_COLOR_TAG "naui_dock_guide_color"
 #endif
 
-#ifndef NAUI_DOCK_GUIDE_HOVERED_COLOR
-    #define NAUI_DOCK_GUIDE_HOVERED_COLOR "naui_dock_guide_hovered_color"
+#ifndef NAUI_DOCK_GUIDE_HOVERED_COLOR_TAG
+    #define NAUI_DOCK_GUIDE_HOVERED_COLOR_TAG "naui_dock_guide_hovered_color"
 #endif
 
-#ifndef NAUI_DOCK_GUIDE_OUTLINE_COLOR
-#define NAUI_DOCK_GUIDE_OUTLINE_COLOR "naui_dock_guide_outline_color"
+#ifndef NAUI_DOCK_GUIDE_OUTLINE_COLOR_TAG
+    #define NAUI_DOCK_GUIDE_OUTLINE_COLOR_TAG "naui_dock_guide_outline_color"
+#endif
+
+#ifndef NAUI_MINIMIZE_ICON_TAG
+    #define NAUI_MINIMIZE_ICON_TAG "naui_icon_minimize"
+#endif
+
+#ifndef NAUI_MAXIMIZE_ICON_TAG
+    #define NAUI_MAXIMIZE_ICON_TAG "naui_icon_maximize"
+#endif
+
+#ifndef NAUI_CLOSE_ICON_TAG
+    #define NAUI_CLOSE_ICON_TAG "naui_icon_close"
 #endif
 
 typedef uint64_t Naui_PanelID;
@@ -112,30 +124,30 @@ enum
 
 #define NAUI_ATTACH_PANEL(type_name) naui_attach_panel(#type_name)
 
-NAUI_API Naui_PanelID   naui_attach_panel               (const char *type_name);
-NAUI_API void           naui_detach_panel               (Naui_PanelID id);
-NAUI_API void           naui_register_panel_type        (const char *name, Naui_PanelType type);
+NAUI_API Naui_PanelID       naui_attach_panel               (const char *type_name);
+NAUI_API void               naui_detach_panel               (Naui_PanelID id);
+NAUI_API void               naui_register_panel_type        (const char *name, Naui_PanelType type);
 
-NAUI_API void           naui_panel_set_title            (Naui_PanelID panel_id, const char *title);
-NAUI_API void           naui_panel_set_size             (Naui_PanelID panel_id, Naui_Vec2 size);
-NAUI_API void           naui_panel_set_min_size         (Naui_PanelID panel_id, Naui_Vec2 size);
-NAUI_API void           naui_panel_enable_flags         (Naui_PanelID panel_id, Naui_PanelFlags flags);
-NAUI_API void           naui_panel_disable_flags        (Naui_PanelID panel_id, Naui_PanelFlags flags);
+NAUI_API void               naui_panel_set_title            (Naui_PanelID panel_id, const char *title);
+NAUI_API void               naui_panel_set_size             (Naui_PanelID panel_id, Naui_Vec2 size);
+NAUI_API void               naui_panel_set_min_size         (Naui_PanelID panel_id, Naui_Vec2 size);
+NAUI_API void               naui_panel_enable_flags         (Naui_PanelID panel_id, Naui_PanelFlags flags);
+NAUI_API void               naui_panel_disable_flags        (Naui_PanelID panel_id, Naui_PanelFlags flags);
 
-NAUI_API void           naui_dock_panel                 (Naui_PanelID target_id, Naui_PanelID guest_id, Naui_DockDirection direction, float split_ratio);
-NAUI_API void           naui_undock_panel               (Naui_PanelID id);
+NAUI_API Naui_PanelID       naui_dock_panel                 (Naui_PanelID target_id, Naui_PanelID guest_id, Naui_DockDirection direction, float split_ratio);
+NAUI_API void               naui_undock_panel               (Naui_PanelID id);
 
-NAUI_API void           naui_set_main_viewport          (Naui_PanelID id);
-NAUI_API Naui_PanelID   naui_get_main_viewport          (void);
+NAUI_API void               naui_set_main_viewport          (Naui_PanelID id);
+NAUI_API Naui_PanelID       naui_get_main_viewport          (void);
 
-NAUI_API bool           naui_panel_hovered              (Naui_PanelID id);
-NAUI_API bool           naui_any_panel_hovered          (void);
+NAUI_API bool               naui_panel_hovered              (Naui_PanelID id);
+NAUI_API bool               naui_any_panel_hovered          (void);
 
-NAUI_API void           naui_render_panels_and_viewport (void);
-NAUI_API Naui_PanelID   naui_current_panel              (void);
+NAUI_API void               naui_render_panels_and_viewport (void);
+NAUI_API Naui_PanelID       naui_current_panel              (void);
 
-NAUI_API bool           naui_serialize_viewport         (const char *file_path);
-NAUI_API bool           naui_deserialize_viewport       (const char *file_path);
+NAUI_API bool               naui_serialize_viewport         (const char *file_path);
+NAUI_API bool               naui_deserialize_viewport       (const char *file_path);
 
 #ifdef _MSC_VER
   #pragma section(".CRT$XCU", read)

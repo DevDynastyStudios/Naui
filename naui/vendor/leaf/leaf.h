@@ -12,6 +12,7 @@ extern "C" {
 #endif
 
 #define LEAF_COLOR_WHITE (Leaf_Color) { 255, 255, 255, 255 }
+#define LEAF_COLOR_TRANSPARENT (Leaf_Color) { 0 }
 
 #define LEAF_API // TODO(box): implement proper dll/wasm exporting
 
@@ -182,11 +183,7 @@ typedef struct
 }
 Leaf_Border;
 
-typedef struct
-{
-    void *handle;
-}
-Leaf_Image;
+typedef void *Leaf_Image;
 
 typedef uint8_t Leaf_RoundingCorners;
 enum
@@ -378,8 +375,10 @@ typedef Leaf_Dimensions (*Leaf_MeasureTextFn)(const char *text, uint32_t length,
 #define LEAF_SIZE_PERCENT_MIN_MAX(p, mn, mx) (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_PERCENT, .size.percent = (p), .size.min_max.min = (mn), .size.min_max.max = (mx) }
 #define LEAF_SIZE_DERIVED           (Leaf_SizeAxis){ .type = LEAF_SIZE_TYPE_DERIVED }
 
+typedef struct { Leaf_ElementConfig wrapped; } Leaf_ElementConfigWrapper;
 #define leaf(...) \
-    for (int leaf__i_ = (leaf_begin_element((Leaf_ElementConfig)__VA_ARGS__), 1); \
+    for (int leaf__i_ = (leaf_begin_element( \
+        (Leaf_ElementConfigWrapper){ __VA_ARGS__ }.wrapped), 1); \
          leaf__i_; \
          leaf__i_ = (leaf_end_element(), 0))
 
@@ -401,7 +400,9 @@ LEAF_API Leaf_BoundingBox leaf_get_bounding_box(Leaf_ID id);
 LEAF_API void leaf_begin_frame(int32_t width, int32_t height);
 LEAF_API Leaf_RenderCmdList leaf_end_frame(void);
 
-#define leaf_text(text, ...) do { Leaf_TextConfig __cfg = __VA_ARGS__; __leaf_text(text, __cfg); } while(0)
+typedef struct { Leaf_TextConfig wrapped; } Leaf_TextConfigWrapper;
+#define leaf_text(text, ...) \
+    __leaf_text(text, (Leaf_TextConfigWrapper){ __VA_ARGS__ }.wrapped)
 LEAF_API void __leaf_text(const char *text, Leaf_TextConfig config);
 
 #ifdef LEAF_IMPLEMENTATION
@@ -865,13 +866,13 @@ static void leaf_render_node(Leaf_Node *node)
 
         if (!leaf_is_color_fill_empty(config->color))
         {
-            if (config->image.handle)
+            if (config->image)
             {
                 leaf_push_render_cmd((Leaf_RenderCmd){
                     .type = LEAF_RENDER_CMD_IMAGE,
                     .color = config->color,
                     .bounding_box = node->bounding_box,
-                    .image.handle = config->image.handle,
+                    .image.handle = config->image,
                     .image.rounding = config->rounding
                 });
             }
@@ -1075,68 +1076,93 @@ static void leaf_resolve_aspect_ratio(Leaf_Node *node)
     ((align) == (end_val)    ? (free) :                     \
      (align) == (center_val) ? (free) * 0.5f : 0.0f)
 
-static void leaf_recompute_fit_for_wrap(Leaf_Node *parent)
+static void leaf_recompute_fit(Leaf_Node *parent)
 {
     if (parent->type != LEAF_NODE_TYPE_ELEMENT)
         return;
 
     const Leaf_ElementConfig *cfg = &parent->element.config;
-    if (!cfg->wrap_children)
-        return;
-
-    bool fit_w = cfg->size.width.type == LEAF_SIZE_TYPE_FIT;
+    bool fit_w = cfg->size.width.type  == LEAF_SIZE_TYPE_FIT;
     bool fit_h = cfg->size.height.type == LEAF_SIZE_TYPE_FIT;
-    if (!fit_w && !fit_h)
-        return;
+    if (!fit_w && !fit_h) return;
 
     bool h = cfg->direction == LEAF_DIRECTION_HORIZONAL;
 
-    float avail_main =
-        LEAF_MAIN(h, parent->bounding_box.width,  parent->bounding_box.height) -
-        LEAF_MAIN(h, cfg->padding.left + cfg->padding.right,
-                     cfg->padding.top  + cfg->padding.bottom);
+    if (fit_w) parent->bounding_box.width  = cfg->padding.left + cfg->padding.right;
+    if (fit_h) parent->bounding_box.height = cfg->padding.top  + cfg->padding.bottom;
 
-    float cross_total = 0.0f;
-    float row_main = 0.0f;
-    float row_cross = 0.0f;
-    bool  in_row = false;
-
-    LEAF_FOREACH_CHILD(child, parent)
+    if (cfg->wrap_children)
     {
-        if (child->type == LEAF_NODE_TYPE_ELEMENT &&
-            child->element.config.positioning != LEAF_POSITIONING_RELATIVE)
-            continue;
+        float avail_main =
+            LEAF_MAIN(h, parent->bounding_box.width,  parent->bounding_box.height) -
+            LEAF_MAIN(h, cfg->padding.left + cfg->padding.right,
+                         cfg->padding.top  + cfg->padding.bottom);
 
-        float child_main  = LEAF_MAIN (h, child->bounding_box.width, child->bounding_box.height);
-        float child_cross = LEAF_CROSS(h, child->bounding_box.width, child->bounding_box.height);
-        float gap = in_row ? cfg->child_gap : 0.0f;
+        float cross_total = 0.0f;
+        float row_main = 0.0f, row_cross = 0.0f;
+        bool in_row = false;
 
-        if (in_row && row_main + gap + child_main > avail_main)
+        LEAF_FOREACH_CHILD(child, parent)
         {
-            cross_total += row_cross + cfg->child_cross_gap;
-            row_main = 0.0f;
-            row_cross = 0.0f;
-            in_row = false;
-            gap = 0.0f;
+            if (child->type == LEAF_NODE_TYPE_ELEMENT &&
+                child->element.config.positioning != LEAF_POSITIONING_RELATIVE)
+                continue;
+
+            float child_main  = LEAF_MAIN (h, child->bounding_box.width, child->bounding_box.height);
+            float child_cross = LEAF_CROSS(h, child->bounding_box.width, child->bounding_box.height);
+            float gap = in_row ? cfg->child_gap : 0.0f;
+
+            if (in_row && row_main + gap + child_main > avail_main)
+            {
+                cross_total += row_cross + cfg->child_cross_gap;
+                row_main = 0.0f; row_cross = 0.0f;
+                in_row = false; gap = 0.0f;
+            }
+
+            row_main += gap + child_main;
+            row_cross = LEAF_MAX(row_cross, child_cross);
+            in_row = true;
+        }
+        if (in_row) cross_total += row_cross;
+
+        cross_total += LEAF_CROSS(h, cfg->padding.left + cfg->padding.right,
+                                     cfg->padding.top  + cfg->padding.bottom);
+
+        if (fit_h) { if (h) parent->bounding_box.height = cross_total; else parent->bounding_box.width  = cross_total; }
+        if (fit_w && !h)    parent->bounding_box.width  = cross_total;
+    }
+    else
+    {
+        int32_t relative_count = 0;
+
+        LEAF_FOREACH_CHILD(child, parent)
+        {
+            if (child->type == LEAF_NODE_TYPE_ELEMENT &&
+                child->element.config.positioning != LEAF_POSITIONING_RELATIVE)
+                continue;
+
+            relative_count++;
+            float cw = child->bounding_box.width;
+            float ch = child->bounding_box.height;
+
+            if (fit_w)
+            {
+                if (h) parent->bounding_box.width += cw;
+                else   parent->bounding_box.width = LEAF_MAX(cw + cfg->padding.left + cfg->padding.right,
+                                                             parent->bounding_box.width);
+            }
+            if (fit_h)
+            {
+                if (h) parent->bounding_box.height = LEAF_MAX(ch + cfg->padding.top + cfg->padding.bottom,
+                                                              parent->bounding_box.height);
+                else   parent->bounding_box.height += ch;
+            }
         }
 
-        row_main += gap + child_main;
-        row_cross = LEAF_MAX(row_cross, child_cross);
-        in_row = true;
+        float gap = LEAF_MAX(relative_count - 1, 0) * cfg->child_gap;
+        if (fit_w && h)  parent->bounding_box.width  += gap;
+        if (fit_h && !h) parent->bounding_box.height += gap;
     }
-    if (in_row)
-        cross_total += row_cross;
-
-    cross_total += LEAF_CROSS(h, cfg->padding.left + cfg->padding.right, cfg->padding.top  + cfg->padding.bottom);
-
-    if (fit_h)
-    {
-        if (h) parent->bounding_box.height = cross_total;
-        else parent->bounding_box.width  = cross_total;
-    }
-
-    if (fit_w && !h)
-        parent->bounding_box.width = cross_total;
 }
 
 static void leaf_size_pass(Leaf_Node *parent)
@@ -1241,7 +1267,7 @@ static void leaf_size_pass(Leaf_Node *parent)
 
     leaf_wrap_text_children(parent);
     leaf_resolve_aspect_ratio(parent);
-    leaf_recompute_fit_for_wrap(parent);
+    leaf_recompute_fit(parent);
 }
 
 static void leaf_assign_wrap_offsets(Leaf_Node *parent)

@@ -1,13 +1,15 @@
 #include "app.h"
 #include "theme.h"
 #include "widgets/widgets_internal.h"
+#include "renderer/asset_manager.h"
+#include "utils/list.h"
 
 #include <stddef.h>
 
 #include <leaf/leaf.h>
 #include <magma/mgapp.h>
 
-#include "renderer/asset_manager.h"
+typedef void (*Naui_DeferredEvent)(void);
 
 typedef struct
 {
@@ -18,6 +20,7 @@ typedef struct
         Naui_AppEvent update;
     }
     events;
+    Naui_DeferredEvent deferred_action;
 }
 Naui_AppState;
 static Naui_AppState state;
@@ -165,6 +168,12 @@ static void __naui_app_update(void)
 {
     naui_input_update();
     render();
+
+    if (state.deferred_action)
+    {
+        state.deferred_action();
+        state.deferred_action = NULL;
+    }
 }
 
 int32_t naui_app_width(void)
@@ -180,6 +189,23 @@ int32_t naui_app_height(void)
 void naui_app_close(void)
 {
     mg_app_close();
+}
+
+static naui_app_maximize_internal(void)
+{
+    if (mg_app_maximized())
+        mg_app_restore();
+    else mg_app_maximize();
+}
+
+void naui_app_minimize(void)
+{
+    state.deferred_action = mg_app_minimize;
+}
+
+void naui_app_maximize(void)
+{
+    state.deferred_action = naui_app_maximize_internal;
 }
 
 void naui_app_set_caption_height(int32_t height)

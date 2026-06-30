@@ -16,8 +16,8 @@
 
 	"naui_viewport_bg_color": "#252528",
 
-	"naui_panel_close_bg_color": "#05050F5F",
-	"naui_panel_close_hovered_color": "#0F0F0F5F",
+	"naui_panel_button_hovered_bg_color": "#505050FF",
+	"naui_panel_close_hovered_bg_color": "#E55050FF",
 
 	"naui_panel_title_padding": [6.0, 6.0],
 	"naui_panel_body_padding": [6.0, 6.0],
