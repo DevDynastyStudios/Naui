@@ -261,6 +261,7 @@ MG_APP_API void mg_app_close(void);
 MG_APP_API void mg_app_show(bool value);
 MG_APP_API void mg_app_minimize(void);
 MG_APP_API void mg_app_maximize(void);
+MG_APP_API void mg_app_restore(void);
 MG_APP_API bool mg_app_maximized(void);
 
 MG_APP_API float mg_app_time(void);
@@ -925,9 +926,12 @@ void mg_app_minimize(void)
 
 void mg_app_maximize(void)
 {
-    if (IsZoomed(platform.hwnd))
-        ShowWindow(platform.hwnd, SW_RESTORE);
-    else ShowWindow(platform.hwnd, SW_MAXIMIZE);
+    ShowWindow(platform.hwnd, SW_MAXIMIZE);
+}
+
+void mg_app_restore(void)
+{
+    ShowWindow(platform.hwnd, SW_RESTORE);
 }
 
 bool mg_app_maximized(void)

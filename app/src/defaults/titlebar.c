@@ -27,6 +27,9 @@ static void naui_render_titlebar_icon_button(Naui_Image *image, Leaf_ID id, Leaf
 	});
 }
 
+static inline void minimize(void) { naui_defer(naui_app_minimize, 0, NULL); }
+static inline void maximize(void) { naui_defer(naui_app_maximized() ? naui_app_restore : naui_app_maximize, 0, NULL); }
+
 void naui_render_main_titlebar(const char *title)
 {
 	const float titlebar_height = 32.0f;
@@ -70,8 +73,8 @@ void naui_render_main_titlebar(const char *title)
 			.child_alignment = {LEAF_ALIGN_X_RIGHT, LEAF_ALIGN_Y_CENTER}
 		})
 		{
-			naui_render_titlebar_icon_button(naui_get_image(NAUI_MINIMIZE_ICON_TAG), leaf_id_indexed("__naui_titlebar_btn", 0), text_color, naui_theme_leaf_color(NAUI_PANEL_BUTTON_HOVERED_BG_COLOR_TAG), naui_app_minimize);
-			naui_render_titlebar_icon_button(naui_get_image(NAUI_MAXIMIZE_ICON_TAG), leaf_id_indexed("__naui_titlebar_btn", 1), text_color, naui_theme_leaf_color(NAUI_PANEL_BUTTON_HOVERED_BG_COLOR_TAG), naui_app_maximize);
+			naui_render_titlebar_icon_button(naui_get_image(NAUI_MINIMIZE_ICON_TAG), leaf_id_indexed("__naui_titlebar_btn", 0), text_color, naui_theme_leaf_color(NAUI_PANEL_BUTTON_HOVERED_BG_COLOR_TAG), minimize);
+			naui_render_titlebar_icon_button(naui_get_image(NAUI_MAXIMIZE_ICON_TAG), leaf_id_indexed("__naui_titlebar_btn", 1), text_color, naui_theme_leaf_color(NAUI_PANEL_BUTTON_HOVERED_BG_COLOR_TAG), maximize);
 			naui_render_titlebar_icon_button(naui_get_image(NAUI_CLOSE_ICON_TAG), leaf_id_indexed("__naui_titlebar_btn", 2), text_color, naui_theme_leaf_color(NAUI_PANEL_CLOSE_HOVERED_BG_COLOR_TAG), naui_app_close);
 		}
 	}

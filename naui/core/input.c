@@ -66,7 +66,7 @@ void naui_input_update(void)
 
     for (int i = 0; i < MG_MOUSE_BUTTON_MAX; i++)
     {
-        if (mg_app_mouse_clicked((mg_mouse_button)i))
+        if (mg_app_mouse_pressed((mg_mouse_button)i))
         {
             s_drag_start_x[i] = mg_app_mouse_x();
             s_drag_start_y[i] = mg_app_mouse_y();

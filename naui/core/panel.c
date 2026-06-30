@@ -62,28 +62,18 @@ struct Naui_PanelNode
     bool            close_hovered;
 };
 
-typedef struct { char *key; Naui_PanelType value; } Naui_PanelTypeMapEntry;
-
-typedef uint8_t Naui_PanelEventType;
-enum
-{
-    NAUI_PANEL_EVENT_DETACH,
-    NAUI_PANEL_EVENT_UNDOCK,
-    NAUI_PANEL_EVENT_BRING_TO_FRONT
-};
-
 typedef struct
 {
     Naui_PanelNode *node;
-    Naui_PanelEventType type;
 }
-Naui_PanelEvent;
+Naui_PanelNodeWrapper;
+
+typedef struct { char *key; Naui_PanelType value; } Naui_PanelTypeMapEntry;
 
 typedef struct
 {
     Naui_Map(Naui_PanelTypeMapEntry) panel_type_map;
     Naui_List(Naui_PanelNode*) root_nodes;
-    Naui_List(Naui_PanelEvent) event_queue;
 
     Naui_PanelNode *main_viewport;
 
@@ -138,11 +128,6 @@ Naui_PanelID naui_attach_panel(const char *type_name)
     return (Naui_PanelID)node;
 }
 
-void naui_detach_panel(Naui_PanelID id)
-{
-    naui_list_push(pm.event_queue, ((Naui_PanelEvent){ (Naui_PanelNode*)id, NAUI_PANEL_EVENT_DETACH }));
-}
-
 void naui_panel_set_title(Naui_PanelID panel_id, const char *title)
 {
     ((Naui_PanelNode*)panel_id)->title = title;
@@ -187,8 +172,9 @@ Naui_PanelID naui_get_main_viewport(void)
     return (Naui_PanelID)pm.main_viewport;
 }
 
-static void naui_panel_bring_to_front_immediate(Naui_PanelNode *node)
+static void naui_panel_bring_to_front_immediate(Naui_PanelNodeWrapper *wrapper)
 {
+    Naui_PanelNode *node = wrapper->node;
     Naui_PanelNode *root = node->root;
 
     if (root == pm.main_viewport)
@@ -210,7 +196,7 @@ static void naui_panel_bring_to_front_immediate(Naui_PanelNode *node)
 
 static void naui_panel_bring_to_front(Naui_PanelNode *node)
 {
-    naui_list_push(pm.event_queue, ((Naui_PanelEvent){ node, NAUI_PANEL_EVENT_BRING_TO_FRONT }));
+    naui_defer(naui_panel_bring_to_front_immediate, &(Naui_PanelNodeWrapper){node}, sizeof(Naui_PanelNodeWrapper));
 }
 
 static void naui_set_root_recursive(Naui_PanelNode *node, Naui_PanelNode *new_root)
@@ -332,8 +318,10 @@ Naui_PanelID naui_dock_panel(Naui_PanelID target_id, Naui_PanelID guest_id, Naui
     return (Naui_PanelID)dock_node;
 }
 
-static void naui_undock_panel_immediate(Naui_PanelNode *node)
+static void naui_undock_panel_immediate(Naui_PanelNodeWrapper *wrapper)
 {
+    Naui_PanelNode *node = wrapper->node;
+
     if (node == pm.main_viewport)
     {
         pm.main_viewport = NULL;
@@ -450,12 +438,13 @@ static void naui_undock_panel_immediate(Naui_PanelNode *node)
 
 void naui_undock_panel(Naui_PanelID id)
 {
-    naui_list_push(pm.event_queue, ((Naui_PanelEvent){ (Naui_PanelNode*)id, NAUI_PANEL_EVENT_UNDOCK }));
+    naui_defer(naui_undock_panel_immediate, &(Naui_PanelNodeWrapper){(Naui_PanelNode*)id}, sizeof(Naui_PanelNodeWrapper));
 }
 
-static void naui_detach_panel_immediate(Naui_PanelNode *node)
+static void naui_detach_panel_immediate(Naui_PanelNodeWrapper *wrapper)
 {
-    naui_undock_panel_immediate(node);
+    Naui_PanelNode *node = wrapper->node;
+    naui_undock_panel_immediate(wrapper);
 
     Naui_PanelNode *prev = pm.current_panel;
     pm.current_panel = node;
@@ -468,6 +457,11 @@ static void naui_detach_panel_immediate(Naui_PanelNode *node)
 
     naui_list_remove(pm.root_nodes, node->root_index);
     naui_free_panel_node(node);
+}
+
+void naui_detach_panel(Naui_PanelID id)
+{
+    naui_defer(naui_detach_panel_immediate, &(Naui_PanelNodeWrapper){(Naui_PanelNode*)id}, sizeof(Naui_PanelNodeWrapper));
 }
 
 static bool naui_range_occludes_point(float mx, float my, uint32_t from, Naui_PanelNode *skip)
@@ -1269,25 +1263,6 @@ static void naui_update_main_viewport(void)
         naui_set_main_viewport((Naui_PanelID)pm.dragging_node);
 }
 
-static void naui_process_events(void)
-{
-    if (naui_list_len(pm.event_queue) == 0)
-        return;
-
-    for (int32_t i = 0; i < (int32_t)naui_list_len(pm.event_queue); i++)
-    {
-        Naui_PanelEvent event = pm.event_queue[i];
-        switch (event.type)
-        {
-        case NAUI_PANEL_EVENT_UNDOCK: naui_undock_panel_immediate(event.node); break;
-        case NAUI_PANEL_EVENT_DETACH: naui_detach_panel_immediate(event.node); break;
-        case NAUI_PANEL_EVENT_BRING_TO_FRONT: naui_panel_bring_to_front_immediate(event.node); break;
-        }
-    }
-
-    naui_list_clear(pm.event_queue);
-}
-
 void naui_render_panels_and_viewport(void)
 {
     pm.any_panel_hovered = false;
@@ -1314,8 +1289,6 @@ void naui_render_panels_and_viewport(void)
         naui_render_panel(pm.root_nodes[i]);
 
     naui_render_dock_guide_area();
-
-    naui_process_events();
 }
 
 #pragma region Serialization
