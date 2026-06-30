@@ -345,7 +345,7 @@ static inline void mg_app_input_process_mouse_button(mg_mouse_button button, boo
     input_state.mouse.buttons[button] = pressed;
 }
 
-static inline void mg_app_input_reset(void)
+static inline void mg_app_input_frame(void)
 {
     input_state.mouse.delta = 0;
     memset(input_state.keyboard.keys_pressed, 0, sizeof(input_state.keyboard.keys_pressed));
@@ -353,7 +353,7 @@ static inline void mg_app_input_reset(void)
     memset(input_state.mouse.buttons_released, 0, sizeof(input_state.mouse.buttons_released));
 }
 
-static inline void mg_app_input_release(void)
+static inline void mg_app_input_reset(void)
 {
     memset(input_state.keyboard.keys, 0, sizeof(input_state.keyboard.keys));
     memset(input_state.mouse.buttons, 0, sizeof(input_state.mouse.buttons));
@@ -448,7 +448,7 @@ static void mg_em_frame(void *user_data)
     if (platform.info->events.update)
         platform.info->events.update();
 
-    mg_app_input_reset();
+    mg_app_input_frame();
 }
 
 int32_t mg_app_run(const mg_app_init_info *info)
@@ -821,7 +821,7 @@ int32_t mg_app_run(const mg_app_init_info *info)
         if (info->events.update)
             info->events.update();
 
-        mg_app_input_reset();
+        mg_app_input_frame();
     }
 
     if (info->events.end)
@@ -844,13 +844,13 @@ void mg_app_show(bool value)
 
 void mg_app_minimize(void)
 {
-    mg_app_input_release();
+    mg_app_input_reset();
     ShowWindow(platform.hwnd, SW_MINIMIZE);
 }
 
 void mg_app_maximize(void)
 {
-    mg_app_input_release();
+    mg_app_input_reset();
     if (IsZoomed(platform.hwnd))
         ShowWindow(platform.hwnd, SW_RESTORE);
     else ShowWindow(platform.hwnd, SW_MAXIMIZE);
@@ -1243,7 +1243,7 @@ int32_t mg_app_run(const mg_app_init_info *info)
         if (info->events.update)
             info->events.update();
 
-        mg_app_input_reset();
+        mg_app_input_frame();
     }
  
     if (info->events.end)
