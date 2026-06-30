@@ -1,0 +1,94 @@
+#include "titlebar.h"
+#include "core/app.h"
+#include "core/input.h"
+#include "core/panel.h"
+#include "core/theme.h"
+#include "renderer/asset_manager.h"
+#include "renderer/renderer.h"
+#include <leaf/leaf.h>
+
+static uint64_t pressed_titlebar_btn_id = 0;
+static bool naui_render_titlebar_button(Naui_Image *image, Leaf_ID id, Leaf_Color fg_color, Leaf_Color bg_color, void (*event)(void))
+{
+	bool result = false;
+	const bool hovered = leaf_hovered(id);
+	if (hovered)
+	{
+		// HACK to allow the mouse clicking to be detected on windows
+		naui_app_set_caption_height(0);
+		if (naui_mouse_clicked(NAUI_MOUSE_LEFT))
+			pressed_titlebar_btn_id = id.value;
+		else if(naui_mouse_released(NAUI_MOUSE_LEFT) && pressed_titlebar_btn_id == id.value)
+			event();
+		result = true;
+	}
+
+	leaf({
+		.id = id,
+		.size = {LEAF_SIZE_FIT, LEAF_SIZE_FIT},
+		.padding = LEAF_PADDING_AXES(8.0f, 8.0f),
+		.color = hovered ?
+			bg_color :
+			LEAF_COLOR_TRANSPARENT
+	})
+	leaf({
+		.size = {LEAF_SIZE_DERIVED, LEAF_SIZE_FIXED(12.0f)},
+		.image = image,
+		.color = fg_color,
+		.aspect_ratio = 1.0f
+	});
+	return result;
+}
+
+void naui_render_main_titlebar(const char *title)
+{
+	const float titlebar_height = 32.0f;
+	naui_app_set_caption_height(naui_any_panel_hovered() ? 0 : (int32_t)titlebar_height);
+
+	Naui_Vec2 padding = naui_theme_vec2(NAUI_PANEL_TITLEBAR_PADDING_TAG);
+	Leaf_Color text_color = naui_theme_leaf_color(NAUI_PANEL_TITLEBAR_TEXT_COLOR_TAG);
+
+	leaf({
+		.size = {LEAF_SIZE_FULL, LEAF_SIZE_FIXED(titlebar_height)},
+		.color = {naui_theme_leaf_color(NAUI_PANEL_TITLEBAR_BG_COLOR_TAG)},
+		.child_alignment = {LEAF_ALIGN_X_LEFT, LEAF_ALIGN_Y_CENTER}
+	})
+	{
+		leaf({
+			.positioning = LEAF_POSITIONING_FLOATING_TO_PARENT,
+			.size = {LEAF_SIZE_FULL, LEAF_SIZE_FULL},
+			.child_alignment = {LEAF_ALIGN_X_LEFT, LEAF_ALIGN_Y_CENTER},
+			.padding = LEAF_PADDING_AXES(padding.x, 0.0f)
+		})
+		leaf({
+			.size = {LEAF_SIZE_DERIVED, LEAF_SIZE_PERCENT(0.5f)},
+			.image = naui_get_image("logo-small"),
+			.color = LEAF_COLOR_WHITE,
+			.aspect_ratio = 1.0f
+		});
+		leaf({
+			.positioning = LEAF_POSITIONING_FLOATING_TO_PARENT,
+			.size = {LEAF_SIZE_FULL, LEAF_SIZE_FULL},
+			.child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER}
+		})
+		leaf_text(title, {
+			.font_size = naui_theme_float(NAUI_PANEL_FONT_SIZE_TAG),
+			.color = text_color,
+			.alignment = LEAF_TEXT_ALIGN_CENTER
+		});
+		leaf({
+			.direction = LEAF_DIRECTION_HORIZONAL,
+			.positioning = LEAF_POSITIONING_FLOATING_TO_PARENT,
+			.size = {LEAF_SIZE_FULL, LEAF_SIZE_FULL},
+			.child_alignment = {LEAF_ALIGN_X_RIGHT, LEAF_ALIGN_Y_CENTER}
+		})
+		{
+			int hover_counter = 0;
+			hover_counter += naui_render_titlebar_button(naui_get_image(NAUI_MINIMIZE_ICON_TAG), leaf_id_indexed("__naui_titlebar_btn", 0), text_color, naui_theme_leaf_color(NAUI_PANEL_BUTTON_HOVERED_BG_COLOR_TAG), naui_app_minimize);
+			hover_counter += naui_render_titlebar_button(naui_get_image(NAUI_MAXIMIZE_ICON_TAG), leaf_id_indexed("__naui_titlebar_btn", 1), text_color, naui_theme_leaf_color(NAUI_PANEL_BUTTON_HOVERED_BG_COLOR_TAG), naui_app_maximize);
+			hover_counter += naui_render_titlebar_button(naui_get_image(NAUI_CLOSE_ICON_TAG), leaf_id_indexed("__naui_titlebar_btn", 2), text_color, naui_theme_leaf_color(NAUI_PANEL_CLOSE_HOVERED_BG_COLOR_TAG), naui_app_close);
+			if (!hover_counter)
+				pressed_titlebar_btn_id = 0;
+		}
+	}
+}
