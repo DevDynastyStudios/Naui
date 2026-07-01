@@ -54,9 +54,9 @@ static Leaf_Dimensions measure_text_bridge(const char *text, uint32_t length, fl
 
 static void render_leaf_cmd_list(const Leaf_RenderCmdList *list)
 {
-    for (uint32_t i = 0; i < list->count; i++)
+    for (Leaf_RenderCmdNode *n = list->first; n; n = n->next)
     {
-        Leaf_RenderCmd cmd = list->cmds[i];
+        Leaf_RenderCmd cmd = n->cmd;
         switch (cmd.type)
         {
         case LEAF_RENDER_CMD_RECT:

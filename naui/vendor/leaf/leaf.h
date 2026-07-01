@@ -351,9 +351,17 @@ typedef struct
 }
 Leaf_RenderCmd;
 
+typedef struct Leaf_RenderCmdNode Leaf_RenderCmdNode;
+struct Leaf_RenderCmdNode
+{
+    Leaf_RenderCmd cmd;
+    Leaf_RenderCmdNode *next;
+};
+
 typedef struct
 {
-    Leaf_RenderCmd *cmds;
+    Leaf_RenderCmdNode *first;
+    Leaf_RenderCmdNode *last;
     uint32_t count;
 }
 Leaf_RenderCmdList;
@@ -456,37 +464,107 @@ struct Leaf_Node
 #define LEAF_ASSERT(x, msg) if (!(x)) {fprintf(stderr, "[Leaf]: %s", msg); return;}
 #define LEAF_ASSERT_NULL(x, msg) if (!(x)) {fprintf(stderr, "[Leaf]: %s", msg); return NULL;}
 
-#ifndef LEAF_CONFIG_MAX_NODES
-    #define LEAF_CONFIG_MAX_NODES (1<<13)
+#define LEAF_MAX(a, b) ((a) > (b) ? (a) : (b))
+
+#ifndef LEAF_CONFIG_MAX_MEMORY
+    #define LEAF_CONFIG_MAX_MEMORY (1 << 20)
 #endif
 
 #ifndef LEAF_CONFIG_MAX_STACK
     #define LEAF_CONFIG_MAX_STACK 256
 #endif
 
-#ifndef LEAF_CONFIG_MAX_RENDER_CMDS
-    #define LEAF_CONFIG_MAX_RENDER_CMDS (1<<13)
+#ifndef LEAF_CONFIG_MAX_HASH_ENTRIES
+    #define LEAF_CONFIG_MAX_HASH_ENTRIES (1 << 14)
 #endif
 
-#ifndef LEAF_CONFIG_MAX_TEXT_CACHE
-    #define LEAF_CONFIG_MAX_TEXT_CACHE (1<<14)
-#endif
+typedef struct Leaf_ArenaChunk Leaf_ArenaChunk;
+struct Leaf_ArenaChunk
+{
+    Leaf_ArenaChunk *next;
+    size_t pos;
+    size_t size;
+    uint8_t data[];
+};
 
 typedef struct
 {
-    Leaf_Node nodes[LEAF_CONFIG_MAX_NODES];
-    uint32_t node_count;
+    Leaf_ArenaChunk *first;
+    Leaf_ArenaChunk *current;
+    size_t chunk_size;
+}
+Leaf_Arena;
 
-    Leaf_LayoutFrameEntry layout_entires[LEAF_CONFIG_MAX_NODES];
+static inline Leaf_ArenaChunk *leaf_arena_new_chunk(size_t size)
+{
+    Leaf_ArenaChunk *chunk = (Leaf_ArenaChunk*)malloc(sizeof(Leaf_ArenaChunk) + size);
+    chunk->next = NULL;
+    chunk->pos = 0;
+    chunk->size = size;
+    return chunk;
+}
+
+static inline void leaf_arena_init(Leaf_Arena *arena, size_t size)
+{
+    arena->first = leaf_arena_new_chunk(size);
+    arena->current = arena->first;
+    arena->chunk_size = size;
+}
+
+static inline void leaf_arena_free(Leaf_Arena *arena)
+{
+    Leaf_ArenaChunk *chunk = arena->first;
+    while (chunk)
+    {
+        Leaf_ArenaChunk *next = chunk->next;
+        free(chunk);
+        chunk = next;
+    }
+}
+
+static inline void leaf_arena_reset(Leaf_Arena *arena)
+{
+    for (Leaf_ArenaChunk *chunk = arena->first; chunk; chunk = chunk->next)
+        chunk->pos = 0;
+    arena->current = arena->first;
+}
+
+static inline void *leaf_arena_alloc(Leaf_Arena *arena, size_t size)
+{
+    Leaf_ArenaChunk *chunk = arena->current;
+
+    if (chunk->pos + size > chunk->size)
+    {
+        if (chunk->next && size <= chunk->next->size)
+        {
+            chunk->next->pos = 0;
+            arena->current = chunk->next;
+        }
+        else
+        {
+            size_t new_size = LEAF_MAX(arena->chunk_size, size);
+            Leaf_ArenaChunk *new_chunk = leaf_arena_new_chunk(new_size);
+            if (!new_chunk) return NULL;
+            chunk->next = new_chunk;
+            arena->current = new_chunk;
+        }
+        chunk = arena->current;
+    }
+
+    void *ptr = chunk->data + chunk->pos;
+    chunk->pos += size;
+    return ptr;
+}
+
+typedef struct
+{
+    Leaf_LayoutFrameEntry layout_entires[LEAF_CONFIG_MAX_HASH_ENTRIES];
 
     Leaf_Node *stack[LEAF_CONFIG_MAX_STACK];
     uint32_t stack_top;
 
-    Leaf_RenderCmd render_cmds[LEAF_CONFIG_MAX_RENDER_CMDS];
-    uint32_t render_cmd_count;
-
-    char text_cache[LEAF_CONFIG_MAX_TEXT_CACHE];
-    uint32_t text_cache_cursor;
+    Leaf_RenderCmdList render_cmds;
+    Leaf_Arena arena;
 
     Leaf_Vec2 pointer_pos;
     Leaf_MeasureTextFn measure_text;
@@ -496,8 +574,6 @@ typedef struct
 Leaf_Context;
 
 static Leaf_Context *leaf_ctx;
-
-#define LEAF_MAX(a, b) ((a) > (b) ? (a) : (b))
 
 static uint64_t leaf_murmur(const void *key, int len, uint64_t seed)
 {
@@ -530,10 +606,12 @@ Leaf_ID leaf_id_indexed(const char *label, uint64_t index)
 void leaf_initialize(void)
 {
     leaf_ctx = (Leaf_Context*)calloc(1, sizeof(Leaf_Context));
+    leaf_arena_init(&leaf_ctx->arena, LEAF_CONFIG_MAX_MEMORY);
 }
 
 void leaf_shutdown(void)
 {
+    leaf_arena_free(&leaf_ctx->arena);
     free(leaf_ctx);
 }
 
@@ -552,17 +630,17 @@ static void leaf_set_layout_entry(Leaf_ID id, Leaf_LayoutFrameEntry entry)
 {
     entry.id = id.value;
     entry.frame = leaf_ctx->frame;
-    uint32_t i = id.value % LEAF_CONFIG_MAX_NODES;
+    uint32_t i = id.value % LEAF_CONFIG_MAX_HASH_ENTRIES;
     while (leaf_ctx->layout_entires[i].id != 0 && leaf_ctx->layout_entires[i].id != id.value)
-        i = (i + 1) % LEAF_CONFIG_MAX_NODES;
+        i = (i + 1) % LEAF_CONFIG_MAX_HASH_ENTRIES;
     leaf_ctx->layout_entires[i] = entry;
 }
 
 static Leaf_LayoutFrameEntry leaf_get_layout_entry(Leaf_ID id)
 {
-    uint32_t i = id.value % LEAF_CONFIG_MAX_NODES;
+    uint32_t i = id.value % LEAF_CONFIG_MAX_HASH_ENTRIES;
     while (leaf_ctx->layout_entires[i].id != 0 && leaf_ctx->layout_entires[i].id != id.value)
-        i = (i + 1) % LEAF_CONFIG_MAX_NODES;
+        i = (i + 1) % LEAF_CONFIG_MAX_HASH_ENTRIES;
     
     Leaf_LayoutFrameEntry *entry = &leaf_ctx->layout_entires[i];
     if (entry->frame != leaf_ctx->frame - 1)
@@ -572,12 +650,9 @@ static Leaf_LayoutFrameEntry leaf_get_layout_entry(Leaf_ID id)
 
 static const char *leaf_cache_str(const char *src, uint32_t size)
 {
-    LEAF_ASSERT_NULL(leaf_ctx->text_cache_cursor + size + 1 <= LEAF_CONFIG_MAX_TEXT_CACHE,
-        "Text wrap cache limit exceeded. Increase LEAF_CONFIG_MAX_TEXT_CACHE.");
-    char *dst = &leaf_ctx->text_cache[leaf_ctx->text_cache_cursor];
+    char *dst = leaf_arena_alloc(&leaf_ctx->arena, size + 1);
     memcpy(dst, src, size);
     dst[size] = '\0';
-    leaf_ctx->text_cache_cursor += size + 1;
     return dst;
 }
 
@@ -600,9 +675,7 @@ Leaf_BoundingBox leaf_get_bounding_box(Leaf_ID id)
 
 static inline Leaf_Node *leaf_alloc_node(void)
 {
-    LEAF_ASSERT_NULL(leaf_ctx->node_count < LEAF_CONFIG_MAX_NODES,
-        "Node limit exceeded. Increase LEAF_CONFIG_MAX_NODES.");
-    Leaf_Node *node = &leaf_ctx->nodes[leaf_ctx->node_count++];
+    Leaf_Node *node = leaf_arena_alloc(&leaf_ctx->arena, sizeof(Leaf_Node));
     memset(node, 0, sizeof(Leaf_Node));
     return node;
 }
@@ -790,9 +863,19 @@ void leaf_end_element(void)
 
 static inline void leaf_push_render_cmd(Leaf_RenderCmd cmd)
 {
-    LEAF_ASSERT(leaf_ctx->render_cmd_count < LEAF_CONFIG_MAX_RENDER_CMDS,
-        "Render command limit exceeded. Increase LEAF_CONFIG_MAX_RENDER_CMDS.");
-    leaf_ctx->render_cmds[leaf_ctx->render_cmd_count++] = cmd;
+    Leaf_RenderCmdNode *node = leaf_arena_alloc(&leaf_ctx->arena, sizeof(Leaf_RenderCmdNode));
+    if (!node)
+        return;
+    node->cmd = cmd;
+    node->next = NULL;
+
+    if (leaf_ctx->render_cmds.last)
+        leaf_ctx->render_cmds.last->next = node;
+    else
+        leaf_ctx->render_cmds.first = node;
+
+    leaf_ctx->render_cmds.last = node;
+    leaf_ctx->render_cmds.count++;
 }
 
 static inline void leaf_element_clamp_min_max(Leaf_Node *node, const Leaf_ElementConfig *config)
@@ -1570,10 +1653,8 @@ static void leaf_position_render(Leaf_Node *parent)
 
 void leaf_begin_frame(int32_t width, int32_t height)
 {
+    leaf_arena_reset(&leaf_ctx->arena);
     leaf_ctx->stack_top = 0;
-    leaf_ctx->node_count = 0;
-    leaf_ctx->render_cmd_count = 0;
-    leaf_ctx->text_cache_cursor = 0;
     leaf_ctx->frame++;
 
     Leaf_Node *root = leaf_alloc_node();
@@ -1587,13 +1668,13 @@ void leaf_begin_frame(int32_t width, int32_t height)
 Leaf_RenderCmdList leaf_end_frame(void)
 {
     Leaf_Node *root = leaf_stack_top();
+
+    leaf_ctx->render_cmds = (Leaf_RenderCmdList){0};
+
     leaf_size_pass(root);
     leaf_position_render(root);
 
-    Leaf_RenderCmdList list;
-    list.cmds = leaf_ctx->render_cmds;
-    list.count = leaf_ctx->render_cmd_count;
-    return list;
+    return leaf_ctx->render_cmds;
 }
 
 #endif // LEAF_IMPLEMENTATION
