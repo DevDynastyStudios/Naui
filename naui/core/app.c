@@ -1,6 +1,5 @@
 #include "app.h"
 #include "theme.h"
-#include "widgets/widgets_internal.h"
 #include "renderer/asset_manager.h"
 #include "utils/list.h"
 #include "utils/arena.h"
@@ -160,7 +159,6 @@ static void __naui_app_start(void)
     leaf_initialize();
     leaf_set_measure_text(measure_text_bridge);
     naui_arena_init(&state.deferred_arg_arena, NAUI_BASE_DEFERRED_ARG_ARENA_SIZE);
-	naui_widget_init();
     state.events.start();
     render();
     mg_app_show(true);

@@ -1,6 +1,5 @@
 #include "titlebar.h"
 #include <naui/naui.h>
-#include <naui/widgets/widgets.h>
 
 static void naui_render_titlebar_icon_button(Naui_Image *image, Leaf_ID id, Leaf_Color fg_color, Leaf_Color bg_color, void (*event)(void))
 {
