@@ -534,6 +534,7 @@ static inline void naui_render_dock_guide_slot(const char *label, Naui_PanelNode
         },
         .border = {
             .width = 1.0f,
+            .sides = LEAF_SIDE_ALL,
             .color = naui_theme_leaf_color(NAUI_DOCK_GUIDE_OUTLINE_COLOR_TAG)
         },
         .aspect_ratio = 1.0f
@@ -800,7 +801,11 @@ static void naui_render_next_panel_child(Naui_PanelNode *node)
                 .size = node->split_axis == NAUI_SPLIT_AXIS_VERTICAL ?
                 (Leaf_Size){LEAF_SIZE_FULL, LEAF_SIZE_GROW} :
                 (Leaf_Size){LEAF_SIZE_GROW, LEAF_SIZE_FULL},
-                .border = {border_width, border_color}
+                .border = {
+                    .width = border_width,
+                    .sides = LEAF_SIDE_ALL,
+                    .color = border_color
+                }
             })
             naui_render_next_panel_child(node->children[1]);
         }
@@ -826,8 +831,9 @@ static void naui_render_panel(Naui_PanelNode *node)
         .size = {LEAF_SIZE_FIXED(node->size.x), LEAF_SIZE_FIXED(node->size.y)},
         .floating_offset = {node->position.x, node->position.y},
         .border = {
-            naui_theme_float(NAUI_PANEL_BORDER_WIDTH_TAG),
-            naui_theme_leaf_color(NAUI_PANEL_BORDER_COLOR_TAG)
+            .width = naui_theme_float(NAUI_PANEL_BORDER_WIDTH_TAG),
+            .sides = LEAF_SIDE_ALL,
+            .color = naui_theme_leaf_color(NAUI_PANEL_BORDER_COLOR_TAG)
         },
         .shadow = {
             .blur_radius = 32.0f,
@@ -855,10 +861,12 @@ static void naui_render_main_viewport(void)
         .color = node ?
             naui_theme_leaf_color(NAUI_PANEL_BORDER_COLOR_TAG) :
             naui_theme_leaf_color(NAUI_VIEWPORT_BG_COLOR_TAG),
-        .inner_shadow = {
-            .blur_radius = 64.0f,
-            .color = naui_theme_leaf_color(NAUI_PANEL_INNER_SHADOW_COLOR_TAG)
-        }
+        .inner_shadow = node ?
+            (Leaf_InnerShadow){ 0 } :
+            (Leaf_InnerShadow){
+                .blur_radius = 64.0f,
+                .color = naui_theme_leaf_color(NAUI_PANEL_INNER_SHADOW_COLOR_TAG)
+            }
     })
     {
         if (node)

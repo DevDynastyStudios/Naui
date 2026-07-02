@@ -19,7 +19,7 @@
 	"naui_panel_button_hovered_bg_color": "#505050FF",
 	"naui_panel_close_hovered_bg_color": "#E55050FF",
 
-	"naui_panel_title_padding": [6.0, 6.0],
+	"naui_panel_title_padding": [8.0, 8.0],
 	"naui_panel_body_padding": [6.0, 6.0],
 
 	"naui_panel_font_size": 15.0,

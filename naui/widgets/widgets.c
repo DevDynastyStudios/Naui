@@ -125,6 +125,7 @@ static void naui_widget_slider_layout(Leaf_ID id, const char *label, const char 
 		.color = { .color1 = bg },
 		.border = {
 			.width = border_w,
+			.sides = LEAF_SIDE_ALL,
 			.color = { .color1 = tw("naui_widget_border_color") }
 		},
 		.rounding = { rounding, LEAF_CORNER_ALL },
@@ -192,6 +193,7 @@ static void naui_widget_drag_layout(Leaf_ID id, const char *label, const char *v
 		.color = { .color1 = bg },
 		.border = {
 			.width = border_w,
+			.sides = LEAF_SIDE_ALL,
 			.color = { .color1 = tw("naui_widget_border_color") }
 		},
 		.rounding = { rounding, LEAF_CORNER_ALL },
@@ -550,6 +552,7 @@ static void naui_widget_text_field_render(Leaf_ID id, const char *label, const c
 			.color = { .color1 = focused ? tw("naui_widget_surface_active_color") : tw("naui_widget_surface_color") },
 			.border = {
 				.width = border_w,
+				.sides = LEAF_SIDE_ALL,
 				.color = { .color1 = border_col }
 			},
 			.rounding = { rounding, LEAF_CORNER_ALL },
@@ -653,6 +656,7 @@ static void naui_widget_knob_render(Leaf_ID id, const char *label, float *value,
 		.rounding = { rounding, LEAF_CORNER_ALL },
 		.border = {
 			.width = border_w,
+			.sides = LEAF_SIDE_ALL,
 			.color = { .color1 = tw("naui_widget_border_color") }
 		},
 	})

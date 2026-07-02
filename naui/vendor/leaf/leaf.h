@@ -176,16 +176,28 @@ Leaf_Padding;
 #define LEAF_PADDING_ALL(v) (Leaf_Padding) { v, v, v, v }
 #define LEAF_PADDING_AXES(h, v) (Leaf_Padding) { h, h, v, v }
 
+typedef uint8_t Leaf_Sides;
+enum
+{
+    LEAF_SIDE_NONE = 0,
+    LEAF_SIDE_TOP = 1 << 0,
+    LEAF_SIDE_RIGHT = 1 << 1,
+    LEAF_SIDE_BOTTOM = 1 << 2,
+    LEAF_SIDE_LEFT = 1 << 3,
+    LEAF_SIDE_ALL = LEAF_SIDE_TOP | LEAF_SIDE_RIGHT | LEAF_SIDE_BOTTOM | LEAF_SIDE_LEFT
+};
+
 typedef struct
 {
     float width;
+    Leaf_Sides sides;
     Leaf_ColorFill color;
 }
 Leaf_Border;
 
 typedef void *Leaf_Image;
 
-typedef uint8_t Leaf_RoundingCorners;
+typedef uint8_t Leaf_Corners;
 enum
 {
     LEAF_CORNER_NONE = 0,
@@ -199,7 +211,7 @@ enum
 typedef struct
 {
     float value;
-    Leaf_RoundingCorners corners;
+    Leaf_Corners corners;
 }
 Leaf_Rounding;
 
@@ -312,6 +324,7 @@ typedef struct
         {
             Leaf_Rounding rounding;
             float line_width;
+            Leaf_Sides sides;
         }
         rect;
 
@@ -466,8 +479,8 @@ struct Leaf_Node
 
 #define LEAF_MAX(a, b) ((a) > (b) ? (a) : (b))
 
-#ifndef LEAF_CONFIG_MAX_MEMORY
-    #define LEAF_CONFIG_MAX_MEMORY (1 << 20)
+#ifndef LEAF_CONFIG_MIN_MEMORY_SIZE
+    #define LEAF_CONFIG_MIN_MEMORY_SIZE (1 << 20)
 #endif
 
 #ifndef LEAF_CONFIG_MAX_STACK
@@ -606,7 +619,7 @@ Leaf_ID leaf_id_indexed(const char *label, uint64_t index)
 void leaf_initialize(void)
 {
     leaf_ctx = (Leaf_Context*)calloc(1, sizeof(Leaf_Context));
-    leaf_arena_init(&leaf_ctx->arena, LEAF_CONFIG_MAX_MEMORY);
+    leaf_arena_init(&leaf_ctx->arena, LEAF_CONFIG_MIN_MEMORY_SIZE);
 }
 
 void leaf_shutdown(void)
@@ -917,9 +930,20 @@ static inline void leaf_render_inner_shadow(Leaf_Node *node)
     });
 }
 
+static inline bool leaf_box_offscreen(Leaf_BoundingBox box)
+{
+    Leaf_BoundingBox screen = leaf_ctx->stack[0]->bounding_box;
+    return box.x + box.width  <= screen.x ||
+           box.y + box.height <= screen.y ||
+           box.x >= screen.x + screen.width ||
+           box.y >= screen.y + screen.height;
+}
+
 static void leaf_render_node(Leaf_Node *node)
 {
-    if (node->bounding_box.width <= 0 || node->bounding_box.height <= 0)
+    if (node->bounding_box.width <= 0 ||
+        node->bounding_box.height <= 0 ||
+        leaf_box_offscreen(node->bounding_box))
         return;
 
     switch (node->type)
@@ -965,7 +989,7 @@ static void leaf_render_node(Leaf_Node *node)
                     .type = LEAF_RENDER_CMD_RECT,
                     .color = config->color,
                     .bounding_box = node->bounding_box,
-                    .rect.rounding = config->rounding,
+                    .rect.rounding = config->rounding
                 });
             }
         }
@@ -986,7 +1010,8 @@ static void leaf_render_node(Leaf_Node *node)
                 .color = config->border.color,
                 .bounding_box = node->bounding_box,
                 .rect.rounding = config->rounding,
-                .rect.line_width = config->border.width
+                .rect.line_width = config->border.width,
+                .rect.sides = config->border.sides
             });
         break;
     }
