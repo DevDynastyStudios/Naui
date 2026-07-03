@@ -1032,10 +1032,13 @@ typedef struct mg_xlib_platform
     uint32_t dpi;
     float dpi_scale;
     bool running;
+    bool no_titlebar;
+
+    int32_t caption_x, caption_y, caption_width, caption_height;
 
     struct
     {
-        Atom wm_state, max_horz, max_vert;
+        Atom wm_state, max_horz, max_vert, moveresize, motif_hints;
     } atoms;
 }
 mg_xlib_platform;
@@ -1151,6 +1154,98 @@ static mg_key mg_xlib_translate_key(KeySym sym)
     }
 }
 
+typedef struct
+{
+    unsigned long flags;
+    unsigned long functions;
+    unsigned long decorations;
+    long input_mode;
+    unsigned long status;
+}
+mg_motif_wm_hints;
+
+#define MG_MWM_HINTS_DECORATIONS (1L << 1)
+
+static void mg_xlib_set_borderless(Display *display, Window window, Atom motif_hints_atom, bool borderless)
+{
+    mg_motif_wm_hints hints = {0};
+    hints.flags = MG_MWM_HINTS_DECORATIONS;
+    hints.decorations = borderless ? 0 : 1;
+
+    XChangeProperty(
+        display, window,
+        motif_hints_atom, motif_hints_atom,
+        32, PropModeReplace,
+        (unsigned char *)&hints,
+        sizeof(mg_motif_wm_hints) / sizeof(long));
+}
+
+enum
+{
+    MG_NET_WM_MOVERESIZE_SIZE_TOPLEFT = 0,
+    MG_NET_WM_MOVERESIZE_SIZE_TOP = 1,
+    MG_NET_WM_MOVERESIZE_SIZE_TOPRIGHT = 2,
+    MG_NET_WM_MOVERESIZE_SIZE_RIGHT = 3,
+    MG_NET_WM_MOVERESIZE_SIZE_BOTTOMRIGHT = 4,
+    MG_NET_WM_MOVERESIZE_SIZE_BOTTOM = 5,
+    MG_NET_WM_MOVERESIZE_SIZE_BOTTOMLEFT = 6,
+    MG_NET_WM_MOVERESIZE_SIZE_LEFT = 7,
+    MG_NET_WM_MOVERESIZE_MOVE = 8
+};
+
+static void mg_xlib_send_moveresize(int32_t root_x, int32_t root_y, int32_t direction)
+{
+    XUngrabPointer(platform.display, CurrentTime);
+    XFlush(platform.display);
+
+    XEvent e = {0};
+    e.xclient.type = ClientMessage;
+    e.xclient.window = platform.window;
+    e.xclient.message_type = platform.atoms.moveresize;
+    e.xclient.format = 32;
+    e.xclient.data.l[0] = root_x;
+    e.xclient.data.l[1] = root_y;
+    e.xclient.data.l[2] = direction;
+    e.xclient.data.l[3] = Button1;
+    e.xclient.data.l[4] = 1;
+
+    XSendEvent(
+        platform.display,
+        DefaultRootWindow(platform.display),
+        False,
+        SubstructureRedirectMask | SubstructureNotifyMask,
+        &e);
+
+    XFlush(platform.display);
+}
+
+static int32_t mg_xlib_hittest(int32_t x, int32_t y)
+{
+    const int32_t bw = 8;
+    int32_t w = platform.window_width;
+    int32_t h = platform.window_height;
+
+    bool left   = x <= bw;
+    bool right  = x >= w - bw;
+    bool top    = y <= bw;
+    bool bottom = y >= h - bw;
+
+    if (top && left)     return MG_NET_WM_MOVERESIZE_SIZE_TOPLEFT;
+    if (top && right)    return MG_NET_WM_MOVERESIZE_SIZE_TOPRIGHT;
+    if (bottom && left)  return MG_NET_WM_MOVERESIZE_SIZE_BOTTOMLEFT;
+    if (bottom && right) return MG_NET_WM_MOVERESIZE_SIZE_BOTTOMRIGHT;
+    if (top)              return MG_NET_WM_MOVERESIZE_SIZE_TOP;
+    if (bottom)           return MG_NET_WM_MOVERESIZE_SIZE_BOTTOM;
+    if (left)             return MG_NET_WM_MOVERESIZE_SIZE_LEFT;
+    if (right)            return MG_NET_WM_MOVERESIZE_SIZE_RIGHT;
+
+    if (x >= platform.caption_x && x < platform.caption_x + platform.caption_width &&
+        y >= platform.caption_y && y < platform.caption_y + platform.caption_height)
+        return MG_NET_WM_MOVERESIZE_MOVE;
+
+    return -1;
+}
+
 static uint32_t mg_xlib_query_dpi(Display *display, int screen)
 {
     char *rms = XResourceManagerString(display);
@@ -1232,6 +1327,13 @@ int32_t mg_app_run(const mg_app_init_info *info)
  
     platform.wm_delete_window = XInternAtom(platform.display, "WM_DELETE_WINDOW", False);
     XSetWMProtocols(platform.display, platform.window, &platform.wm_delete_window, 1);
+
+    platform.atoms.motif_hints = XInternAtom(platform.display, "_MOTIF_WM_HINTS", False);
+    platform.atoms.moveresize  = XInternAtom(platform.display, "_NET_WM_MOVERESIZE", False);
+
+    platform.no_titlebar = (info->flags & MG_APP_FLAG_NO_TITLEBAR) != 0;
+    if (platform.no_titlebar)
+        mg_xlib_set_borderless(platform.display, platform.window, platform.atoms.motif_hints, true);
  
     XMapWindow(platform.display, platform.window);
     XFlush(platform.display);
@@ -1350,6 +1452,16 @@ int32_t mg_app_run(const mg_app_init_info *info)
                             });
                         }
                         break;
+                    }
+
+                    if (platform.no_titlebar && pressed && xev.xbutton.button == Button1)
+                    {
+                        int32_t direction = mg_xlib_hittest(xev.xbutton.x, xev.xbutton.y);
+                        if (direction != -1)
+                        {
+                            mg_xlib_send_moveresize(xev.xbutton.x_root, xev.xbutton.y_root, direction);
+                            break;
+                        }
                     }
 
                     mg_mouse_button mb = MG_MOUSE_BUTTON_MAX;
@@ -1558,7 +1670,10 @@ float mg_app_dpi_scale(void)
 
 void mg_app_set_caption_area(int32_t x, int32_t y, int32_t width, int32_t height)
 {
-    // dummy
+    platform.caption_x = x;
+    platform.caption_y = y;
+    platform.caption_width = width;
+    platform.caption_height = height;
 }
  
 #endif // Platform
