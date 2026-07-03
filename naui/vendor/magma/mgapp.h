@@ -604,6 +604,7 @@ typedef struct mg_win32_platform
     HINSTANCE instace;
     int32_t window_width, window_height;
     uint32_t dpi;
+    float dpi_scale;
 
     void (*on_event_call)(const mg_app_event *event);
     float time, delta_time;
@@ -735,6 +736,7 @@ static LRESULT CALLBACK mg_win32_process_message(HWND hwnd, uint32_t msg, WPARAM
         case WM_DPICHANGED:
         {
             platform.dpi = HIWORD(w_param);
+            platform.dpi_scale = (float)platform.dpi / 96.0f;
             RECT *suggested = (RECT*)l_param;
             SetWindowPos(hwnd, NULL,
                 suggested->left, suggested->top,
@@ -866,6 +868,7 @@ int32_t mg_app_run(const mg_app_init_info *info)
     }
 
     platform.dpi = GetDpiForWindow(platform.hwnd);
+    platform.dpi_scale = (float)platform.dpi / 96.0f;
 
     if (info->flags & MG_APP_FLAG_NO_TITLEBAR)
     {
@@ -988,7 +991,7 @@ uint32_t mg_app_dpi(void)
 
 float mg_app_dpi_scale(void)
 {
-    return (float)platform.dpi / 96.0f;
+    return platform.dpi_scale;
 }
 
 void mg_app_set_caption_area(int32_t x, int32_t y, int32_t width, int32_t height)
@@ -1026,7 +1029,8 @@ typedef struct mg_xlib_platform
     int screen;
     int32_t window_width, window_height;
     float time, delta_time;
-    float dpi;
+    uint32_t dpi;
+    float dpi_scale;
     bool running;
 
     struct
@@ -1146,7 +1150,36 @@ static mg_key mg_xlib_translate_key(KeySym sym)
         default: return MG_KEY_MAX;
     }
 }
- 
+
+static uint32_t mg_xlib_query_dpi(Display *display, int screen)
+{
+    char *rms = XResourceManagerString(display);
+    if (rms)
+    {
+        XrmDatabase db = XrmGetStringDatabase(rms);
+        if (db)
+        {
+            XrmValue value;
+            char *type = NULL;
+            if (XrmGetResource(db, "Xft.dpi", "Xft.Dpi", &type, &value) && value.addr)
+            {
+                uint32_t dpi = (uint32_t)atoi(value.addr);
+                XrmDestroyDatabase(db);
+                if (dpi > 0)
+                    return dpi;
+            }
+            XrmDestroyDatabase(db);
+        }
+    }
+
+    int width_px  = DisplayWidth(display, screen);
+    int width_mm  = DisplayWidthMM(display, screen);
+    if (width_mm > 0)
+        return (uint32_t)(width_px * 25.4f / (float)width_mm + 0.5f);
+
+    return 96;
+}
+
 int32_t mg_app_run(const mg_app_init_info *info)
 {
     platform.display = XOpenDisplay(NULL);
@@ -1206,7 +1239,7 @@ int32_t mg_app_run(const mg_app_init_info *info)
     // creating the hidden cursor
     {
         const Pixmap cursor_pixmap    = XCreatePixmap(platform.display, platform.window, 1, 1, 1);
-        GC gfx_ctx = XCreateGC(platform.display, cursor_pixmap, 0, nullptr);
+        GC gfx_ctx = XCreateGC(platform.display, cursor_pixmap, 0, NULL);
         XDrawPoint(platform.display, cursor_pixmap, gfx_ctx, 0, 0);
         XFreeGC(platform.display, gfx_ctx);
 
@@ -1236,20 +1269,8 @@ int32_t mg_app_run(const mg_app_init_info *info)
     platform.time = mg_xlib_get_time();
     platform.delta_time = 0.0f;
 
-    // initialize the platform.dpi
-    {
-        char *res = XResourceManagerString(platform.display);
-        if (res)
-        {
-            XrmInitialize();
-            XrmDatabase db = XrmGetStringDatabase(res);
-            char *type;
-            XrmValue value;
-            if (XrmGetResource(db, "Xft.dpi", "Xft.Dpi", &type, &value))
-                platform.dpi = strtof(value.addr, NULL);
-            XrmDestroyDatabase(db);
-        }
-    }
+    platform.dpi = mg_xlib_query_dpi(platform.display, platform.screen);
+    platform.dpi_scale = (float)platform.dpi / 96.0f;
 
     platform.atoms.wm_state = XInternAtom(platform.display, "_NET_WM_STATE", False);
     platform.atoms.max_horz = XInternAtom(platform.display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
@@ -1493,15 +1514,15 @@ bool mg_app_maximized(void)
     unsigned char *data = NULL;
 
     if (XGetWindowProperty(platform.display, platform.window,
-                           platform.atoms.wm_state,
-                           0, 1024,
-                           False,
-                           XA_ATOM,
-                           &actual_type,
-                           &actual_format,
-                           &nitems,
-                           &bytes_after,
-                           &data) == Success)
+        platform.atoms.wm_state,
+        0, 1024,
+        False,
+        XA_ATOM,
+        &actual_type,
+        &actual_format,
+        &nitems,
+        &bytes_after,
+        &data) == Success)
     {
         platform.atoms.max_horz = XInternAtom(platform.display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
         platform.atoms.max_vert = XInternAtom(platform.display, "_NET_WM_STATE_MAXIMIZED_VERT", False);
@@ -1509,7 +1530,8 @@ bool mg_app_maximized(void)
         int horz = 0, vert = 0;
 
         Atom *atoms = (Atom*)data;
-        for (unsigned long i = 0; i < nitems; i++) {
+        for (unsigned long i = 0; i < nitems; i++)
+        {
             if (atoms[i] == platform.atoms.max_horz)
                 horz = 1;
             if (atoms[i] == platform.atoms.max_vert)
@@ -1524,9 +1546,14 @@ bool mg_app_maximized(void)
     }
 }
 
+uint32_t mg_app_dpi(void)
+{
+    return platform.dpi;
+}
+
 float mg_app_dpi_scale(void)
 {
-    return (float)platform.dpi / 96.0f;
+    return platform.dpi_scale;
 }
 
 void mg_app_set_caption_area(int32_t x, int32_t y, int32_t width, int32_t height)
