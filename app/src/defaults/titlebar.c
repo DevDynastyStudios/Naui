@@ -1,4 +1,5 @@
 #include "titlebar.h"
+#include "widgets/widgets.h"
 #include <naui/naui.h>
 
 static void naui_render_titlebar_icon_button(Naui_Image *image, Leaf_ID id, Leaf_Color fg_color, Leaf_Color bg_color, void (*event)(void))
@@ -27,8 +28,8 @@ static void naui_render_titlebar_icon_button(Naui_Image *image, Leaf_ID id, Leaf
 	});
 }
 
-static inline void minimize(void) { naui_defer(naui_app_minimize, 0, NULL); }
-static inline void maximize(void) { naui_defer(naui_app_maximized() ? naui_app_restore : naui_app_maximize, 0, NULL); }
+static inline void minimize(void) { naui_defer((Naui_DeferredEvent)naui_app_minimize, NULL, 0); }
+static inline void maximize(void) { naui_defer(naui_app_maximized() ? (Naui_DeferredEvent)naui_app_restore : (Naui_DeferredEvent)naui_app_maximize, NULL, 0); }
 
 void naui_render_main_titlebar(const char *title)
 {

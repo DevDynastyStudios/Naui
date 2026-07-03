@@ -1,4 +1,5 @@
 #include "defaults/titlebar.h"
+#include "defaults/widgets/widgets.h"
 #include <naui/naui.h>
 
 NAUI_APP("Naui Sandbox")

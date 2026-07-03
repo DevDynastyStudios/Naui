@@ -48,3 +48,4 @@ NAUI_API void       naui_app_set_caption_area   (int32_t x, int32_t y, int32_t w
     void naui_app_end(void); \
     void naui_app_update(void); \
     _NAUI_ENTRY_POINT(title)
+

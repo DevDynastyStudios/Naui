@@ -1007,11 +1007,14 @@ void *mg_app_handle(void)
 #elif defined(__linux__)
  
 #include <X11/Xlib.h>
+#include <X11/Xatom.h>
+#include <X11/Xresource.h>
 #include <X11/Xutil.h>
 #include <X11/keysym.h>
 #include <X11/cursorfont.h>
 #include <time.h>
 #include <stdio.h>
+#include <stdlib.h>
  
 typedef struct mg_xlib_platform
 {
@@ -1023,7 +1026,13 @@ typedef struct mg_xlib_platform
     int screen;
     int32_t window_width, window_height;
     float time, delta_time;
+    float dpi;
     bool running;
+
+    struct
+    {
+        Atom wm_state, max_horz, max_vert;
+    } atoms;
 }
 mg_xlib_platform;
  
@@ -1226,6 +1235,25 @@ int32_t mg_app_run(const mg_app_init_info *info)
  
     platform.time = mg_xlib_get_time();
     platform.delta_time = 0.0f;
+
+    // initialize the platform.dpi
+    {
+        char *res = XResourceManagerString(platform.display);
+        if (res)
+        {
+            XrmInitialize();
+            XrmDatabase db = XrmGetStringDatabase(res);
+            char *type;
+            XrmValue value;
+            if (XrmGetResource(db, "Xft.dpi", "Xft.Dpi", &type, &value))
+                platform.dpi = strtof(value.addr, NULL);
+            XrmDestroyDatabase(db);
+        }
+    }
+
+    platform.atoms.wm_state = XInternAtom(platform.display, "_NET_WM_STATE", False);
+    platform.atoms.max_horz = XInternAtom(platform.display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
+    platform.atoms.max_vert = XInternAtom(platform.display, "_NET_WM_STATE_MAXIMIZED_VERT", False);
  
     if (info->events.start)
         info->events.start();
@@ -1395,6 +1423,115 @@ int32_t mg_app_height(void)
 void *mg_app_handle(void)
 {
     return (void*)&platform;
+}
+
+void mg_app_show(bool value)
+{
+    if (value)
+        XMapWindow(platform.display, platform.window);
+    else
+        XUnmapWindow(platform.display, platform.window);
+}
+
+void mg_app_minimize(void)
+{
+    XIconifyWindow(platform.display, platform.window, platform.screen);
+    XFlush(platform.display);
+}
+
+void mg_app_maximize(void)
+{
+    XEvent e = {0};
+    e.xclient.type = ClientMessage;
+    e.xclient.window = platform.window;
+    e.xclient.message_type = platform.atoms.wm_state;
+    e.xclient.format = 32;
+    e.xclient.data.l[0] = 1; // _NET_WM_STATE_ADD
+    e.xclient.data.l[1] = platform.atoms.max_horz;
+    e.xclient.data.l[2] = platform.atoms.max_vert;
+    e.xclient.data.l[3] = 1;
+    e.xclient.data.l[4] = 0;
+
+    XSendEvent(
+        platform.display,
+        DefaultRootWindow(platform.display),
+        False,
+        SubstructureRedirectMask | SubstructureNotifyMask,
+        &e);
+
+    XFlush(platform.display);
+}
+
+void mg_app_restore(void)
+{
+    XEvent e = {0};
+    e.xclient.type = ClientMessage;
+    e.xclient.window = platform.window;
+    e.xclient.message_type = platform.atoms.wm_state;
+    e.xclient.format = 32;
+    e.xclient.data.l[0] = 0; // _NET_WM_STATE_REMOVE
+    e.xclient.data.l[1] = platform.atoms.max_horz;
+    e.xclient.data.l[2] = platform.atoms.max_vert;
+    e.xclient.data.l[3] = 1;
+    e.xclient.data.l[4] = 0;
+
+    XSendEvent(
+        platform.display,
+        DefaultRootWindow(platform.display),
+        False,
+        SubstructureRedirectMask | SubstructureNotifyMask,
+        &e);
+
+    XFlush(platform.display);
+}
+
+bool mg_app_maximized(void)
+{
+    Atom actual_type;
+    int actual_format;
+    unsigned long nitems, bytes_after;
+    unsigned char *data = NULL;
+
+    if (XGetWindowProperty(platform.display, platform.window,
+                           platform.atoms.wm_state,
+                           0, 1024,
+                           False,
+                           XA_ATOM,
+                           &actual_type,
+                           &actual_format,
+                           &nitems,
+                           &bytes_after,
+                           &data) == Success)
+    {
+        platform.atoms.max_horz = XInternAtom(platform.display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
+        platform.atoms.max_vert = XInternAtom(platform.display, "_NET_WM_STATE_MAXIMIZED_VERT", False);
+
+        int horz = 0, vert = 0;
+
+        Atom *atoms = (Atom*)data;
+        for (unsigned long i = 0; i < nitems; i++) {
+            if (atoms[i] == platform.atoms.max_horz)
+                horz = 1;
+            if (atoms[i] == platform.atoms.max_vert)
+                vert = 1;
+        }
+
+        if (data)
+            XFree(data);
+
+        if (horz && vert)
+            return true;
+    }
+}
+
+float mg_app_dpi_scale(void)
+{
+    return (float)platform.dpi / 96.0f;
+}
+
+void mg_app_set_caption_area(int32_t x, int32_t y, int32_t width, int32_t height)
+{
+    // dummy
 }
  
 #endif // Platform

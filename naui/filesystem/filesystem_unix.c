@@ -526,7 +526,7 @@ Naui_Path naui_directory_get(const Naui_Dir directory)
 			if(s_temp[0])
 				return path_from(s_temp);
 
-			const char* temp = getenv("TMPDIR");
+			const char* tmp = getenv("TMPDIR");
 			if(!tmp || !tmp[0])
 				tmp = "/tmp";
 

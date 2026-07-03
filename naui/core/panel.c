@@ -196,7 +196,7 @@ static void naui_panel_bring_to_front_immediate(Naui_PanelNodeWrapper *wrapper)
 
 static void naui_panel_bring_to_front(Naui_PanelNode *node)
 {
-    naui_defer(naui_panel_bring_to_front_immediate, &(Naui_PanelNodeWrapper){node}, sizeof(Naui_PanelNodeWrapper));
+    naui_defer((Naui_DeferredEvent)naui_panel_bring_to_front_immediate, &(Naui_PanelNodeWrapper){node}, sizeof(Naui_PanelNodeWrapper));
 }
 
 static void naui_set_root_recursive(Naui_PanelNode *node, Naui_PanelNode *new_root)
@@ -438,7 +438,7 @@ static void naui_undock_panel_immediate(Naui_PanelNodeWrapper *wrapper)
 
 void naui_undock_panel(Naui_PanelID id)
 {
-    naui_defer(naui_undock_panel_immediate, &(Naui_PanelNodeWrapper){(Naui_PanelNode*)id}, sizeof(Naui_PanelNodeWrapper));
+    naui_defer((Naui_DeferredEvent)naui_undock_panel_immediate, &(Naui_PanelNodeWrapper){(Naui_PanelNode*)id}, sizeof(Naui_PanelNodeWrapper));
 }
 
 static void naui_detach_panel_immediate(Naui_PanelNodeWrapper *wrapper)
@@ -461,7 +461,7 @@ static void naui_detach_panel_immediate(Naui_PanelNodeWrapper *wrapper)
 
 void naui_detach_panel(Naui_PanelID id)
 {
-    naui_defer(naui_detach_panel_immediate, &(Naui_PanelNodeWrapper){(Naui_PanelNode*)id}, sizeof(Naui_PanelNodeWrapper));
+    naui_defer((Naui_DeferredEvent)naui_detach_panel_immediate, &(Naui_PanelNodeWrapper){(Naui_PanelNode*)id}, sizeof(Naui_PanelNodeWrapper));
 }
 
 static bool naui_range_occludes_point(float mx, float my, uint32_t from, Naui_PanelNode *skip)
@@ -1467,7 +1467,7 @@ bool naui_deserialize_viewport(const char *file_path)
 
     Naui_PanelNode *root_node = naui_deserialize_panel_node(json.root);
     if (root_node)
-        naui_set_main_viewport(root_node);
+        naui_set_main_viewport((Naui_PanelID)root_node);
 
     naui_json_free(&json);
 }

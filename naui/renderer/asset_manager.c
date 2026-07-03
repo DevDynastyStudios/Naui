@@ -132,7 +132,7 @@ void naui_asset_manager_free(void)
     naui_strmap_free(image_hm);
 }
 
-const Naui_Image *naui_get_image(const char *const name)
+Naui_Image *naui_get_image(const char *const name)
 {
     return &naui_strmap_get(image_hm, name);
 }

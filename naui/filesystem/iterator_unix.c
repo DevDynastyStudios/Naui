@@ -30,25 +30,28 @@ static bool iterator_match_filter(const char* name, const char* filter, bool cas
 		return true;
 
 	size_t filter_len = strlen(filter);
-	return strcmp(name, filter, filter_len, case_sensitive) == 0;
+	return naui_strncmp(name, filter, filter_len, case_sensitive) == 0;
 }
 
-static bool iterator_match_extensions(const char* name, const char** exts, int ext_count, bool case_sensitive)
+static bool iterator_match_extensions(const char* name, const char** exts, bool case_sensitive)
 {
-	if (ext_count <= 0 || !exts)
+	if (!exts)
 		return true;
 
 	const char* dot = strrchr(name, '.');
 	if (!dot)
 		return false;
 
-	for (int i = 0; i < ext_count; ++i)
+	size_t index = 0;
+	while (exts[index] != NULL)
 	{
-		if (exts[i] && naui_strcmp(dot, exts[i], case_sensitive) == 0)
+		if (exts[index] && naui_strcmp(dot, exts[index], case_sensitive) == 0)
 			return true;
+
+		index++;
 	}
 
-	return false;
+	return false;	
 }
 
 static void iterator_advance(Naui_DirIterator* it)
@@ -84,7 +87,7 @@ static void iterator_advance(Naui_DirIterator* it)
 	}
 }
 
-Naui_DirIterator naui_dir_iter_open(const Naui_Path path, const char* filter, const char** extensions, bool case_sensitive)
+Naui_DirIterator naui_dir_iterator_open(const Naui_Path path, const char* filter, const char** extensions, bool case_sensitive)
 {
 	Naui_DirIterator it;
 	memset(&it, 0, sizeof(it));
@@ -104,17 +107,17 @@ Naui_DirIterator naui_dir_iter_open(const Naui_Path path, const char* filter, co
 	return it;
 }
 
-void naui_dir_iter_next(Naui_DirIterator* it)
+void naui_dir_iterator_next(Naui_DirIterator* it)
 {
 	iterator_advance(it);
 }
 
-bool naui_dir_iter_valid(const Naui_DirIterator* it)
+bool naui_dir_iterator_valid(const Naui_DirIterator* it)
 {
 	return it->is_valid;
 }
 
-void naui_dir_iter_close(Naui_DirIterator* it)
+void naui_dir_iterator_close(Naui_DirIterator* it)
 {
 	Naui_DirIterInternal* internal = iterator_internal(it);
 	if (internal->dir)
