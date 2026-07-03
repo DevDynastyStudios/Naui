@@ -1025,6 +1025,7 @@ typedef struct mg_xlib_platform
     Display *display;
     Atom wm_delete_window;
     Cursor cursors[MG_CURSOR_MAX];
+    Cursor current_cursor;
     void (*on_event_call)(const mg_app_event *event);
     int screen;
     int32_t window_width, window_height;
@@ -1508,6 +1509,8 @@ int32_t mg_app_run(const mg_app_init_info *info)
         float new_time = mg_xlib_get_time();
         platform.delta_time = new_time - platform.time;
         platform.time = new_time;
+
+        mg_app_set_cursor(MG_CURSOR_ARROW);
  
         if (info->events.update)
             info->events.update();
@@ -1530,6 +1533,9 @@ void mg_app_close(void)
 
 void mg_app_set_cursor(mg_cursor cursor)
 {
+    if (platform.current_cursor == cursor)
+        return;
+    platform.current_cursor = cursor;
     XDefineCursor(platform.display, platform.window, platform.cursors[cursor]);
 }
  
