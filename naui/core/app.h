@@ -23,6 +23,8 @@ NAUI_API void       naui_app_maximize   (void);
 NAUI_API void       naui_app_restore    (void);
 NAUI_API bool       naui_app_maximized  (void);
 
+NAUI_API float      naui_app_dpi_scale  (void);
+
 NAUI_API void       naui_app_set_caption_area   (int32_t x, int32_t y, int32_t width, int32_t height);
 
 #if defined(_WIN32) && defined(NDEBUG)

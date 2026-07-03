@@ -285,6 +285,9 @@ MG_APP_API int8_t mg_app_mouse_scroll_delta(void);
 MG_APP_API int32_t mg_app_mouse_x(void);
 MG_APP_API int32_t mg_app_mouse_y(void);
 
+MG_APP_API uint32_t mg_app_dpi(void);
+MG_APP_API float mg_app_dpi_scale(void);
+
 MG_APP_API void mg_app_set_caption_area(int32_t x, int32_t y, int32_t width, int32_t height);
 
 MG_APP_API void *mg_app_handle(void);
@@ -600,6 +603,7 @@ typedef struct mg_win32_platform
     HWND hwnd;
     HINSTANCE instace;
     int32_t window_width, window_height;
+    uint32_t dpi;
 
     void (*on_event_call)(const mg_app_event *event);
     float time, delta_time;
@@ -728,6 +732,17 @@ static LRESULT CALLBACK mg_win32_process_message(HWND hwnd, uint32_t msg, WPARAM
             });
             break;
         }
+        case WM_DPICHANGED:
+        {
+            platform.dpi = HIWORD(w_param);
+            RECT *suggested = (RECT*)l_param;
+            SetWindowPos(hwnd, NULL,
+                suggested->left, suggested->top,
+                suggested->right - suggested->left,
+                suggested->bottom - suggested->top,
+                SWP_NOZORDER | SWP_NOACTIVATE);
+            break;
+        }
     }
     return DefWindowProcA(hwnd, msg, w_param, l_param);
 }
@@ -850,6 +865,8 @@ int32_t mg_app_run(const mg_app_init_info *info)
         return 1;
     }
 
+    platform.dpi = GetDpiForWindow(platform.hwnd);
+
     if (info->flags & MG_APP_FLAG_NO_TITLEBAR)
     {
         LONG_PTR style = GetWindowLongPtr(platform.hwnd, GWL_STYLE);
@@ -962,6 +979,16 @@ int32_t mg_app_width(void)
 int32_t mg_app_height(void)
 {
     return platform.window_height;
+}
+
+uint32_t mg_app_dpi(void)
+{
+    return platform.dpi;
+}
+
+float mg_app_dpi_scale(void)
+{
+    return (float)platform.dpi / 96.0f;
 }
 
 void mg_app_set_caption_area(int32_t x, int32_t y, int32_t width, int32_t height)

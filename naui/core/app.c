@@ -139,7 +139,6 @@ static void render(void)
     Leaf_RenderCmdList cmd_list = leaf_end_frame();
     render_leaf_cmd_list(&cmd_list);
     naui_renderer_end();
-	naui_widget_reset();
 }
 
 static void __naui_app_event(const mg_app_event* event)
@@ -243,6 +242,11 @@ void naui_app_restore(void)
 bool naui_app_maximized(void)
 {
     return mg_app_maximized();
+}
+
+float naui_app_dpi_scale(void)
+{
+    return mg_app_dpi_scale();
 }
 
 void naui_app_set_caption_area(int32_t x, int32_t y, int32_t width, int32_t height)

@@ -17,6 +17,8 @@ void naui_app_end(void)
 
 void naui_app_update(void)
 {
+	naui_widgets_reset();
+
 	naui_render_main_titlebar("Naui Editor");
 	naui_render_panels_and_viewport();
 }

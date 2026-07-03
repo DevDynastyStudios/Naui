@@ -671,7 +671,7 @@ static void naui_widget_knob_render(Leaf_ID id, const char *label, float *value,
 	}
 }
 
-void naui_widget_reset(void)
+void naui_widgets_reset(void)
 {
 	g_btn_counter = 0;
 	g_toggle_counter = 0;

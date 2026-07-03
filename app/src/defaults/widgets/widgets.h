@@ -5,6 +5,8 @@
 
 #include "utils/list.h"
 
+void naui_widgets_reset(void);
+
 void naui_text(const char* text);
 bool naui_button(const char* label);
 bool naui_toggle(const char* label, bool* value);

@@ -3,6 +3,7 @@
 
 static void naui_render_titlebar_icon_button(Naui_Image *image, Leaf_ID id, Leaf_Color fg_color, Leaf_Color bg_color, void (*event)(void))
 {
+	const float dpi_scale = naui_app_dpi_scale();
 	const bool hovered = leaf_hovered(id);
 	if (hovered)
 	{
@@ -13,13 +14,13 @@ static void naui_render_titlebar_icon_button(Naui_Image *image, Leaf_ID id, Leaf
 	leaf({
 		.id = id,
 		.size = {LEAF_SIZE_FIT, LEAF_SIZE_FIT},
-		.padding = LEAF_PADDING_AXES(8.0f, 8.0f),
+		.padding = LEAF_PADDING_AXES(8.0f * dpi_scale, 8.0f * dpi_scale),
 		.color = hovered ?
 			bg_color :
 			LEAF_COLOR_TRANSPARENT
 	})
 	leaf({
-		.size = {LEAF_SIZE_DERIVED, LEAF_SIZE_FIXED(12.0f)},
+		.size = {LEAF_SIZE_DERIVED, LEAF_SIZE_FIXED(12.0f * dpi_scale)},
 		.image = image,
 		.color = fg_color,
 		.aspect_ratio = 1.0f
@@ -31,7 +32,8 @@ static inline void maximize(void) { naui_defer(naui_app_maximized() ? naui_app_r
 
 void naui_render_main_titlebar(const char *title)
 {
-	const float titlebar_height = 32.0f;
+	const float dpi_scale = naui_app_dpi_scale();
+	const float titlebar_height = 32.0f * dpi_scale;
 	naui_app_set_caption_area(0, 0, naui_app_width() - 80, naui_any_panel_hovered() ? 0 : titlebar_height);
 
 	Naui_Vec2 padding = naui_theme_vec2(NAUI_PANEL_TITLEBAR_PADDING_TAG);
@@ -61,7 +63,7 @@ void naui_render_main_titlebar(const char *title)
 			.child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER}
 		})
 		leaf_text(title, {
-			.font_size = naui_theme_float(NAUI_PANEL_FONT_SIZE_TAG),
+			.font_size = naui_theme_float(NAUI_PANEL_FONT_SIZE_TAG) * dpi_scale,
 			.color = text_color,
 			.alignment = LEAF_TEXT_ALIGN_CENTER
 		});
