@@ -815,10 +815,9 @@ Naui_Vec2 naui_measure_text(const char *text, uint32_t length, float font_size, 
         : &rdata->font_small[font_index];
 
     float scale  = font_size / bake_size;
-    float x      = 0.0f;
+    float x = 0.0f;
     float max_x  = 0.0f;
-    float y_min  = 1e30f;
-    float y_max  = -1e30f;
+    int num_lines = 1;
     int has_glyph = 0;
 
     const char *p   = text;
@@ -829,6 +828,15 @@ Naui_Vec2 naui_measure_text(const char *text, uint32_t length, float font_size, 
         int cp;
         p = naui_utf8_decode(p, &cp);
 
+        if (cp == '\n')
+        {
+            if (x > max_x) max_x = x;
+            x = 0.0f;
+            num_lines++;
+            continue;
+        }
+        if (cp == '\r') continue;
+
         const stbtt_packedchar *bc = naui_tier_lookup(tier, cp);
         if (!bc) bc = naui_tier_lookup(tier, '?');
         if (!bc)
@@ -837,12 +845,6 @@ Naui_Vec2 naui_measure_text(const char *text, uint32_t length, float font_size, 
             continue;
         }
 
-        float glyph_top    = bc->yoff * scale;
-        float glyph_bottom = glyph_top + (bc->y1 - bc->y0) * scale;
-
-        if (glyph_top    < y_min) y_min = glyph_top;
-        if (glyph_bottom > y_max) y_max = glyph_bottom;
-
         x += bc->xadvance * scale;
         if (x > max_x) max_x = x;
         has_glyph = 1;
@@ -850,7 +852,7 @@ Naui_Vec2 naui_measure_text(const char *text, uint32_t length, float font_size, 
 
     if (!has_glyph) return (Naui_Vec2){0};
 
-    return (Naui_Vec2){ .x = max_x, .y = y_max - y_min };
+    return (Naui_Vec2){ .x = max_x, .y = font_size * num_lines };
 }
 
 void naui_draw_text(Naui_Vec2 position, const char *text, float size, uint8_t font_index, Naui_Color color)
@@ -870,14 +872,13 @@ void naui_draw_text(Naui_Vec2 position, const char *text, float size, uint8_t fo
     {
         naui_renderer_flush();
         mgfx_bind_image(
-            use_large ? rdata->font_large[font_index].atlas
-                      : rdata->font_small[font_index].atlas,
+            use_large ? rdata->font_large[font_index].atlas : rdata->font_small[font_index].atlas,
             rdata->font_sampler, 1);
         rdata->font_current_index = wanted;
     }
 
-    float scale     = size / bake_size;
-    float atlas_sz  = (float)tier->atlas_size;
+    float scale    = size / bake_size;
+    float atlas_sz = (float)tier->atlas_size;
 
     float ascent = 0.0f;
     {
@@ -886,6 +887,7 @@ void naui_draw_text(Naui_Vec2 position, const char *text, float size, uint8_t fo
         {
             int cp;
             p = naui_utf8_decode(p, &cp);
+            if (cp == '\n' || cp == '\r') continue;
             const stbtt_packedchar *bc = naui_tier_lookup(tier, cp);
             if (!bc) bc = naui_tier_lookup(tier, '?');
             if (bc)
@@ -896,7 +898,8 @@ void naui_draw_text(Naui_Vec2 position, const char *text, float size, uint8_t fo
         }
     }
 
-    float x = position.x;
+    float start_x = position.x;
+    float x = start_x;
     float y = position.y - ascent;
     uint32_t c = naui_pack_color(color);
 
@@ -904,6 +907,14 @@ void naui_draw_text(Naui_Vec2 position, const char *text, float size, uint8_t fo
     {
         int cp;
         p = naui_utf8_decode(p, &cp);
+
+        if (cp == '\n')
+        {
+            x = start_x;
+            y += size;
+            continue;
+        }
+        if (cp == '\r') continue;
 
         const stbtt_packedchar *bc = naui_tier_lookup(tier, cp);
         if (!bc) bc = naui_tier_lookup(tier, '?');

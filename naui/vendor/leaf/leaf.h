@@ -236,9 +236,6 @@ typedef struct
 }
 Leaf_Floating;
 
-#define LEAF_SHADOW(c, ox, oy, blur) (Leaf_Shadow){ (c), { (ox), (oy) }, (blur) }
-#define LEAF_INNER_SHADOW(c, blur) (Leaf_InnerShadow){ (c), (blur) }
-
 typedef struct
 {
     Leaf_ID id;
