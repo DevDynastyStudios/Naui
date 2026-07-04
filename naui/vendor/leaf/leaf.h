@@ -7,10 +7,6 @@
 extern "C" {
 #endif
 
-#ifndef LEAF_DEFAULT_FONT_SIZE
-    #define LEAF_DEFAULT_FONT_SIZE 16.0f
-#endif
-
 #define LEAF_COLOR_WHITE (Leaf_Color) { 255, 255, 255, 255 }
 #define LEAF_COLOR_TRANSPARENT (Leaf_Color) { 0 }
 
@@ -232,6 +228,14 @@ typedef struct
 }
 Leaf_InnerShadow;
 
+typedef struct
+{
+    Leaf_Alignment parent_alignment;
+    Leaf_Alignment self_alignment;
+    Leaf_Vec2 offset;
+}
+Leaf_Floating;
+
 #define LEAF_SHADOW(c, ox, oy, blur) (Leaf_Shadow){ (c), { (ox), (oy) }, (blur) }
 #define LEAF_INNER_SHADOW(c, blur) (Leaf_InnerShadow){ (c), (blur) }
 
@@ -247,10 +251,10 @@ typedef struct
     Leaf_Padding padding;
     Leaf_Border border;
     Leaf_ColorFill color;
-    Leaf_Vec2 floating_offset;
     Leaf_Vec2 child_offset;
     Leaf_Alignment child_alignment;
-    Leaf_Alignment floating_alignment;
+
+    Leaf_Floating floating;
 
     Leaf_Shadow shadow;
     Leaf_InnerShadow inner_shadow;
@@ -777,7 +781,7 @@ static float leaf_resolve_font_size(const Leaf_SizeAxis *axis, Leaf_Node *parent
 
     case LEAF_SIZE_TYPE_FIT:
     default:
-        return axis->size.min_max.min > 0.0f ? axis->size.min_max.min : LEAF_DEFAULT_FONT_SIZE;
+        return axis->size.min_max.min;
 
     case LEAF_SIZE_TYPE_PERCENT:
     case LEAF_SIZE_TYPE_GROW:
@@ -1549,18 +1553,30 @@ static void leaf_position_render(Leaf_Node *parent)
                 else
                     anchor = leaf_ctx->stack[0]->bounding_box;
 
-                float align_x = 0.0f, align_y = 0.0f;
-                if (child_config->floating_alignment.x == LEAF_ALIGN_X_RIGHT)
-                    align_x = anchor.width  - child->bounding_box.width;
-                else if (child_config->floating_alignment.x == LEAF_ALIGN_X_CENTER)
-                    align_x = (anchor.width  - child->bounding_box.width)  * 0.5f;
-                if (child_config->floating_alignment.y == LEAF_ALIGN_Y_BOTTOM)
-                    align_y = anchor.height - child->bounding_box.height;
-                else if (child_config->floating_alignment.y == LEAF_ALIGN_Y_CENTER)
-                    align_y = (anchor.height - child->bounding_box.height) * 0.5f;
+                float anchor_x = anchor.x, anchor_y = anchor.y;
+                if (child_config->floating.parent_alignment.x == LEAF_ALIGN_X_RIGHT)
+                    anchor_x += anchor.width;
+                else if (child_config->floating.parent_alignment.x == LEAF_ALIGN_X_CENTER)
+                    anchor_x += anchor.width * 0.5f;
 
-                child->bounding_box.x = anchor.x + align_x + child_config->floating_offset.x;
-                child->bounding_box.y = anchor.y + align_y + child_config->floating_offset.y;
+                if (child_config->floating.parent_alignment.y == LEAF_ALIGN_Y_BOTTOM)
+                    anchor_y += anchor.height;
+                else if (child_config->floating.parent_alignment.y == LEAF_ALIGN_Y_CENTER)
+                    anchor_y += anchor.height * 0.5f;
+
+                float elem_dx = 0.0f, elem_dy = 0.0f;
+                if (child_config->floating.self_alignment.x == LEAF_ALIGN_X_RIGHT)
+                    elem_dx = child->bounding_box.width;
+                else if (child_config->floating.self_alignment.x == LEAF_ALIGN_X_CENTER)
+                    elem_dx = child->bounding_box.width * 0.5f;
+
+                if (child_config->floating.self_alignment.y == LEAF_ALIGN_Y_BOTTOM)
+                    elem_dy = child->bounding_box.height;
+                else if (child_config->floating.self_alignment.y == LEAF_ALIGN_Y_CENTER)
+                    elem_dy = child->bounding_box.height * 0.5f;
+
+                child->bounding_box.x = anchor_x - elem_dx + child_config->floating.offset.x;
+                child->bounding_box.y = anchor_y - elem_dy + child_config->floating.offset.y;
 
                 leaf_render_node(child);
                 if (child_config->clip_children)

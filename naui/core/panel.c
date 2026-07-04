@@ -568,8 +568,11 @@ static void naui_render_dock_guides(Naui_PanelNode *node)
     leaf({
         .positioning = LEAF_POSITIONING_FLOATING_TO_PARENT,
         .size = size,
-        .floating_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER},
         .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER},
+        .floating = {
+            .parent_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER},
+            .self_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER}
+        },
         .aspect_ratio = 1.0f,
         .child_gap = 8.0f
     })
@@ -585,8 +588,11 @@ static void naui_render_dock_guides(Naui_PanelNode *node)
         .positioning = LEAF_POSITIONING_FLOATING_TO_PARENT,
         .direction = LEAF_DIRECTION_HORIZONAL,
         .size = size,
-        .floating_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER},
         .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER},
+        .floating = {
+            .parent_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER},
+            .self_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER}
+        },
         .aspect_ratio = 1.0f,
         .child_gap = 8.0f
     })
@@ -650,7 +656,10 @@ static inline void naui_render_basic_panel_titlebar(Naui_PanelNode *node)
         leaf({
             .positioning = LEAF_POSITIONING_FLOATING_TO_PARENT,
             .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER},
-            .floating_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER}
+            .floating = {
+                .parent_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER},
+                .self_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER}
+            }
         })
         leaf_text(node->title, {
             .font_size = font_size,
@@ -660,7 +669,10 @@ static inline void naui_render_basic_panel_titlebar(Naui_PanelNode *node)
 
         leaf({
             .positioning = LEAF_POSITIONING_FLOATING_TO_PARENT,
-            .floating_alignment = {LEAF_ALIGN_X_RIGHT, LEAF_ALIGN_Y_CENTER},
+            .floating = {
+                .parent_alignment = {LEAF_ALIGN_X_RIGHT, LEAF_ALIGN_Y_CENTER},
+                .self_alignment = {LEAF_ALIGN_X_RIGHT, LEAF_ALIGN_Y_CENTER}
+            },
             .padding = LEAF_PADDING_AXES(padding.x * 0.5f, padding.y)
         })
 
@@ -837,7 +849,7 @@ static void naui_render_panel(Naui_PanelNode *node)
         .id = leaf_id_indexed(NAUI_ROOT_PANEL_ID, (Naui_PanelID)node),
         .positioning = LEAF_POSITIONING_FLOATING_TO_ROOT,
         .size = {LEAF_SIZE_FIXED(node->size.x), LEAF_SIZE_FIXED(node->size.y)},
-        .floating_offset = {node->position.x, node->position.y},
+        .floating.offset = {node->position.x, node->position.y},
         .border = {
             .width = naui_theme_float(NAUI_PANEL_BORDER_WIDTH_TAG),
             .sides = LEAF_SIDE_ALL,
@@ -885,7 +897,10 @@ static void naui_render_main_viewport(void)
             leaf({
                 .positioning = LEAF_POSITIONING_FLOATING_TO_PARENT,
                 .size = {LEAF_SIZE_DERIVED, LEAF_SIZE_FIXED(128.0f)},
-                .floating_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER},
+                .floating = {
+                    .parent_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER},
+                    .self_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER}
+                },
                 .aspect_ratio = 1.0f
             })
             {
@@ -904,7 +919,7 @@ static void naui_render_dock_guide_area(void)
     leaf({
         .positioning = LEAF_POSITIONING_FLOATING_TO_ROOT,
         .size = {LEAF_SIZE_FIXED(pm.dock_guide_area.width), LEAF_SIZE_FIXED(pm.dock_guide_area.height)},
-        .floating_offset = {pm.dock_guide_area.x, pm.dock_guide_area.y},
+        .floating.offset = {pm.dock_guide_area.x, pm.dock_guide_area.y},
         .color = naui_theme_leaf_color(NAUI_DOCK_GUIDE_HOVERED_COLOR_TAG)
     });
 }
