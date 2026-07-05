@@ -1,7 +1,11 @@
 #include "tooltip.h"
+#include <naui/core/panel.h>
 
 bool naui_tooltip_begin(Leaf_ID anchor_id)
 {
+    if (!naui_panel_hovered(naui_current_panel()))
+        return false;
+
     bool hovered = leaf_hovered(anchor_id);
 
     if (hovered)
