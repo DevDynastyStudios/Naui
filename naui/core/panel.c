@@ -493,7 +493,7 @@ static bool naui_point_occluded_above(float mx, float my, Naui_PanelNode *root)
 
 bool naui_panel_hovered(Naui_PanelID panel_id)
 {
-    return !((Naui_PanelNode*)panel_id)->occluded;
+    return !panel_id || !((Naui_PanelNode*)panel_id)->occluded;
 }
 
 bool naui_any_panel_hovered(void)

@@ -1521,6 +1521,9 @@ void naui_draw_gradient_image(const Naui_Image *image, Naui_Vec2 position, Naui_
 
 void naui_draw_shadow(Naui_Vec2 position, Naui_Vec2 scale, float blur_radius, Naui_Color color, float rounding, Naui_CornerFlags corners)
 {
+    if (blur_radius <= 0.0f)
+        return;
+
     float r  = naui_min(rounding, naui_min(scale.x, scale.y) * 0.5f);
     float br = blur_radius;
 
@@ -1609,6 +1612,9 @@ void naui_draw_shadow(Naui_Vec2 position, Naui_Vec2 scale, float blur_radius, Na
 
 void naui_draw_inner_shadow(Naui_Vec2 position, Naui_Vec2 scale, float blur_radius, Naui_Color color)
 {
+    if (blur_radius <= 0.0f)
+        return;
+
     float x0 = position.x, y0 = position.y;
     float x1 = position.x + scale.x, y1 = position.y + scale.y;
     float br = blur_radius;
