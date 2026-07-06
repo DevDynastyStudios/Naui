@@ -1637,10 +1637,7 @@ static void leaf_position_render(Leaf_Node *parent)
         }
         else
         {
-            float layout_w = (child->type == LEAF_NODE_TYPE_TEXT) ? 0.0f : child->bounding_box.width;
-            float layout_h = (child->type == LEAF_NODE_TYPE_TEXT) ? 0.0f : child->bounding_box.height;
-
-            float child_cross = LEAF_CROSS(h, layout_w, layout_h);
+            float child_cross = LEAF_CROSS(h, child->bounding_box.width, child->bounding_box.height);
             float free_cross  = available_cross - child_cross;
             float cross_offset =
                 LEAF_CROSS(h, parent_config->padding.left, parent_config->padding.top) +
@@ -1650,20 +1647,8 @@ static void leaf_position_render(Leaf_Node *parent)
                     LEAF_CROSS(h, LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER),
                     free_cross);
 
-            child->bounding_box.x = parent->bounding_box.x
-                + LEAF_MAIN (h, main_offset,  cross_offset)
-                - parent_config->child_offset.x;
-            child->bounding_box.y = parent->bounding_box.y
-                + LEAF_CROSS(h, main_offset,  cross_offset)
-                - parent_config->child_offset.y;
-
-            if (child->type == LEAF_NODE_TYPE_TEXT) {
-                const Leaf_TextConfig *tc = &child->text.config;
-                if (tc->alignment == LEAF_TEXT_ALIGN_CENTER)
-                    child->bounding_box.x -= child->bounding_box.width * 0.5f;
-                else if (tc->alignment == LEAF_TEXT_ALIGN_RIGHT)
-                    child->bounding_box.x -= child->bounding_box.width;
-            }
+            child->bounding_box.x = parent->bounding_box.x + LEAF_MAIN (h, main_offset,  cross_offset) - parent_config->child_offset.x;
+            child->bounding_box.y = parent->bounding_box.y + LEAF_CROSS(h, main_offset,  cross_offset) - parent_config->child_offset.y;
         }
 
         leaf_render_node(child);

@@ -88,6 +88,8 @@ typedef struct
     int             range_count;
     mgfx_image      atlas;
     int             atlas_size;
+    float           ascent;
+    float           descent;
 }
 Naui_FontTier;
 
@@ -721,6 +723,12 @@ static int naui_bake_font_tier(
     if (!stbtt_InitFont(&info, ttf_buf, 0))
         return 0;
 
+    int raw_ascent, raw_descent, raw_line_gap;
+    stbtt_GetFontVMetrics(&info, &raw_ascent, &raw_descent, &raw_line_gap);
+    float font_scale = stbtt_ScaleForPixelHeight(&info, bake_size);
+    tier->ascent  = raw_ascent  * font_scale;
+    tier->descent = -raw_descent * font_scale;
+
     int total_codepoints = 0;
     for (int b = 0; b < K_NUM_UNICODE_BLOCKS; b++)
         total_codepoints += k_unicode_blocks[b].count;
@@ -973,27 +981,19 @@ void naui_draw_text(Naui_Vec2 position, const char *text, float size, uint8_t fo
     float scale    = size / bake_size;
     float atlas_sz = (float)tier->atlas_size;
 
-    float ascent = 0.0f;
-    {
-        const char *p = text;
-        while (*p)
-        {
-            int cp;
-            p = naui_utf8_decode(p, &cp);
-            if (cp == '\n' || cp == '\r') continue;
-            const stbtt_packedchar *bc = naui_tier_lookup(tier, cp);
-            if (!bc) bc = naui_tier_lookup(tier, '?');
-            if (bc)
-            {
-                float top = bc->yoff * scale;
-                if (top < ascent) ascent = top;
-            }
-        }
-    }
+    int num_lines = 1;
+    for (const char *p = text; *p; p++)
+        if (*p == '\n') num_lines++;
 
-    float start_x = position.x;
+    float line_ascent  = tier->ascent  * scale;
+    float line_descent = tier->descent * scale;
+    float line_height  = line_ascent + line_descent;
+
+    float start_x   = position.x;
+    float block_top = position.y;
     float x = start_x;
-    float y = position.y - ascent;
+    float y = block_top + line_ascent;
+
     uint32_t c = naui_pack_color(color);
 
     for (const char *p = text; *p; )
@@ -1004,7 +1004,7 @@ void naui_draw_text(Naui_Vec2 position, const char *text, float size, uint8_t fo
         if (cp == '\n')
         {
             x = start_x;
-            y += size;
+            y += line_height;
             continue;
         }
         if (cp == '\r') continue;
