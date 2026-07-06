@@ -13,7 +13,8 @@
 #include <stdio.h>
 #include <math.h>
 
-#define NAUI_RENDERER_MAX_GEOMETRY (1 << 14)
+#define NAUI_RENDERER_MAX_VERTICES (1 << 16)
+#define NAUI_RENDERER_MAX_INDICES (NAUI_RENDERER_MAX_VERTICES * 6 / 4)
 #define NAUI_RENDERER_CORNER_SEGMENTS 8
 
 #define NAUI_FONT_ATLAS_SIZE_SMALL  1024
@@ -32,18 +33,18 @@
 
 static const struct { int start; int count; } k_unicode_blocks[] =
 {
-    { 0x0020,   96 },   /* Basic Latin                    */
-    { 0x00A0,   96 },   /* Latin-1 Supplement             */
-    { 0x0100,  128 },   /* Latin Extended-A/B             */
-    { 0x0370,  144 },   /* Greek & Coptic                 */
-    { 0x0400,  128 },   /* Cyrillic                       */
-    { 0x3000,   64 },   /* CJK Symbols & Punctuation      */
-    { 0x3040,   96 },   /* Hiragana                       */
-    { 0x30A0,   96 },   /* Katakana                       */
-    { 0x3400, 6592 },   /* CJK Extension A                */
-    { 0x4E00,20902 },   /* CJK Unified Ideographs         */
-    { 0xF900,  512 },   /* CJK Compatibility Ideographs   */
-    { 0xFF00,   94 },   /* Halfwidth/Fullwidth Forms       */
+    { 0x0020,   96 },
+    { 0x00A0,   96 },
+    { 0x0100,  128 },
+    { 0x0370,  144 },
+    { 0x0400,  128 },
+    { 0x3000,   64 },
+    { 0x3040,   96 },
+    { 0x30A0,   96 },
+    { 0x3400, 6592 },
+    { 0x4E00,20902 },
+    { 0xF900,  512 },
+    { 0xFF00,   94 },
 };
 #define K_NUM_UNICODE_BLOCKS (int)(sizeof(k_unicode_blocks)/sizeof(k_unicode_blocks[0]))
 
@@ -66,12 +67,6 @@ typedef struct
     int32_t texture_id;
 }
 Naui_BatchVertex;
-
-typedef struct
-{
-    Naui_BatchVertex vertices[4];
-}
-Naui_BatchGeometry;
 
 typedef struct
 {
@@ -98,10 +93,13 @@ Naui_FontTier;
 
 typedef struct
 {
-    Naui_BatchGeometry geometry_vertices[NAUI_RENDERER_MAX_GEOMETRY];
-    uint32_t geometry_indices[NAUI_RENDERER_MAX_GEOMETRY * 6];
-    uint32_t geometry_count;
-    uint32_t geometry_offset;
+    Naui_BatchVertex vertices[NAUI_RENDERER_MAX_VERTICES];
+    uint32_t vertex_count;
+    uint32_t vertex_offset;
+
+    uint32_t indices[NAUI_RENDERER_MAX_INDICES];
+    uint32_t index_count;
+    uint32_t index_offset;
 
     mgfx_pipeline base_pipeline;
     mgfx_buffer batch_vb, batch_ib;
@@ -223,10 +221,15 @@ static Naui_GradientAxis naui_gradient_axis(Naui_Vec2 tl, Naui_Vec2 br, float an
     return (Naui_GradientAxis){ dx, dy, mn, range };
 }
 
-static inline uint32_t naui_gradient_color_at(const Naui_Gradient *g, const Naui_GradientAxis *axis, float px, float py)
+static inline float naui_gradient_axis_t(const Naui_GradientAxis *axis, float px, float py)
 {
     float t = (px * axis->dx + py * axis->dy - axis->mn) / axis->range;
-    t = naui_clamp01(t);
+    return naui_clamp01(t);
+}
+
+static inline uint32_t naui_gradient_color_at(const Naui_Gradient *g, const Naui_GradientAxis *axis, float px, float py)
+{
+    float t = naui_gradient_axis_t(axis, px, py);
 
     float p1 = g->percent1;
     float p2 = g->percent2;
@@ -257,73 +260,72 @@ static void naui_apply_scissor(void)
 
 static void naui_renderer_flush(void)
 {
-    if (rdata->geometry_count == rdata->geometry_offset) return;
+    if (rdata->index_count == rdata->index_offset) return;
 
-    uint32_t count  = rdata->geometry_count - rdata->geometry_offset;
-    size_t   vb_off = rdata->geometry_offset * sizeof(Naui_BatchGeometry);
-    size_t   ib_off = rdata->geometry_offset * 6 * sizeof(uint32_t);
+    uint32_t vcount  = rdata->vertex_count - rdata->vertex_offset;
+    uint32_t icount  = rdata->index_count - rdata->index_offset;
+    size_t   vb_off  = rdata->vertex_offset * sizeof(Naui_BatchVertex);
+    size_t   ib_off  = rdata->index_offset * sizeof(uint32_t);
 
-    mgfx_update_buffer(rdata->batch_vb, vb_off, count * sizeof(Naui_BatchGeometry), rdata->geometry_vertices + rdata->geometry_offset);
-    mgfx_update_buffer(rdata->batch_ib, ib_off, count * 6 * sizeof(uint32_t), rdata->geometry_indices + rdata->geometry_offset * 6);
+    mgfx_update_buffer(rdata->batch_vb, vb_off, vcount * sizeof(Naui_BatchVertex), rdata->vertices + rdata->vertex_offset);
+    mgfx_update_buffer(rdata->batch_ib, ib_off, icount * sizeof(uint32_t), rdata->indices + rdata->index_offset);
 
-    mgfx_draw_indexed(count * 6, rdata->geometry_offset * 6, 0);
+    mgfx_draw_indexed(icount, rdata->index_offset, 0);
 
-    rdata->geometry_offset = rdata->geometry_count;
+    rdata->vertex_offset = rdata->vertex_count;
+    rdata->index_offset = rdata->index_count;
 }
 
 static void naui_push_quad4(Naui_Vec2 a, Naui_Vec2 b, Naui_Vec2 c, Naui_Vec2 d, uint32_t color, int32_t texture_id)
 {
-    uint32_t i = rdata->geometry_count;
-    Naui_BatchGeometry *g = &rdata->geometry_vertices[i];
+    uint32_t base = rdata->vertex_count;
+    Naui_BatchVertex *v = &rdata->vertices[base];
 
-    g->vertices[0] = (Naui_BatchVertex){ {a.x, a.y}, {0, 0}, color, texture_id };
-    g->vertices[1] = (Naui_BatchVertex){ {b.x, b.y}, {0, 0}, color, texture_id };
-    g->vertices[2] = (Naui_BatchVertex){ {c.x, c.y}, {0, 0}, color, texture_id };
-    g->vertices[3] = (Naui_BatchVertex){ {d.x, d.y}, {0, 0}, color, texture_id };
+    v[0] = (Naui_BatchVertex){ {a.x, a.y}, {0, 0}, color, texture_id };
+    v[1] = (Naui_BatchVertex){ {b.x, b.y}, {0, 0}, color, texture_id };
+    v[2] = (Naui_BatchVertex){ {c.x, c.y}, {0, 0}, color, texture_id };
+    v[3] = (Naui_BatchVertex){ {d.x, d.y}, {0, 0}, color, texture_id };
+    rdata->vertex_count += 4;
 
-    uint32_t base = i * 4;
-    uint32_t *idx = &rdata->geometry_indices[i * 6];
+    uint32_t *idx = &rdata->indices[rdata->index_count];
     idx[0] = base + 0; idx[1] = base + 1; idx[2] = base + 2;
     idx[3] = base + 2; idx[4] = base + 3; idx[5] = base + 0;
-
-    rdata->geometry_count++;
+    rdata->index_count += 6;
 }
 
 static void naui_push_gradient_quad4(Naui_Vec2 a, Naui_Vec2 b, Naui_Vec2 c, Naui_Vec2 d,
     uint32_t ca, uint32_t cb, uint32_t cc, uint32_t cd, int32_t texture_id)
 {
-    uint32_t i = rdata->geometry_count;
-    Naui_BatchGeometry *g = &rdata->geometry_vertices[i];
+    uint32_t base = rdata->vertex_count;
+    Naui_BatchVertex *v = &rdata->vertices[base];
 
-    g->vertices[0] = (Naui_BatchVertex){ {a.x, a.y}, {0, 0}, ca, texture_id };
-    g->vertices[1] = (Naui_BatchVertex){ {b.x, b.y}, {0, 0}, cb, texture_id };
-    g->vertices[2] = (Naui_BatchVertex){ {c.x, c.y}, {0, 0}, cc, texture_id };
-    g->vertices[3] = (Naui_BatchVertex){ {d.x, d.y}, {0, 0}, cd, texture_id };
+    v[0] = (Naui_BatchVertex){ {a.x, a.y}, {0, 0}, ca, texture_id };
+    v[1] = (Naui_BatchVertex){ {b.x, b.y}, {0, 0}, cb, texture_id };
+    v[2] = (Naui_BatchVertex){ {c.x, c.y}, {0, 0}, cc, texture_id };
+    v[3] = (Naui_BatchVertex){ {d.x, d.y}, {0, 0}, cd, texture_id };
+    rdata->vertex_count += 4;
 
-    uint32_t base = i * 4;
-    uint32_t *idx = &rdata->geometry_indices[i * 6];
+    uint32_t *idx = &rdata->indices[rdata->index_count];
     idx[0] = base + 0; idx[1] = base + 1; idx[2] = base + 2;
     idx[3] = base + 2; idx[4] = base + 3; idx[5] = base + 0;
-
-    rdata->geometry_count++;
+    rdata->index_count += 6;
 }
 
 static void naui_push_textured_quad4(Naui_Vec2 a, Naui_Vec2 b, Naui_Vec2 c, Naui_Vec2 d, Naui_Vec4 texture_area, uint32_t color, int32_t texture_id)
 {
-    uint32_t i = rdata->geometry_count;
-    Naui_BatchGeometry *g = &rdata->geometry_vertices[i];
+    uint32_t base = rdata->vertex_count;
+    Naui_BatchVertex *v = &rdata->vertices[base];
 
-    g->vertices[0] = (Naui_BatchVertex){ {a.x, a.y}, {texture_area.x,                  texture_area.y},                  color, texture_id };
-    g->vertices[1] = (Naui_BatchVertex){ {b.x, b.y}, {texture_area.x + texture_area.z, texture_area.y},                  color, texture_id };
-    g->vertices[2] = (Naui_BatchVertex){ {c.x, c.y}, {texture_area.x + texture_area.z, texture_area.y + texture_area.w}, color, texture_id };
-    g->vertices[3] = (Naui_BatchVertex){ {d.x, d.y}, {texture_area.x,                  texture_area.y + texture_area.w}, color, texture_id };
+    v[0] = (Naui_BatchVertex){ {a.x, a.y}, {texture_area.x,                  texture_area.y},                  color, texture_id };
+    v[1] = (Naui_BatchVertex){ {b.x, b.y}, {texture_area.x + texture_area.z, texture_area.y},                  color, texture_id };
+    v[2] = (Naui_BatchVertex){ {c.x, c.y}, {texture_area.x + texture_area.z, texture_area.y + texture_area.w}, color, texture_id };
+    v[3] = (Naui_BatchVertex){ {d.x, d.y}, {texture_area.x,                  texture_area.y + texture_area.w}, color, texture_id };
+    rdata->vertex_count += 4;
 
-    uint32_t base = i * 4;
-    uint32_t *idx = &rdata->geometry_indices[i * 6];
+    uint32_t *idx = &rdata->indices[rdata->index_count];
     idx[0] = base + 0; idx[1] = base + 1; idx[2] = base + 2;
     idx[3] = base + 2; idx[4] = base + 3; idx[5] = base + 0;
-
-    rdata->geometry_count++;
+    rdata->index_count += 6;
 }
 
 static void naui_push_rect(Naui_Vec2 tl, Naui_Vec2 br, uint32_t color, int32_t texture_id)
@@ -334,22 +336,6 @@ static void naui_push_rect(Naui_Vec2 tl, Naui_Vec2 br, uint32_t color, int32_t t
         (Naui_Vec2){br.x, br.y},
         (Naui_Vec2){tl.x, br.y},
         color, texture_id
-    );
-}
-
-static void naui_push_gradient_rect(Naui_Vec2 tl, Naui_Vec2 br,
-    const Naui_Gradient *g, const Naui_GradientAxis *axis, int32_t texture_id)
-{
-    naui_push_gradient_quad4(
-        (Naui_Vec2){tl.x, tl.y},
-        (Naui_Vec2){br.x, tl.y},
-        (Naui_Vec2){br.x, br.y},
-        (Naui_Vec2){tl.x, br.y},
-        naui_gradient_color_at(g, axis, tl.x, tl.y),
-        naui_gradient_color_at(g, axis, br.x, tl.y),
-        naui_gradient_color_at(g, axis, br.x, br.y),
-        naui_gradient_color_at(g, axis, tl.x, br.y),
-        texture_id
     );
 }
 
@@ -367,39 +353,148 @@ static void naui_push_textured_rect(Naui_Vec2 tl, Naui_Vec2 br, Naui_Vec4 uv, ui
 
 static void naui_push_triangle(Naui_Vec2 a, Naui_Vec2 b, Naui_Vec2 c, uint32_t color)
 {
-    uint32_t i = rdata->geometry_count;
-    Naui_BatchGeometry *g = &rdata->geometry_vertices[i];
+    uint32_t base = rdata->vertex_count;
+    Naui_BatchVertex *v = &rdata->vertices[base];
 
-    g->vertices[0] = (Naui_BatchVertex){ {a.x, a.y}, {0, 0}, color, -1 };
-    g->vertices[1] = (Naui_BatchVertex){ {b.x, b.y}, {0, 0}, color, -1 };
-    g->vertices[2] = (Naui_BatchVertex){ {c.x, c.y}, {0, 0}, color, -1 };
-    g->vertices[3] = g->vertices[2];
+    v[0] = (Naui_BatchVertex){ {a.x, a.y}, {0, 0}, color, -1 };
+    v[1] = (Naui_BatchVertex){ {b.x, b.y}, {0, 0}, color, -1 };
+    v[2] = (Naui_BatchVertex){ {c.x, c.y}, {0, 0}, color, -1 };
+    rdata->vertex_count += 3;
 
-    uint32_t base = i * 4;
-    uint32_t *idx = &rdata->geometry_indices[i * 6];
+    uint32_t *idx = &rdata->indices[rdata->index_count];
     idx[0] = base + 0; idx[1] = base + 1; idx[2] = base + 2;
-    idx[3] = base + 2; idx[4] = base + 3; idx[5] = base + 2;
-
-    rdata->geometry_count++;
+    rdata->index_count += 3;
 }
 
 static void naui_push_gradient_triangle(Naui_Vec2 a, Naui_Vec2 b, Naui_Vec2 c,
     uint32_t ca, uint32_t cb, uint32_t cc)
 {
-    uint32_t i = rdata->geometry_count;
-    Naui_BatchGeometry *g = &rdata->geometry_vertices[i];
+    uint32_t base = rdata->vertex_count;
+    Naui_BatchVertex *v = &rdata->vertices[base];
 
-    g->vertices[0] = (Naui_BatchVertex){ {a.x, a.y}, {0, 0}, ca, -1 };
-    g->vertices[1] = (Naui_BatchVertex){ {b.x, b.y}, {0, 0}, cb, -1 };
-    g->vertices[2] = (Naui_BatchVertex){ {c.x, c.y}, {0, 0}, cc, -1 };
-    g->vertices[3] = g->vertices[2];
+    v[0] = (Naui_BatchVertex){ {a.x, a.y}, {0, 0}, ca, -1 };
+    v[1] = (Naui_BatchVertex){ {b.x, b.y}, {0, 0}, cb, -1 };
+    v[2] = (Naui_BatchVertex){ {c.x, c.y}, {0, 0}, cc, -1 };
+    rdata->vertex_count += 3;
 
-    uint32_t base = i * 4;
-    uint32_t *idx = &rdata->geometry_indices[i * 6];
+    uint32_t *idx = &rdata->indices[rdata->index_count];
     idx[0] = base + 0; idx[1] = base + 1; idx[2] = base + 2;
-    idx[3] = base + 2; idx[4] = base + 3; idx[5] = base + 2;
+    rdata->index_count += 3;
+}
 
-    rdata->geometry_count++;
+#define NAUI_GRADIENT_CLIP_MAX_VERTS 8
+
+typedef struct
+{
+    Naui_Vec2 p[NAUI_GRADIENT_CLIP_MAX_VERTS];
+    int count;
+}
+Naui_GradientPoly;
+
+static Naui_GradientPoly naui_clip_poly_by_t(const Naui_GradientPoly *in, const Naui_GradientAxis *axis, float line_t, int keep_ge)
+{
+    Naui_GradientPoly out = { .count = 0 };
+    if (in->count == 0) return out;
+
+    for (int i = 0; i < in->count; i++)
+    {
+        Naui_Vec2 cur  = in->p[i];
+        Naui_Vec2 next = in->p[(i + 1) % in->count];
+
+        float t_cur  = naui_gradient_axis_t(axis, cur.x, cur.y);
+        float t_next = naui_gradient_axis_t(axis, next.x, next.y);
+
+        int cur_in  = keep_ge ? (t_cur  >= line_t) : (t_cur  <= line_t);
+        int next_in = keep_ge ? (t_next >= line_t) : (t_next <= line_t);
+
+        if (cur_in && out.count < NAUI_GRADIENT_CLIP_MAX_VERTS)
+            out.p[out.count++] = cur;
+
+        if (cur_in != next_in)
+        {
+            float denom = t_next - t_cur;
+            float f = (fabsf(denom) < 1e-8f) ? 0.0f : (line_t - t_cur) / denom;
+            f = naui_clamp01(f);
+
+            Naui_Vec2 ix = { cur.x + (next.x - cur.x) * f, cur.y + (next.y - cur.y) * f };
+            if (out.count < NAUI_GRADIENT_CLIP_MAX_VERTS)
+                out.p[out.count++] = ix;
+        }
+    }
+
+    return out;
+}
+
+static void naui_push_gradient_polygon(const Naui_GradientPoly *poly, const Naui_Gradient *g, const Naui_GradientAxis *axis)
+{
+    if (poly->count < 3) return;
+
+    Naui_Vec2 p0 = poly->p[0];
+    uint32_t  c0 = naui_gradient_color_at(g, axis, p0.x, p0.y);
+
+    for (int i = 1; i + 1 < poly->count; i++)
+    {
+        Naui_Vec2 p1 = poly->p[i];
+        Naui_Vec2 p2 = poly->p[i + 1];
+        naui_push_gradient_triangle(
+            p0, p1, p2,
+            c0,
+            naui_gradient_color_at(g, axis, p1.x, p1.y),
+            naui_gradient_color_at(g, axis, p2.x, p2.y)
+        );
+    }
+}
+
+static void naui_push_flat_polygon(const Naui_GradientPoly *poly, uint32_t color)
+{
+    if (poly->count < 3) return;
+
+    Naui_Vec2 p0 = poly->p[0];
+    for (int i = 1; i + 1 < poly->count; i++)
+        naui_push_gradient_triangle(p0, poly->p[i], poly->p[i + 1], color, color, color);
+}
+
+static void naui_push_gradient_convex(const Naui_Vec2 *verts, int vert_count, const Naui_Gradient *g, const Naui_GradientAxis *axis)
+{
+    if (vert_count < 3 || vert_count > NAUI_GRADIENT_CLIP_MAX_VERTS) return;
+
+    Naui_GradientPoly src = { .count = vert_count };
+    for (int i = 0; i < vert_count; i++) src.p[i] = verts[i];
+
+    float p1 = naui_clamp01(g->percent1);
+    float p2 = naui_clamp01(g->percent2);
+
+    uint32_t c1 = naui_pack_color(g->color1);
+    uint32_t c2 = naui_pack_color(g->color2);
+
+    if (p2 <= p1)
+    {
+        Naui_GradientPoly before = naui_clip_poly_by_t(&src, axis, p1, 0);
+        Naui_GradientPoly after  = naui_clip_poly_by_t(&src, axis, p1, 1);
+        naui_push_flat_polygon(&before, c1);
+        naui_push_flat_polygon(&after,  c2);
+        return;
+    }
+
+    Naui_GradientPoly flat_lo = naui_clip_poly_by_t(&src, axis, p1, 0);
+    Naui_GradientPoly rest    = naui_clip_poly_by_t(&src, axis, p1, 1);
+    Naui_GradientPoly ramp    = naui_clip_poly_by_t(&rest, axis, p2, 0);
+    Naui_GradientPoly flat_hi = naui_clip_poly_by_t(&rest, axis, p2, 1);
+
+    naui_push_flat_polygon(&flat_lo, c1);
+    naui_push_gradient_polygon(&ramp, g, axis);
+    naui_push_flat_polygon(&flat_hi, c2);
+}
+
+static void naui_push_gradient_rect(Naui_Vec2 tl, Naui_Vec2 br, const Naui_Gradient *g, const Naui_GradientAxis *axis)
+{
+    Naui_Vec2 verts[4] = {
+        { tl.x, tl.y },
+        { br.x, tl.y },
+        { br.x, br.y },
+        { tl.x, br.y },
+    };
+    naui_push_gradient_convex(verts, 4, g, axis);
 }
 
 static void naui_push_corner_fan(Naui_Vec2 center, float r, float ax, float ay, uint32_t color)
@@ -419,12 +514,8 @@ static void naui_push_gradient_corner_fan(Naui_Vec2 center, float r, float ax, f
     {
         Naui_Vec2 p0 = { center.x + ax * s_cos[s]     * r, center.y + ay * s_sin[s]     * r };
         Naui_Vec2 p1 = { center.x + ax * s_cos[s + 1] * r, center.y + ay * s_sin[s + 1] * r };
-        naui_push_gradient_triangle(
-            center, p0, p1,
-            naui_gradient_color_at(g, axis, center.x, center.y),
-            naui_gradient_color_at(g, axis, p0.x, p0.y),
-            naui_gradient_color_at(g, axis, p1.x, p1.y)
-        );
+        Naui_Vec2 tri[3] = { center, p0, p1 };
+        naui_push_gradient_convex(tri, 3, g, axis);
     }
 }
 
@@ -477,13 +568,13 @@ void naui_renderer_initialize(void)
     rdata->batch_vb = mgfx_create_buffer(&(mgfx_buffer_create_info){
         .usage  = MGFX_BUFFER_USAGE_VERTEX,
         .access = MGFX_ACCESS_CPU,
-        .size   = sizeof(rdata->geometry_vertices)
+        .size   = sizeof(rdata->vertices)
     });
 
     rdata->batch_ib = mgfx_create_buffer(&(mgfx_buffer_create_info){
         .usage  = MGFX_BUFFER_USAGE_INDEX,
         .access = MGFX_ACCESS_CPU,
-        .size   = sizeof(rdata->geometry_indices)
+        .size   = sizeof(rdata->indices)
     });
 
     rdata->base_pipeline = mgfx_create_pipeline(&(mgfx_pipeline_create_info){
@@ -563,8 +654,10 @@ void naui_renderer_resize(int32_t width, int32_t height)
 
 void naui_renderer_begin(void)
 {
-    rdata->geometry_count = 0;
-    rdata->geometry_offset = 0;
+    rdata->vertex_count = 0;
+    rdata->vertex_offset = 0;
+    rdata->index_count = 0;
+    rdata->index_offset = 0;
     rdata->clip_stack_depth = 0;
     rdata->font_current_index = -1;
 
@@ -931,31 +1024,31 @@ void naui_draw_text(Naui_Vec2 position, const char *text, float size, uint8_t fo
         float gu0 = bc->x0 / atlas_sz, gv0 = bc->y0 / atlas_sz;
         float gu1 = bc->x1 / atlas_sz, gv1 = bc->y1 / atlas_sz;
 
-        uint32_t i = rdata->geometry_count;
-        Naui_BatchGeometry *g = &rdata->geometry_vertices[i];
+        uint32_t base = rdata->vertex_count;
+        Naui_BatchVertex *v = &rdata->vertices[base];
 
-        g->vertices[0] = (Naui_BatchVertex){ {gx0, gy0}, {gu0, gv0}, c, 1 };
-        g->vertices[1] = (Naui_BatchVertex){ {gx1, gy0}, {gu1, gv0}, c, 1 };
-        g->vertices[2] = (Naui_BatchVertex){ {gx1, gy1}, {gu1, gv1}, c, 1 };
-        g->vertices[3] = (Naui_BatchVertex){ {gx0, gy1}, {gu0, gv1}, c, 1 };
+        v[0] = (Naui_BatchVertex){ {gx0, gy0}, {gu0, gv0}, c, 1 };
+        v[1] = (Naui_BatchVertex){ {gx1, gy0}, {gu1, gv0}, c, 1 };
+        v[2] = (Naui_BatchVertex){ {gx1, gy1}, {gu1, gv1}, c, 1 };
+        v[3] = (Naui_BatchVertex){ {gx0, gy1}, {gu0, gv1}, c, 1 };
+        rdata->vertex_count += 4;
 
-        uint32_t base = i * 4;
-        uint32_t *idx = &rdata->geometry_indices[i * 6];
+        uint32_t *idx = &rdata->indices[rdata->index_count];
         idx[0] = base + 0; idx[1] = base + 1; idx[2] = base + 2;
         idx[3] = base + 2; idx[4] = base + 3; idx[5] = base + 0;
+        rdata->index_count += 6;
 
-        rdata->geometry_count++;
         x += bc->xadvance * scale;
     }
 }
 
-void naui_fill_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color, float rounding, Naui_CornerFlags flags)
+void naui_fill_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color, float rounding, Naui_CornerFlags corners)
 {
     float x0 = position.x, y0 = position.y;
     float x1 = x0 + scale.x, y1 = y0 + scale.y;
     uint32_t c = naui_pack_color(color);
 
-    if (rounding <= 0.0f || flags == NAUI_CORNER_NONE)
+    if (rounding <= 0.0f || corners == NAUI_CORNER_NONE)
     {
         naui_push_rect(position, (Naui_Vec2){x1, y1}, c, -1);
         return;
@@ -963,10 +1056,10 @@ void naui_fill_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color, float
 
     float r = naui_min(rounding, naui_min(scale.x, scale.y) * 0.5f);
 
-    int tl = (flags & NAUI_CORNER_TL) != 0;
-    int tr = (flags & NAUI_CORNER_TR) != 0;
-    int br = (flags & NAUI_CORNER_BR) != 0;
-    int bl = (flags & NAUI_CORNER_BL) != 0;
+    int tl = (corners & NAUI_CORNER_TL) != 0;
+    int tr = (corners & NAUI_CORNER_TR) != 0;
+    int br = (corners & NAUI_CORNER_BR) != 0;
+    int bl = (corners & NAUI_CORNER_BL) != 0;
 
     naui_push_rect((Naui_Vec2){x0+r, y0}, (Naui_Vec2){x1-r, y1}, c, -1);
     naui_push_rect((Naui_Vec2){x0, y0 + (tl ? r : 0)}, (Naui_Vec2){x0+r, y1 - (bl ? r : 0)}, c, -1);
@@ -978,7 +1071,7 @@ void naui_fill_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color, float
     if (bl) naui_push_corner_fan((Naui_Vec2){x0+r, y1-r}, r, -1, +1, c);
 }
 
-void naui_draw_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color, float line_width, float rounding, Naui_CornerFlags flags, Naui_SideFlags sides)
+void naui_draw_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color, float line_width, float rounding, Naui_CornerFlags corners, Naui_SideFlags sides)
 {
     float x0 = position.x, y0 = position.y;
     float x1 = x0 + scale.x, y1 = y0 + scale.y;
@@ -990,7 +1083,7 @@ void naui_draw_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color, float
     int side_bottom = (sides & NAUI_SIDE_BOTTOM)    != 0;
     int side_left   = (sides & NAUI_SIDE_LEFT)      != 0;
 
-    if (rounding <= 0.0f || flags == NAUI_CORNER_NONE)
+    if (rounding <= 0.0f || corners == NAUI_CORNER_NONE)
     {
         if (side_top)    naui_push_rect((Naui_Vec2){x0-lw, y0-lw}, (Naui_Vec2){x1+lw, y0    }, c, -1);
         if (side_bottom) naui_push_rect((Naui_Vec2){x0-lw, y1    }, (Naui_Vec2){x1+lw, y1+lw}, c, -1);
@@ -1002,10 +1095,10 @@ void naui_draw_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color, float
     float r = naui_min(rounding, naui_min(scale.x, scale.y) * 0.5f);
     float outer_r = r + lw;
 
-    int tl = (flags & NAUI_CORNER_TL) != 0 && side_top    && side_left;
-    int tr = (flags & NAUI_CORNER_TR) != 0 && side_top    && side_right;
-    int br = (flags & NAUI_CORNER_BR) != 0 && side_bottom && side_right;
-    int bl = (flags & NAUI_CORNER_BL) != 0 && side_bottom && side_left;
+    int tl = (corners & NAUI_CORNER_TL) != 0 && side_top    && side_left;
+    int tr = (corners & NAUI_CORNER_TR) != 0 && side_top    && side_right;
+    int br = (corners & NAUI_CORNER_BR) != 0 && side_bottom && side_right;
+    int bl = (corners & NAUI_CORNER_BL) != 0 && side_bottom && side_left;
 
     if (side_top)    naui_push_rect((Naui_Vec2){x0 + (tl ? r : -lw), y0-lw}, (Naui_Vec2){x1 - (tr ? r : -lw), y0}, c, -1);
     if (side_bottom) naui_push_rect((Naui_Vec2){x0 + (bl ? r : -lw), y1   }, (Naui_Vec2){x1 - (br ? r : -lw), y1+lw}, c, -1);
@@ -1018,28 +1111,28 @@ void naui_draw_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color, float
     if (bl) naui_push_corner_ring((Naui_Vec2){x0+r, y1-r}, r, outer_r, -1, +1, c);
 }
 
-void naui_fill_gradient_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Gradient gradient, float rounding, Naui_CornerFlags flags)
+void naui_fill_gradient_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Gradient gradient, float rounding, Naui_CornerFlags corners)
 {
     float x0 = position.x, y0 = position.y;
     float x1 = x0 + scale.x, y1 = y0 + scale.y;
     Naui_GradientAxis axis = naui_gradient_axis((Naui_Vec2){x0, y0}, (Naui_Vec2){x1, y1}, gradient.angle);
 
-    if (rounding <= 0.0f || flags == NAUI_CORNER_NONE)
+    if (rounding <= 0.0f || corners == NAUI_CORNER_NONE)
     {
-        naui_push_gradient_rect((Naui_Vec2){x0, y0}, (Naui_Vec2){x1, y1}, &gradient, &axis, -1);
+        naui_push_gradient_rect((Naui_Vec2){x0, y0}, (Naui_Vec2){x1, y1}, &gradient, &axis);
         return;
     }
 
-    int tl = (flags & NAUI_CORNER_TL) != 0;
-    int tr = (flags & NAUI_CORNER_TR) != 0;
-    int br = (flags & NAUI_CORNER_BR) != 0;
-    int bl = (flags & NAUI_CORNER_BL) != 0;
+    int tl = (corners & NAUI_CORNER_TL) != 0;
+    int tr = (corners & NAUI_CORNER_TR) != 0;
+    int br = (corners & NAUI_CORNER_BR) != 0;
+    int bl = (corners & NAUI_CORNER_BL) != 0;
 
     float r = naui_min(rounding, naui_min(scale.x, scale.y) * 0.5f);
 
-    naui_push_gradient_rect((Naui_Vec2){x0+r, y0}, (Naui_Vec2){x1-r, y1}, &gradient, &axis, -1);
-    naui_push_gradient_rect((Naui_Vec2){x0, y0 + (tl ? r : 0)}, (Naui_Vec2){x0+r, y1 - (bl ? r : 0)}, &gradient, &axis, -1);
-    naui_push_gradient_rect((Naui_Vec2){x1-r, y0 + (tr ? r : 0)}, (Naui_Vec2){x1, y1 - (br ? r : 0)}, &gradient, &axis, -1);
+    naui_push_gradient_rect((Naui_Vec2){x0+r, y0}, (Naui_Vec2){x1-r, y1}, &gradient, &axis);
+    naui_push_gradient_rect((Naui_Vec2){x0, y0 + (tl ? r : 0)}, (Naui_Vec2){x0+r, y1 - (bl ? r : 0)}, &gradient, &axis);
+    naui_push_gradient_rect((Naui_Vec2){x1-r, y0 + (tr ? r : 0)}, (Naui_Vec2){x1, y1 - (br ? r : 0)}, &gradient, &axis);
 
     if (tl) naui_push_gradient_corner_fan((Naui_Vec2){x0+r, y0+r}, r, -1, -1, &gradient, &axis);
     if (tr) naui_push_gradient_corner_fan((Naui_Vec2){x1-r, y0+r}, r, +1, -1, &gradient, &axis);
@@ -1047,7 +1140,7 @@ void naui_fill_gradient_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Gradient 
     if (bl) naui_push_gradient_corner_fan((Naui_Vec2){x0+r, y1-r}, r, -1, +1, &gradient, &axis);
 }
 
-void naui_draw_gradient_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Gradient gradient, float line_width, float rounding, Naui_CornerFlags flags, Naui_SideFlags sides)
+void naui_draw_gradient_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Gradient gradient, float line_width, float rounding, Naui_CornerFlags corners, Naui_SideFlags sides)
 {
     float x0 = position.x, y0 = position.y;
     float x1 = x0 + scale.x, y1 = y0 + scale.y;
@@ -1059,27 +1152,27 @@ void naui_draw_gradient_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Gradient 
     int side_bottom = (sides & NAUI_SIDE_BOTTOM)    != 0;
     int side_left   = (sides & NAUI_SIDE_LEFT)      != 0;
 
-    if (rounding <= 0.0f || flags == NAUI_CORNER_NONE)
+    if (rounding <= 0.0f || corners == NAUI_CORNER_NONE)
     {
-        if (side_top)    naui_push_gradient_rect((Naui_Vec2){x0-lw, y0-lw}, (Naui_Vec2){x1+lw, y0    }, &gradient, &axis, -1);
-        if (side_bottom) naui_push_gradient_rect((Naui_Vec2){x0-lw, y1    }, (Naui_Vec2){x1+lw, y1+lw}, &gradient, &axis, -1);
-        if (side_left)   naui_push_gradient_rect((Naui_Vec2){x0-lw, y0    }, (Naui_Vec2){x0,    y1    }, &gradient, &axis, -1);
-        if (side_right)  naui_push_gradient_rect((Naui_Vec2){x1,    y0    }, (Naui_Vec2){x1+lw, y1    }, &gradient, &axis, -1);
+        if (side_top)    naui_push_gradient_rect((Naui_Vec2){x0-lw, y0-lw}, (Naui_Vec2){x1+lw, y0    }, &gradient, &axis);
+        if (side_bottom) naui_push_gradient_rect((Naui_Vec2){x0-lw, y1    }, (Naui_Vec2){x1+lw, y1+lw}, &gradient, &axis);
+        if (side_left)   naui_push_gradient_rect((Naui_Vec2){x0-lw, y0    }, (Naui_Vec2){x0,    y1    }, &gradient, &axis);
+        if (side_right)  naui_push_gradient_rect((Naui_Vec2){x1,    y0    }, (Naui_Vec2){x1+lw, y1    }, &gradient, &axis);
         return;
     }
 
-    int tl = (flags & NAUI_CORNER_TL) != 0 && side_top    && side_left;
-    int tr = (flags & NAUI_CORNER_TR) != 0 && side_top    && side_right;
-    int br = (flags & NAUI_CORNER_BR) != 0 && side_bottom && side_right;
-    int bl = (flags & NAUI_CORNER_BL) != 0 && side_bottom && side_left;
+    int tl = (corners & NAUI_CORNER_TL) != 0 && side_top    && side_left;
+    int tr = (corners & NAUI_CORNER_TR) != 0 && side_top    && side_right;
+    int br = (corners & NAUI_CORNER_BR) != 0 && side_bottom && side_right;
+    int bl = (corners & NAUI_CORNER_BL) != 0 && side_bottom && side_left;
 
     float r = naui_min(rounding, naui_min(scale.x, scale.y) * 0.5f);
     float outer_r = r + lw;
 
-    if (side_top)    naui_push_gradient_rect((Naui_Vec2){x0 + (tl ? r : -lw), y0-lw}, (Naui_Vec2){x1 - (tr ? r : -lw), y0    }, &gradient, &axis, -1);
-    if (side_bottom) naui_push_gradient_rect((Naui_Vec2){x0 + (bl ? r : -lw), y1   }, (Naui_Vec2){x1 - (br ? r : -lw), y1+lw }, &gradient, &axis, -1);
-    if (side_left)   naui_push_gradient_rect((Naui_Vec2){x0-lw, y0 + (tl ? r : 0)}, (Naui_Vec2){x0, y1 - (bl ? r : 0)}, &gradient, &axis, -1);
-    if (side_right)  naui_push_gradient_rect((Naui_Vec2){x1,    y0 + (tr ? r : 0)}, (Naui_Vec2){x1+lw, y1 - (br ? r : 0)}, &gradient, &axis, -1);
+    if (side_top)    naui_push_gradient_rect((Naui_Vec2){x0 + (tl ? r : -lw), y0-lw}, (Naui_Vec2){x1 - (tr ? r : -lw), y0    }, &gradient, &axis);
+    if (side_bottom) naui_push_gradient_rect((Naui_Vec2){x0 + (bl ? r : -lw), y1   }, (Naui_Vec2){x1 - (br ? r : -lw), y1+lw }, &gradient, &axis);
+    if (side_left)   naui_push_gradient_rect((Naui_Vec2){x0-lw, y0 + (tl ? r : 0)}, (Naui_Vec2){x0, y1 - (bl ? r : 0)}, &gradient, &axis);
+    if (side_right)  naui_push_gradient_rect((Naui_Vec2){x1,    y0 + (tr ? r : 0)}, (Naui_Vec2){x1+lw, y1 - (br ? r : 0)}, &gradient, &axis);
 
     for (int s = 0; s < NAUI_RENDERER_CORNER_SEGMENTS; s++)
     {
@@ -1108,12 +1201,8 @@ void naui_draw_gradient_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Gradient 
             Naui_Vec2 i0 = { center.x + ax * cx * r,       center.y + ay * cy * r       };
             Naui_Vec2 i1 = { center.x + ax * nx * r,       center.y + ay * ny * r       };
 
-            naui_push_gradient_quad4(o0, o1, i1, i0,
-                naui_gradient_color_at(&gradient, &axis, o0.x, o0.y),
-                naui_gradient_color_at(&gradient, &axis, o1.x, o1.y),
-                naui_gradient_color_at(&gradient, &axis, i1.x, i1.y),
-                naui_gradient_color_at(&gradient, &axis, i0.x, i0.y),
-                -1);
+            Naui_Vec2 ring_quad[4] = { o0, o1, i1, i0 };
+            naui_push_gradient_convex(ring_quad, 4, &gradient, &axis);
         }
     }
 }
@@ -1167,24 +1256,21 @@ static void naui_push_textured_corner_fan(
         float u_p1 = uv_rect.x + ((p1.x     - img_tl.x) / img_size.x) * uv_rect.z;
         float v_p1 = uv_rect.y + ((p1.y     - img_tl.y) / img_size.y) * uv_rect.w;
 
-        uint32_t i = rdata->geometry_count;
-        Naui_BatchGeometry *g = &rdata->geometry_vertices[i];
+        uint32_t base = rdata->vertex_count;
+        Naui_BatchVertex *v = &rdata->vertices[base];
 
-        g->vertices[0] = (Naui_BatchVertex){ {center.x, center.y}, {u_c,  v_c},  color, 0 };
-        g->vertices[1] = (Naui_BatchVertex){ {p0.x,     p0.y    }, {u_p0, v_p0}, color, 0 };
-        g->vertices[2] = (Naui_BatchVertex){ {p1.x,     p1.y    }, {u_p1, v_p1}, color, 0 };
-        g->vertices[3] = g->vertices[2];
+        v[0] = (Naui_BatchVertex){ {center.x, center.y}, {u_c,  v_c},  color, 0 };
+        v[1] = (Naui_BatchVertex){ {p0.x,     p0.y    }, {u_p0, v_p0}, color, 0 };
+        v[2] = (Naui_BatchVertex){ {p1.x,     p1.y    }, {u_p1, v_p1}, color, 0 };
+        rdata->vertex_count += 3;
 
-        uint32_t base = i * 4;
-        uint32_t *idx = &rdata->geometry_indices[i * 6];
+        uint32_t *idx = &rdata->indices[rdata->index_count];
         idx[0] = base + 0; idx[1] = base + 1; idx[2] = base + 2;
-        idx[3] = base + 2; idx[4] = base + 3; idx[5] = base + 2;
-
-        rdata->geometry_count++;
+        rdata->index_count += 3;
     }
 }
 
-void naui_draw_image(const Naui_Image *image, Naui_Vec2 position, Naui_Vec2 scale, Naui_Color tint, float rounding, Naui_CornerFlags flags)
+void naui_draw_image(const Naui_Image *image, Naui_Vec2 position, Naui_Vec2 scale, Naui_Color tint, float rounding, Naui_CornerFlags corners)
 {
     float x0 = position.x, y0 = position.y;
     float x1 = x0 + scale.x, y1 = y0 + scale.y;
@@ -1194,16 +1280,16 @@ void naui_draw_image(const Naui_Image *image, Naui_Vec2 position, Naui_Vec2 scal
     Naui_Vec4 uv = { s0, t0, s1, t1 };
     uint32_t c = naui_pack_color(tint);
 
-    if (rounding <= 0.0f || flags == NAUI_CORNER_NONE)
+    if (rounding <= 0.0f || corners == NAUI_CORNER_NONE)
     {
         naui_push_textured_rect(position, (Naui_Vec2){x1, y1}, uv, c, 0);
         return;
     }
 
-    int tl = (flags & NAUI_CORNER_TL) != 0;
-    int tr = (flags & NAUI_CORNER_TR) != 0;
-    int br = (flags & NAUI_CORNER_BR) != 0;
-    int bl = (flags & NAUI_CORNER_BL) != 0;
+    int tl = (corners & NAUI_CORNER_TL) != 0;
+    int tr = (corners & NAUI_CORNER_TR) != 0;
+    int br = (corners & NAUI_CORNER_BR) != 0;
+    int bl = (corners & NAUI_CORNER_BL) != 0;
 
     float r = naui_min(rounding, naui_min(scale.x, scale.y) * 0.5f);
     Naui_Vec2 img_tl   = { x0, y0 };
@@ -1217,6 +1303,144 @@ void naui_draw_image(const Naui_Image *image, Naui_Vec2 position, Naui_Vec2 scal
     if (tr) naui_push_textured_corner_fan((Naui_Vec2){x1-r, y0+r}, r, +1, -1, uv, img_tl, img_size, c);
     if (br) naui_push_textured_corner_fan((Naui_Vec2){x1-r, y1-r}, r, +1, +1, uv, img_tl, img_size, c);
     if (bl) naui_push_textured_corner_fan((Naui_Vec2){x0+r, y1-r}, r, -1, +1, uv, img_tl, img_size, c);
+}
+
+typedef struct
+{
+    Naui_Vec2 pos;
+    Naui_Vec2 uv;
+}
+Naui_TexGradientVert;
+
+typedef struct
+{
+    Naui_TexGradientVert v[NAUI_GRADIENT_CLIP_MAX_VERTS];
+    int count;
+}
+Naui_TexGradientPoly;
+
+static Naui_TexGradientPoly naui_tex_clip_poly_by_t(const Naui_TexGradientPoly *in, const Naui_GradientAxis *axis, float line_t, int keep_ge)
+{
+    Naui_TexGradientPoly out = { .count = 0 };
+    if (in->count == 0) return out;
+
+    for (int i = 0; i < in->count; i++)
+    {
+        Naui_TexGradientVert cur  = in->v[i];
+        Naui_TexGradientVert next = in->v[(i + 1) % in->count];
+
+        float t_cur  = naui_gradient_axis_t(axis, cur.pos.x,  cur.pos.y);
+        float t_next = naui_gradient_axis_t(axis, next.pos.x, next.pos.y);
+
+        int cur_in  = keep_ge ? (t_cur  >= line_t) : (t_cur  <= line_t);
+        int next_in = keep_ge ? (t_next >= line_t) : (t_next <= line_t);
+
+        if (cur_in && out.count < NAUI_GRADIENT_CLIP_MAX_VERTS)
+            out.v[out.count++] = cur;
+
+        if (cur_in != next_in)
+        {
+            float denom = t_next - t_cur;
+            float f = (fabsf(denom) < 1e-8f) ? 0.0f : (line_t - t_cur) / denom;
+            f = naui_clamp01(f);
+
+            Naui_TexGradientVert ix;
+            ix.pos.x = cur.pos.x + (next.pos.x - cur.pos.x) * f;
+            ix.pos.y = cur.pos.y + (next.pos.y - cur.pos.y) * f;
+            ix.uv.x  = cur.uv.x  + (next.uv.x  - cur.uv.x)  * f;
+            ix.uv.y  = cur.uv.y  + (next.uv.y  - cur.uv.y)  * f;
+
+            if (out.count < NAUI_GRADIENT_CLIP_MAX_VERTS)
+                out.v[out.count++] = ix;
+        }
+    }
+
+    return out;
+}
+
+static void naui_push_textured_gradient_triangle(
+    Naui_Vec2 a, Naui_Vec2 b, Naui_Vec2 c,
+    Naui_Vec2 uv_a, Naui_Vec2 uv_b, Naui_Vec2 uv_c,
+    uint32_t ca, uint32_t cb, uint32_t cc,
+    int32_t texture_id)
+{
+    uint32_t base = rdata->vertex_count;
+    Naui_BatchVertex *v = &rdata->vertices[base];
+
+    v[0] = (Naui_BatchVertex){ {a.x, a.y}, {uv_a.x, uv_a.y}, ca, texture_id };
+    v[1] = (Naui_BatchVertex){ {b.x, b.y}, {uv_b.x, uv_b.y}, cb, texture_id };
+    v[2] = (Naui_BatchVertex){ {c.x, c.y}, {uv_c.x, uv_c.y}, cc, texture_id };
+    rdata->vertex_count += 3;
+
+    uint32_t *idx = &rdata->indices[rdata->index_count];
+    idx[0] = base + 0; idx[1] = base + 1; idx[2] = base + 2;
+    rdata->index_count += 3;
+}
+
+static void naui_push_tex_flat_polygon(const Naui_TexGradientPoly *poly, uint32_t color, int32_t texture_id)
+{
+    if (poly->count < 3) return;
+
+    Naui_TexGradientVert p0 = poly->v[0];
+    for (int i = 1; i + 1 < poly->count; i++)
+        naui_push_textured_gradient_triangle(
+            p0.pos, poly->v[i].pos, poly->v[i + 1].pos,
+            p0.uv,  poly->v[i].uv,  poly->v[i + 1].uv,
+            color, color, color, texture_id);
+}
+
+static void naui_push_tex_gradient_polygon(const Naui_TexGradientPoly *poly, const Naui_Gradient *g, const Naui_GradientAxis *axis, int32_t texture_id)
+{
+    if (poly->count < 3) return;
+
+    Naui_TexGradientVert p0 = poly->v[0];
+    uint32_t c0 = naui_gradient_color_at(g, axis, p0.pos.x, p0.pos.y);
+
+    for (int i = 1; i + 1 < poly->count; i++)
+    {
+        Naui_TexGradientVert p1 = poly->v[i];
+        Naui_TexGradientVert p2 = poly->v[i + 1];
+        naui_push_textured_gradient_triangle(
+            p0.pos, p1.pos, p2.pos,
+            p0.uv,  p1.uv,  p2.uv,
+            c0,
+            naui_gradient_color_at(g, axis, p1.pos.x, p1.pos.y),
+            naui_gradient_color_at(g, axis, p2.pos.x, p2.pos.y),
+            texture_id
+        );
+    }
+}
+
+static void naui_push_gradient_convex_textured(const Naui_TexGradientVert *verts, int vert_count, const Naui_Gradient *g, const Naui_GradientAxis *axis, int32_t texture_id)
+{
+    if (vert_count < 3 || vert_count > NAUI_GRADIENT_CLIP_MAX_VERTS) return;
+
+    Naui_TexGradientPoly src = { .count = vert_count };
+    for (int i = 0; i < vert_count; i++) src.v[i] = verts[i];
+
+    float p1 = naui_clamp01(g->percent1);
+    float p2 = naui_clamp01(g->percent2);
+
+    uint32_t c1 = naui_pack_color(g->color1);
+    uint32_t c2 = naui_pack_color(g->color2);
+
+    if (p2 <= p1)
+    {
+        Naui_TexGradientPoly before = naui_tex_clip_poly_by_t(&src, axis, p1, 0);
+        Naui_TexGradientPoly after  = naui_tex_clip_poly_by_t(&src, axis, p1, 1);
+        naui_push_tex_flat_polygon(&before, c1, texture_id);
+        naui_push_tex_flat_polygon(&after,  c2, texture_id);
+        return;
+    }
+
+    Naui_TexGradientPoly flat_lo = naui_tex_clip_poly_by_t(&src, axis, p1, 0);
+    Naui_TexGradientPoly rest    = naui_tex_clip_poly_by_t(&src, axis, p1, 1);
+    Naui_TexGradientPoly ramp    = naui_tex_clip_poly_by_t(&rest, axis, p2, 0);
+    Naui_TexGradientPoly flat_hi = naui_tex_clip_poly_by_t(&rest, axis, p2, 1);
+
+    naui_push_tex_flat_polygon(&flat_lo, c1, texture_id);
+    naui_push_tex_gradient_polygon(&ramp, g, axis, texture_id);
+    naui_push_tex_flat_polygon(&flat_hi, c2, texture_id);
 }
 
 static void naui_push_textured_gradient_corner_fan(
@@ -1233,50 +1457,33 @@ static void naui_push_textured_gradient_corner_fan(
         Naui_Vec2 p0 = { center.x + cx0 * r, center.y + cy0 * r };
         Naui_Vec2 p1 = { center.x + cx1 * r, center.y + cy1 * r };
 
-        float u_c  = uv_rect.x + ((center.x - img_tl.x) / img_size.x) * uv_rect.z;
-        float v_c  = uv_rect.y + ((center.y - img_tl.y) / img_size.y) * uv_rect.w;
-        float u_p0 = uv_rect.x + ((p0.x     - img_tl.x) / img_size.x) * uv_rect.z;
-        float v_p0 = uv_rect.y + ((p0.y     - img_tl.y) / img_size.y) * uv_rect.w;
-        float u_p1 = uv_rect.x + ((p1.x     - img_tl.x) / img_size.x) * uv_rect.z;
-        float v_p1 = uv_rect.y + ((p1.y     - img_tl.y) / img_size.y) * uv_rect.w;
+        Naui_Vec2 uv_center = { uv_rect.x + ((center.x - img_tl.x) / img_size.x) * uv_rect.z, uv_rect.y + ((center.y - img_tl.y) / img_size.y) * uv_rect.w };
+        Naui_Vec2 uv_p0 = { uv_rect.x + ((p0.x - img_tl.x) / img_size.x) * uv_rect.z, uv_rect.y + ((p0.y - img_tl.y) / img_size.y) * uv_rect.w };
+        Naui_Vec2 uv_p1 = { uv_rect.x + ((p1.x - img_tl.x) / img_size.x) * uv_rect.z, uv_rect.y + ((p1.y - img_tl.y) / img_size.y) * uv_rect.w };
 
-        uint32_t i = rdata->geometry_count;
-        Naui_BatchGeometry *geo = &rdata->geometry_vertices[i];
+        Naui_TexGradientVert tri[3] = {
+            { center, uv_center },
+            { p0, uv_p0 },
+            { p1, uv_p1 },
+        };
 
-        geo->vertices[0] = (Naui_BatchVertex){ {center.x, center.y}, {u_c,  v_c },  naui_gradient_color_at(g, axis, center.x, center.y), 0 };
-        geo->vertices[1] = (Naui_BatchVertex){ {p0.x,     p0.y    }, {u_p0, v_p0},  naui_gradient_color_at(g, axis, p0.x,     p0.y    ), 0 };
-        geo->vertices[2] = (Naui_BatchVertex){ {p1.x,     p1.y    }, {u_p1, v_p1},  naui_gradient_color_at(g, axis, p1.x,     p1.y    ), 0 };
-        geo->vertices[3] = geo->vertices[2];
-
-        uint32_t base = i * 4;
-        uint32_t *idx = &rdata->geometry_indices[i * 6];
-        idx[0] = base + 0; idx[1] = base + 1; idx[2] = base + 2;
-        idx[3] = base + 2; idx[4] = base + 3; idx[5] = base + 2;
-
-        rdata->geometry_count++;
+        naui_push_gradient_convex_textured(tri, 3, g, axis, 0);
     }
 }
 
 static void naui_push_textured_gradient_rect(Naui_Vec2 tl, Naui_Vec2 br,
     Naui_Vec4 texture_area, const Naui_Gradient *g, const Naui_GradientAxis *axis)
 {
-    uint32_t i = rdata->geometry_count;
-    Naui_BatchGeometry *geo = &rdata->geometry_vertices[i];
-
-    geo->vertices[0] = (Naui_BatchVertex){ {tl.x, tl.y}, {texture_area.x,                   texture_area.y                  }, naui_gradient_color_at(g, axis, tl.x, tl.y), 0 };
-    geo->vertices[1] = (Naui_BatchVertex){ {br.x, tl.y}, {texture_area.x + texture_area.z,  texture_area.y                  }, naui_gradient_color_at(g, axis, br.x, tl.y), 0 };
-    geo->vertices[2] = (Naui_BatchVertex){ {br.x, br.y}, {texture_area.x + texture_area.z,  texture_area.y + texture_area.w }, naui_gradient_color_at(g, axis, br.x, br.y), 0 };
-    geo->vertices[3] = (Naui_BatchVertex){ {tl.x, br.y}, {texture_area.x,                   texture_area.y + texture_area.w }, naui_gradient_color_at(g, axis, tl.x, br.y), 0 };
-
-    uint32_t base = i * 4;
-    uint32_t *idx = &rdata->geometry_indices[i * 6];
-    idx[0] = base + 0; idx[1] = base + 1; idx[2] = base + 2;
-    idx[3] = base + 2; idx[4] = base + 3; idx[5] = base + 0;
-
-    rdata->geometry_count++;
+    Naui_TexGradientVert verts[4] = {
+        { {tl.x, tl.y}, {texture_area.x, texture_area.y } },
+        { {br.x, tl.y}, {texture_area.x + texture_area.z, texture_area.y } },
+        { {br.x, br.y}, {texture_area.x + texture_area.z, texture_area.y + texture_area.w} },
+        { {tl.x, br.y}, {texture_area.x, texture_area.y + texture_area.w} },
+    };
+    naui_push_gradient_convex_textured(verts, 4, g, axis, 0);
 }
 
-void naui_draw_gradient_image(const Naui_Image *image, Naui_Vec2 position, Naui_Vec2 scale, Naui_Gradient tint, float rounding, Naui_CornerFlags flags)
+void naui_draw_gradient_image(const Naui_Image *image, Naui_Vec2 position, Naui_Vec2 scale, Naui_Gradient tint, float rounding, Naui_CornerFlags corners)
 {
     float x0 = position.x, y0 = position.y;
     float x1 = x0 + scale.x, y1 = y0 + scale.y;
@@ -1287,16 +1494,16 @@ void naui_draw_gradient_image(const Naui_Image *image, Naui_Vec2 position, Naui_
 
     Naui_GradientAxis axis = naui_gradient_axis((Naui_Vec2){x0, y0}, (Naui_Vec2){x1, y1}, tint.angle);
 
-    if (rounding <= 0.0f || flags == NAUI_CORNER_NONE)
+    if (rounding <= 0.0f || corners == NAUI_CORNER_NONE)
     {
         naui_push_textured_gradient_rect((Naui_Vec2){x0, y0}, (Naui_Vec2){x1, y1}, uv, &tint, &axis);
         return;
     }
 
-    int tl = (flags & NAUI_CORNER_TL) != 0;
-    int tr = (flags & NAUI_CORNER_TR) != 0;
-    int br = (flags & NAUI_CORNER_BR) != 0;
-    int bl = (flags & NAUI_CORNER_BL) != 0;
+    int tl = (corners & NAUI_CORNER_TL) != 0;
+    int tr = (corners & NAUI_CORNER_TR) != 0;
+    int br = (corners & NAUI_CORNER_BR) != 0;
+    int bl = (corners & NAUI_CORNER_BL) != 0;
 
     float r = naui_min(rounding, naui_min(scale.x, scale.y) * 0.5f);
     Naui_Vec2 img_tl   = { x0, y0 };
@@ -1352,8 +1559,6 @@ void naui_draw_shadow(Naui_Vec2 position, Naui_Vec2 scale, float blur_radius, Na
         (Naui_Vec2){x1,      cy_tr}, (Naui_Vec2){x1 + br, cy_tr},
         (Naui_Vec2){x1 + br, cy_br}, (Naui_Vec2){x1,      cy_br},
         c_full, c_zero, c_zero, c_full, -1);
-
-    naui_push_rect((Naui_Vec2){x0, y0}, (Naui_Vec2){x1, y1}, c_full, -1);
 
     struct {
         float cx, cy;

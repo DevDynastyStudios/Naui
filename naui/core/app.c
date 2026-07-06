@@ -83,8 +83,8 @@ static void render_leaf_cmd_list(const Leaf_RenderCmdList *list)
             Naui_Vec2 size = (Naui_Vec2){cmd.bounding_box.width, cmd.bounding_box.height};
             Naui_Color color1 = (Naui_Color){cmd.color.color1.r, cmd.color.color1.g, cmd.color.color1.b, cmd.color.color1.a};
             if (cmd.color.type == LEAF_GRADIENT_LINEAR_COLOR_FILL)
-                naui_draw_gradient_image(image, position, size, (Naui_Gradient){ color1, (Naui_Color){cmd.color.color2.r, cmd.color.color2.g, cmd.color.color2.b, cmd.color.color2.a}, cmd.color.percent1, cmd.color.percent2, cmd.color.angle }, cmd.image.rounding.value, (Naui_CornerFlags)cmd.rect.rounding.corners);
-            else naui_draw_image(image, position, size, color1, cmd.image.rounding.value, (Naui_CornerFlags)cmd.rect.rounding.corners);
+                naui_draw_gradient_image(image, position, size, (Naui_Gradient){ color1, (Naui_Color){cmd.color.color2.r, cmd.color.color2.g, cmd.color.color2.b, cmd.color.color2.a}, cmd.color.percent1, cmd.color.percent2, cmd.color.angle }, cmd.image.rounding.value, (Naui_CornerFlags)cmd.image.rounding.corners);
+            else naui_draw_image(image, position, size, color1, cmd.image.rounding.value, (Naui_CornerFlags)cmd.image.rounding.corners);
             break;
         }
         case LEAF_RENDER_CMD_TEXT:
@@ -93,9 +93,15 @@ static void render_leaf_cmd_list(const Leaf_RenderCmdList *list)
         case LEAF_RENDER_CMD_SHADOW:
         {
             Naui_Color color1 = (Naui_Color){cmd.color.color1.r, cmd.color.color1.g, cmd.color.color1.b, cmd.color.color1.a};
+            Naui_Vec2 position = {cmd.bounding_box.x + cmd.shadow.offset.x, cmd.bounding_box.y + cmd.shadow.offset.y};
+            Naui_Vec2 scale = {cmd.bounding_box.width, cmd.bounding_box.height};
+            Naui_Color color = {color1.r, color1.g, color1.b, color1.a};
+
+            if ((int)cmd.shadow.offset.x != 0 || (int)cmd.shadow.offset.y != 0)
+                naui_fill_rect(position, scale, color, cmd.shadow.rounding.value, (Naui_CornerFlags)cmd.shadow.rounding.corners);
             naui_draw_shadow(
-                (Naui_Vec2){cmd.bounding_box.x, cmd.bounding_box.y},
-                (Naui_Vec2){cmd.bounding_box.width, cmd.bounding_box.height},
+                position,
+                scale,
                 cmd.shadow.blur_radius,
                 (Naui_Color){color1.r, color1.g, color1.b, color1.a},
                 cmd.shadow.rounding.value,

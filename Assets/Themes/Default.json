@@ -24,7 +24,7 @@
 
 	"naui_panel_font_size": 13.5,
 	"naui_panel_border_width": 1.0,
-	"naui_panel_rounding": 2.0,
+	"naui_panel_rounding": 6.0,
 
 	"naui_widget_bg_color": "#1E1E21",
 	"naui_widget_surface_color": "#2C2C30",

@@ -346,6 +346,7 @@ typedef struct
 
         struct
         {
+            Leaf_Vec2 offset;
             float blur_radius;
             Leaf_Rounding rounding;
         }
@@ -955,8 +956,8 @@ static void leaf_render_node(Leaf_Node *node)
         if (config->shadow.color.a)
         {
             Leaf_BoundingBox shadow_box = {
-                .x = node->bounding_box.x + config->shadow.offset.x,
-                .y = node->bounding_box.y + config->shadow.offset.y,
+                .x = node->bounding_box.x,
+                .y = node->bounding_box.y,
                 .width  = node->bounding_box.width,
                 .height = node->bounding_box.height
             };
@@ -967,8 +968,9 @@ static void leaf_render_node(Leaf_Node *node)
                     .type = LEAF_SOLID_COLOR_FILL
                 },
                 .bounding_box = shadow_box,
+                .shadow.offset = config->shadow.offset,
                 .shadow.blur_radius = config->shadow.blur_radius,
-                .shadow.rounding = config->rounding,
+                .shadow.rounding = config->rounding
             });
         }
 

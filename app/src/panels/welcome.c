@@ -24,17 +24,23 @@ static void on_update(void)
 
 static void on_render(void)
 {
-    Naui_Image *image = naui_get_image("logo-large-light");
-
     leaf({
         .size = {LEAF_SIZE_FULL, LEAF_SIZE_FULL},
         .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER}
     })
     {
         leaf({
-            .size = {LEAF_SIZE_FIXED(image->width), LEAF_SIZE_FIXED(image->height)},
-            .image = image,
-            .color = LEAF_COLOR_WHITE
+            .size = {LEAF_SIZE_FIXED(256), LEAF_SIZE_FIXED(256)},
+            .color = LEAF_COLOR_WHITE,
+            .rounding = {
+                .value = fabsf(sinf(naui_time())) * 128.0f,
+                .corners = LEAF_CORNER_ALL
+            },
+            .shadow = {
+                .blur_radius = 24.0f,
+                .offset = {0.0f, 12.0f},
+                .color = leaf_rgba(0, 0, 0, 64)
+            }
         });
 
         leaf({
