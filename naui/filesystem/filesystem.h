@@ -93,12 +93,12 @@ bool naui_file_is_hidden(const Naui_Path path);
 /* Returns a pointer INTO path.data at the final component. */
 const char* naui_file_filename(const Naui_Path path);
 
-/* Returns the filename without its extension, as a NauiPath.
- * Returns an empty NauiPath if there is no stem. */
+/* Returns the filename without its extension, as a Naui_Path.
+ * Returns an empty Naui_Path if there is no stem. */
 Naui_Path naui_file_stem(const Naui_Path path);
 
-/* Returns the extension including the dot, as a NauiPath.
- * Returns an empty NauiPath if there is no extension. */
+/* Returns the extension including the dot, as a Naui_Path.
+ * Returns an empty Naui_Path if there is no extension. */
 Naui_Path naui_file_extension(const Naui_Path path);
 
 bool naui_directory_create(const Naui_Path path);
@@ -106,8 +106,8 @@ bool naui_directory_remove(const Naui_Path path);
 bool naui_directory_remove_all(const Naui_Path path);
 bool naui_directory_rename(const Naui_Path old_path, const Naui_Path new_path);
 
-/* Returns a NauiPath for a well-known directory.
- * Returns an empty NauiPath on failure. */
+/* Returns a Naui_Path for a well-known directory.
+ * Returns an empty Naui_Path on failure. */
 Naui_Path naui_directory_get(const Naui_Dir directory);
 
 /* List directory entries.
@@ -148,7 +148,7 @@ Naui_Path naui_path_normalize(const Naui_Path path);
 /* Returns the absolute path by prepending the current working directory */
 Naui_Path naui_path_absolute(const Naui_Path path);
 
-/* The path must exist. Returns an empty NauiPath on failure. */
+/* The path must exist. Returns an empty Naui_Path on failure. */
 Naui_Path naui_path_canonical(const Naui_Path path);
 
 /* Resolves as much of the path as possible, then normalizes the rest. */

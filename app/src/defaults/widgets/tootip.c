@@ -1,5 +1,6 @@
 #include "tooltip.h"
 #include <naui/core/panel.h>
+#include <naui/core/input.h>
 
 bool naui_tooltip_begin(Leaf_ID anchor_id)
 {
