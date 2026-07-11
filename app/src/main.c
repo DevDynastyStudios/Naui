@@ -9,6 +9,15 @@ void naui_app_start(void)
 	naui_load_theme("Default");
 	naui_load_font(0, "MYRIADPRO-REGULAR");
 	naui_set_main_viewport(NAUI_ATTACH_PANEL(welcome));
+
+    const int six_seven = 67;
+    naui_log(NAUI_LOG_DEBUG, "secret debug message :) guess what... %d", six_seven);
+    naui_log(NAUI_LOG_INFO, "hello everybody my name is markiplier");
+    naui_log(NAUI_LOG_WARNING, "im thinking miku");
+    naui_log(NAUI_LOG_ERROR, "teto teto teeeto");
+
+    // this aborts the program...
+    // naui_log(NAUI_LOG_FUCKED, "hello everybody my name is markiplier");
 }
 
 void naui_app_end(void)
