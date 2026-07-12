@@ -6,11 +6,11 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
-#define NAUI_LOG_COLOR_WHT "\e[0;97m"
-#define NAUI_LOG_COLOR_GRN "\e[0;92m"
-#define NAUI_LOG_COLOR_YEL "\e[0;93m"
-#define NAUI_LOG_COLOR_RED "\e[0;91m"
-#define NAUI_LOG_COLOR_MAG "\e[1;95m" // ultrakill reference no way
+#define NAUI_LOG_COLOR_WHT "\033[0;97m"
+#define NAUI_LOG_COLOR_GRN "\033[0;92m"
+#define NAUI_LOG_COLOR_YEL "\033[0;93m"
+#define NAUI_LOG_COLOR_RED "\033[0;91m"
+#define NAUI_LOG_COLOR_MAG "\033[1;95m"
 
 #define NAUI_LOG_MAX_TEXT_LEN 256
 
