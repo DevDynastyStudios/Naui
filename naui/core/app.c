@@ -1,5 +1,6 @@
 #include "app.h"
 #include "theme.h"
+#include "shortcut.h"
 #include "renderer/asset_manager.h"
 #include "utils/list.h"
 #include "utils/arena.h"
@@ -194,6 +195,7 @@ static void __naui_app_update(void)
 {
     naui_process_deferred();
     naui_input_update();
+	naui_shortcut_update();
     render();
 }
 
