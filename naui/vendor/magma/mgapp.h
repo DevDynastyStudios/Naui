@@ -3,6 +3,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+// TODO(box): key repeats and fix left and right control
+
 #ifndef MG_APP_API
 #if defined(_WIN32) && defined(MG_DLL) && defined(MG_APP_IMPL)
 #define MG_APP_API __declspec(dllexport)
@@ -610,6 +612,8 @@ typedef struct mg_win32_platform
     float time, delta_time;
 
     HCURSOR cursors[MG_CURSOR_MAX];
+    mg_cursor current_cursor;
+
     WNDPROC original_proc;
     int32_t caption_x, caption_y, caption_width, caption_height;
 }
@@ -731,6 +735,15 @@ static LRESULT CALLBACK mg_win32_process_message(HWND hwnd, uint32_t msg, WPARAM
                 .mouse_button = mouse_button,
                 .type = pressed ? MG_APP_EVENT_MOUSE_DOWN : MG_APP_EVENT_MOUSE_UP
             });
+            break;
+        }
+        case WM_SETCURSOR:
+        {
+            if (LOWORD(l_param) == HTCLIENT)
+            {
+                SetCursor(platform.cursors[platform.current_cursor]);
+                return TRUE;
+            }
             break;
         }
         case WM_DPICHANGED:
@@ -915,8 +928,19 @@ int32_t mg_app_run(const mg_app_init_info *info)
         platform.delta_time = new_time - platform.time;
         platform.time = new_time;
 
+        mg_app_set_cursor(MG_CURSOR_ARROW);
+
         if (info->events.update)
             info->events.update();
+
+        POINT pt;
+        GetCursorPos(&pt);
+        HWND hovered = WindowFromPoint(pt);
+        if (hovered == platform.hwnd)
+        {
+            LRESULT ht = SendMessage(platform.hwnd, WM_NCHITTEST, 0, MAKELPARAM(pt.x, pt.y));
+            SendMessage(platform.hwnd, WM_SETCURSOR, (WPARAM)platform.hwnd, MAKELPARAM(ht, WM_MOUSEMOVE));
+        }
 
         mg_app_input_frame();
     }
@@ -961,7 +985,7 @@ bool mg_app_maximized(void)
 
 void mg_app_set_cursor(mg_cursor cursor)
 {
-    SetCursor(platform.cursors[cursor]);
+    platform.current_cursor = cursor;
 }
 
 float mg_app_time(void)
@@ -1296,13 +1320,14 @@ int32_t mg_app_run(const mg_app_init_info *info)
     Window root = RootWindow(platform.display, platform.screen);
  
     XSetWindowAttributes swa = {0};
-    swa.background_pixel = BlackPixel(platform.display, platform.screen);
+    swa.background_pixmap = None;
+    swa.bit_gravity = NorthWestGravity;
     swa.event_mask =
         StructureNotifyMask | ExposureMask |
         KeyPressMask | KeyReleaseMask |
         ButtonPressMask | ButtonReleaseMask |
         PointerMotionMask;
- 
+
     platform.window = XCreateWindow(
         platform.display,
         root,
@@ -1312,7 +1337,7 @@ int32_t mg_app_run(const mg_app_init_info *info)
         DefaultDepth(platform.display, platform.screen),
         InputOutput,
         DefaultVisual(platform.display, platform.screen),
-        CWBackPixel | CWEventMask,
+        CWBackPixmap | CWBitGravity | CWEventMask,
         &swa
     );
  
@@ -1394,16 +1419,36 @@ int32_t mg_app_run(const mg_app_init_info *info)
                 case ConfigureNotify:
                 {
                     XConfigureEvent *ce = &xev.xconfigure;
+
+                    while (XPending(platform.display))
+                    {
+                        XEvent next;
+                        XPeekEvent(platform.display, &next);
+                        if (next.type != ConfigureNotify || next.xconfigure.window != ce->window)
+                            break;
+                        XNextEvent(platform.display, &xev);
+                        ce = &xev.xconfigure;
+                    }
+
                     if (ce->width  != platform.window_width ||
                         ce->height != platform.window_height)
                     {
                         platform.window_width  = ce->width;
                         platform.window_height = ce->height;
                         mg_app_call_event(&(mg_app_event){
-                            .window_width  = platform.window_width,
+                            .window_width = platform.window_width,
                             .window_height = platform.window_height,
-                            .type          = MG_APP_EVENT_RESIZE
+                            .type = MG_APP_EVENT_RESIZE
                         });
+
+                        float resize_time = mg_xlib_get_time();
+                        platform.delta_time = resize_time - platform.time;
+                        platform.time = resize_time;
+
+                        if (info->events.update)
+                            info->events.update();
+
+                        mg_app_input_frame();
                     }
                 }
                 break;

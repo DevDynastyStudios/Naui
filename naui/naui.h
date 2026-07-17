@@ -7,5 +7,3 @@
 #include "core/time.h"
 #include "core/theme.h"
 #include "renderer/asset_manager.h"
-
-#include <leaf/leaf.h>

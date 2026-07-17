@@ -43,15 +43,6 @@ static void on_render(void)
             }
         });
 
-        leaf({
-            .id = leaf_id("hi_button")
-        })
-        naui_button("Hiii :3");
-
-        NAUI_TOOLTIP(leaf_id("hi_button"))
-        {
-            leaf_text("Hiii :3", {.color = LEAF_COLOR_WHITE, .font_size = 13.5f * naui_app_dpi_scale()});
-        }
     }
 }
 

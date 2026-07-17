@@ -56,7 +56,7 @@ static int32_t g_knob_last_y = 0;
 
 static uint64_t g_focused_field_id = 0;
 
-static inline Leaf_Color tw(const char *name) { return naui_theme_leaf_color(name); }
+static inline Leaf_Color tw(const char *name) { return naui_theme_color(name); }
 static inline float tf(const char *name) { return naui_theme_float(name); }
 
 static Naui_FieldEntry *naui_field_entry(uint64_t id)
@@ -652,7 +652,7 @@ static void naui_widget_knob_render(Leaf_ID id, const char *label, float *value,
 		leaf({
 			.size = { LEAF_SIZE_FIXED(knob_sz), LEAF_SIZE_FIXED(knob_sz) },
 			.custom_draw = naui_knob_draw,
-			.custom_draw_user_data = &draw_data,
+			.custom_draw_data = LEAF_DATA_SLICE(draw_data),
 		}) {}
 
 		leaf_text(buf, {

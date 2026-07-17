@@ -63,68 +63,51 @@ static void render_leaf_cmd_list(const Leaf_RenderCmdList *list)
         {
             Naui_Vec2 position = (Naui_Vec2){cmd.bounding_box.x, cmd.bounding_box.y};
             Naui_Vec2 size = (Naui_Vec2){cmd.bounding_box.width, cmd.bounding_box.height};
-            Naui_Color color1 = (Naui_Color){cmd.color.color1.r, cmd.color.color1.g, cmd.color.color1.b, cmd.color.color1.a};
             if (cmd.color.type == LEAF_GRADIENT_LINEAR_COLOR_FILL)
-                naui_fill_gradient_rect(position, size, (Naui_Gradient){ color1, (Naui_Color){cmd.color.color2.r, cmd.color.color2.g, cmd.color.color2.b, cmd.color.color2.a}, cmd.color.percent1, cmd.color.percent2, cmd.color.angle }, cmd.rect.rounding.value, (Naui_CornerFlags)cmd.rect.rounding.corners);
-            else naui_fill_rect(position, size, color1, cmd.rect.rounding.value, (Naui_CornerFlags)cmd.rect.rounding.corners);
+                naui_fill_gradient_rect(position, size, (Naui_Gradient){ cmd.color.color1, cmd.color.color2, cmd.color.percent1, cmd.color.percent2, cmd.color.angle }, cmd.rect.rounding.value, (Naui_CornerFlags)cmd.rect.rounding.corners);
+            else naui_fill_rect(position, size, cmd.color.color1, cmd.rect.rounding.value, (Naui_CornerFlags)cmd.rect.rounding.corners);
             break;
         }
         case LEAF_RENDER_CMD_RECT_LINES:
             Naui_Vec2 position = (Naui_Vec2){cmd.bounding_box.x, cmd.bounding_box.y};
             Naui_Vec2 size = (Naui_Vec2){cmd.bounding_box.width, cmd.bounding_box.height};
-            Naui_Color color1 = (Naui_Color){cmd.color.color1.r, cmd.color.color1.g, cmd.color.color1.b, cmd.color.color1.a};
             if (cmd.color.type == LEAF_GRADIENT_LINEAR_COLOR_FILL)
-                naui_draw_gradient_rect(position, size, (Naui_Gradient){ color1, (Naui_Color){cmd.color.color2.r, cmd.color.color2.g, cmd.color.color2.b, cmd.color.color2.a}, cmd.color.percent1, cmd.color.percent2, cmd.color.angle }, cmd.rect.line_width, cmd.rect.rounding.value, (Naui_CornerFlags)cmd.rect.rounding.corners, (Naui_SideFlags)cmd.rect.sides);
-            else naui_draw_rect(position, size, color1, cmd.rect.line_width, cmd.rect.rounding.value, (Naui_CornerFlags)cmd.rect.rounding.corners, (Naui_SideFlags)cmd.rect.sides);
+                naui_draw_gradient_rect(position, size, (Naui_Gradient){ cmd.color.color1, cmd.color.color2, cmd.color.percent1, cmd.color.percent2, cmd.color.angle }, cmd.rect.line_width, cmd.rect.rounding.value, (Naui_CornerFlags)cmd.rect.rounding.corners, (Naui_SideFlags)cmd.rect.sides);
+            else naui_draw_rect(position, size, cmd.color.color1, cmd.rect.line_width, cmd.rect.rounding.value, (Naui_CornerFlags)cmd.rect.rounding.corners, (Naui_SideFlags)cmd.rect.sides);
             break;
         case LEAF_RENDER_CMD_IMAGE:
         {
             Naui_Image *image = (Naui_Image*)cmd.image.handle;
             Naui_Vec2 position = (Naui_Vec2){cmd.bounding_box.x, cmd.bounding_box.y};
             Naui_Vec2 size = (Naui_Vec2){cmd.bounding_box.width, cmd.bounding_box.height};
-            Naui_Color color1 = (Naui_Color){cmd.color.color1.r, cmd.color.color1.g, cmd.color.color1.b, cmd.color.color1.a};
             if (cmd.color.type == LEAF_GRADIENT_LINEAR_COLOR_FILL)
-                naui_draw_gradient_image(image, position, size, (Naui_Gradient){ color1, (Naui_Color){cmd.color.color2.r, cmd.color.color2.g, cmd.color.color2.b, cmd.color.color2.a}, cmd.color.percent1, cmd.color.percent2, cmd.color.angle }, cmd.image.rounding.value, (Naui_CornerFlags)cmd.image.rounding.corners);
-            else naui_draw_image(image, position, size, color1, cmd.image.rounding.value, (Naui_CornerFlags)cmd.image.rounding.corners);
+                naui_draw_gradient_image(image, position, size, (Naui_Gradient){ cmd.color.color1, cmd.color.color2, cmd.color.percent1, cmd.color.percent2, cmd.color.angle }, cmd.image.rounding.value, (Naui_CornerFlags)cmd.image.rounding.corners);
+            else naui_draw_image(image, position, size, cmd.color.color1, cmd.image.rounding.value, (Naui_CornerFlags)cmd.image.rounding.corners);
             break;
         }
         case LEAF_RENDER_CMD_TEXT:
-            naui_draw_text((Naui_Vec2){cmd.bounding_box.x, cmd.bounding_box.y}, cmd.text.text, cmd.text.font_size, cmd.text.font_id, (Naui_Color){cmd.color.color1.r, cmd.color.color1.g, cmd.color.color1.b, cmd.color.color1.a});
+            naui_draw_text((Naui_Vec2){cmd.bounding_box.x, cmd.bounding_box.y}, cmd.text.text, cmd.text.font_size, cmd.text.font_id, cmd.color.color1);
             break;
         case LEAF_RENDER_CMD_SHADOW:
         {
-            Naui_Color color1 = (Naui_Color){cmd.color.color1.r, cmd.color.color1.g, cmd.color.color1.b, cmd.color.color1.a};
             Naui_Vec2 position = {cmd.bounding_box.x + cmd.shadow.offset.x, cmd.bounding_box.y + cmd.shadow.offset.y};
             Naui_Vec2 scale = {cmd.bounding_box.width, cmd.bounding_box.height};
-            Naui_Color color = {color1.r, color1.g, color1.b, color1.a};
-
             if ((int)cmd.shadow.offset.x != 0 || (int)cmd.shadow.offset.y != 0)
-                naui_fill_rect(position, scale, color, cmd.shadow.rounding.value, (Naui_CornerFlags)cmd.shadow.rounding.corners);
+                naui_fill_rect(position, scale, cmd.color.color1, cmd.shadow.rounding.value, (Naui_CornerFlags)cmd.shadow.rounding.corners);
             naui_draw_shadow(
                 position,
                 scale,
                 cmd.shadow.blur_radius,
-                (Naui_Color){color1.r, color1.g, color1.b, color1.a},
+                cmd.color.color1,
                 cmd.shadow.rounding.value,
                 (Naui_CornerFlags)cmd.shadow.rounding.corners
             );
             break;
         }
-        case LEAF_RENDER_CMD_INNER_SHADOW:
-        {
-            Naui_Color color1 = (Naui_Color){cmd.color.color1.r, cmd.color.color1.g, cmd.color.color1.b, cmd.color.color1.a};
-            naui_draw_inner_shadow(
-                (Naui_Vec2){cmd.bounding_box.x, cmd.bounding_box.y},
-                (Naui_Vec2){cmd.bounding_box.width, cmd.bounding_box.height},
-                cmd.shadow.blur_radius,
-                (Naui_Color){color1.r, color1.g, color1.b, color1.a}
-            );
-            break;
-        }
         case LEAF_RENDER_CMD_SCISSOR_PUSH:
             naui_push_clip_rect(
-                (Naui_Vec2){cmd.bounding_box.x, cmd.bounding_box.y},
-                (Naui_Vec2){cmd.bounding_box.width, cmd.bounding_box.height}
+                cmd.bounding_box.x, cmd.bounding_box.y,
+                cmd.bounding_box.width, cmd.bounding_box.height
             );
             break;
         case LEAF_RENDER_CMD_SCISSOR_POP:
@@ -162,7 +145,7 @@ static void __naui_app_start(void)
     naui_renderer_initialize();
     naui_asset_manager_load_images("Assets/Images");
     naui_themes_initialize();
-    leaf_initialize();
+    leaf_init();
     leaf_set_measure_text(measure_text_bridge);
     naui_arena_init(&state.deferred_arg_arena, NAUI_BASE_DEFERRED_ARG_ARENA_SIZE);
     state.events.start();

@@ -3,12 +3,9 @@
 #include "base.h"
 #include "math/vec2.h"
 #include "math/vec4.h"
+#include <leaf/leaf.h>
 
-typedef struct
-{
-    uint8_t r, g, b, a;
-}
-Naui_Color;
+typedef Leaf_Color Naui_Color;
 
 typedef struct
 {
@@ -47,6 +44,8 @@ enum
     NAUI_SIDE_ALL = NAUI_SIDE_TOP | NAUI_SIDE_RIGHT | NAUI_SIDE_BOTTOM | NAUI_SIDE_LEFT
 };
 
+#define NAUI_IMAGE_ASPECT_RATIO(image) ((float)image->width / (float)image->height)
+
 NAUI_API void naui_fill_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color, float rounding, Naui_CornerFlags flags);
 NAUI_API void naui_draw_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Color color, float line_width, float rounding, Naui_CornerFlags flags, Naui_SideFlags sides);
 NAUI_API void naui_fill_gradient_rect(Naui_Vec2 position, Naui_Vec2 scale, Naui_Gradient gradient, float rounding, Naui_CornerFlags flags);
@@ -62,10 +61,10 @@ NAUI_API void naui_unload_font(uint8_t index);
 NAUI_API void naui_draw_text(Naui_Vec2 position, const char *text, float size, uint8_t font_index, Naui_Color color);
 NAUI_API Naui_Vec2 naui_measure_text(const char *text, uint32_t length, float font_size, uint8_t font_index);
 
-NAUI_API void naui_push_clip_rect(Naui_Vec2 position, Naui_Vec2 size);
+NAUI_API void naui_push_clip_rect(float x, float y, float width, float height);
 NAUI_API void naui_pop_clip_rect(void);
 
-// Draws an outward shadow
 NAUI_API void naui_draw_shadow(Naui_Vec2 position, Naui_Vec2 scale, float blur_radius, Naui_Color color, float rounding, Naui_CornerFlags corners);
 
-NAUI_API void naui_draw_inner_shadow(Naui_Vec2 position, Naui_Vec2 scale, float blur_radius, Naui_Color color);
+NAUI_API void naui_fill_polygon(const Naui_Vec2 *points, int point_count, Naui_Color color);
+NAUI_API Naui_Vec4 naui_current_clip_rect(void);

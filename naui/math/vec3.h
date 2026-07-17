@@ -6,6 +6,11 @@ typedef struct
 	float x, y, z;
 } Naui_Vec3;
 
+static inline Naui_Vec3 naui_vec3(float x, float y, float z)
+{
+	return (Naui_Vec3){ x, y, z };
+}
+
 static inline Naui_Vec3 naui_vec3_add(const Naui_Vec3 a, const Naui_Vec3 b)
 {
 	return (Naui_Vec3){ a.x + b.x, a.y + b.y, a.z + b.z };

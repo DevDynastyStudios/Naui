@@ -493,7 +493,7 @@ static bool naui_point_occluded_above(float mx, float my, Naui_PanelNode *root)
 
 bool naui_panel_hovered(Naui_PanelID panel_id)
 {
-    return !panel_id || !((Naui_PanelNode*)panel_id)->occluded;
+    return !((Naui_PanelNode*)panel_id)->occluded;
 }
 
 bool naui_any_panel_hovered(void)
@@ -504,6 +504,55 @@ bool naui_any_panel_hovered(void)
 Naui_PanelID naui_current_panel(void)
 {
     return (Naui_PanelID)pm.current_panel;
+}
+
+static Naui_PanelNode *naui_find_panel_of_type_recursive(Naui_PanelNode *node, const char *type_name)
+{
+    if (!node)
+        return NULL;
+
+    if (node->children[0])
+    {
+        Naui_PanelNode *found = naui_find_panel_of_type_recursive(node->children[0], type_name);
+        if (found)
+            return found;
+        return naui_find_panel_of_type_recursive(node->children[1], type_name);
+    }
+
+    if (node->tabs)
+    {
+        for (int32_t i = 0; i < naui_list_len(node->tabs); i++)
+        {
+            Naui_PanelNode *tab = node->tabs[i];
+            if (tab->type.type_name && !strcmp(tab->type.type_name, type_name))
+                return tab;
+        }
+        return NULL;
+    }
+
+    if (node->type.type_name && !strcmp(node->type.type_name, type_name))
+        return node;
+
+    return NULL;
+}
+
+Naui_PanelID naui_find_panel_of_type(const char *type_name)
+{
+    if (pm.main_viewport)
+    {
+        Naui_PanelNode *found = naui_find_panel_of_type_recursive(pm.main_viewport, type_name);
+        if (found)
+            return (Naui_PanelID)found;
+    }
+
+    for (int32_t i = 0; i < (int32_t)naui_list_len(pm.root_nodes); i++)
+    {
+        Naui_PanelNode *found = naui_find_panel_of_type_recursive(pm.root_nodes[i], type_name);
+        if (found)
+            return (Naui_PanelID)found;
+    }
+
+    return 0;
 }
 
 static inline bool naui_can_show_dock_guides(Naui_PanelNode *node)
@@ -526,16 +575,16 @@ static inline void naui_render_dock_guide_slot(const char *label, Naui_PanelNode
             (Leaf_Size){LEAF_SIZE_GROW, LEAF_SIZE_DERIVED} :
             (Leaf_Size){LEAF_SIZE_DERIVED, LEAF_SIZE_GROW},
         .color = hovered ?
-            naui_theme_leaf_color(NAUI_DOCK_GUIDE_HOVERED_COLOR_TAG) :
-            naui_theme_leaf_color(NAUI_DOCK_GUIDE_COLOR_TAG),
+            naui_theme_color(NAUI_DOCK_GUIDE_HOVERED_COLOR_TAG) :
+            naui_theme_color(NAUI_DOCK_GUIDE_COLOR_TAG),
         .rounding = {
-            .value = 8.0f * naui_app_dpi_scale(),
+            .value = NAUI_DPI(8.0f),
             .corners = LEAF_CORNER_ALL
         },
         .border = {
             .width = 1.0f,
             .sides = LEAF_SIDE_ALL,
-            .color = naui_theme_leaf_color(NAUI_DOCK_GUIDE_OUTLINE_COLOR_TAG)
+            .color = naui_theme_color(NAUI_DOCK_GUIDE_OUTLINE_COLOR_TAG)
         },
         .aspect_ratio = 1.0f
     });
@@ -622,10 +671,10 @@ static void naui_render_close_button(Naui_PanelNode *node, Naui_PanelNode *occlu
         .padding = LEAF_PADDING_AXES(3.0f, 3.0f),
         .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER},
         .color = hovered ?
-            naui_theme_leaf_color(NAUI_PANEL_CLOSE_HOVERED_BG_COLOR_TAG) :
+            naui_theme_color(NAUI_PANEL_CLOSE_HOVERED_BG_COLOR_TAG) :
             LEAF_COLOR_TRANSPARENT,
         .rounding = {
-            .value = 8.0f * naui_app_dpi_scale(),
+            .value = NAUI_DPI(8.0f),
             .corners = LEAF_CORNER_ALL
         }
     })
@@ -633,7 +682,7 @@ static void naui_render_close_button(Naui_PanelNode *node, Naui_PanelNode *occlu
         Naui_Image *icon = naui_get_image(NAUI_CLOSE_ICON_TAG);
         leaf({
             .size = {LEAF_SIZE_DERIVED, LEAF_SIZE_PERCENT(0.8f)},
-            .color = naui_theme_leaf_color(NAUI_PANEL_TITLEBAR_TEXT_COLOR_TAG),
+            .color = naui_theme_color(NAUI_PANEL_TITLEBAR_TEXT_COLOR_TAG),
             .image = icon,
             .aspect_ratio = 1.0f
         });
@@ -642,10 +691,9 @@ static void naui_render_close_button(Naui_PanelNode *node, Naui_PanelNode *occlu
 
 static inline void naui_render_basic_panel_titlebar(Naui_PanelNode *node)
 {
-    const float dpi_scale = naui_app_dpi_scale();
-    const float font_size = naui_theme_float(NAUI_PANEL_FONT_SIZE_TAG) * dpi_scale;
-    const Leaf_Color text_color = naui_theme_leaf_color(NAUI_PANEL_TITLEBAR_TEXT_COLOR_TAG);
-    const Naui_Vec2 padding = naui_vec2_scale(naui_theme_vec2(NAUI_PANEL_TITLEBAR_PADDING_TAG), dpi_scale);
+    const float font_size = NAUI_DPI(naui_theme_float(NAUI_PANEL_FONT_SIZE_TAG));
+    const Leaf_Color text_color = naui_theme_color(NAUI_PANEL_TITLEBAR_TEXT_COLOR_TAG);
+    const Naui_Vec2 padding = naui_vec2_scale(naui_theme_vec2(NAUI_PANEL_TITLEBAR_PADDING_TAG), naui_app_dpi_scale());
 
     leaf({
         .size = {LEAF_SIZE_FULL, LEAF_SIZE_FIXED(font_size)},
@@ -683,24 +731,23 @@ static inline void naui_render_basic_panel_titlebar(Naui_PanelNode *node)
 
 static inline void naui_render_docked_panel_tab(Naui_PanelNode *node, Naui_PanelNode *group, bool is_active, Leaf_ID id)
 {
-    const float dpi_scale = naui_app_dpi_scale();
-    const float font_size = naui_theme_float(NAUI_PANEL_FONT_SIZE_TAG) * dpi_scale;
+    const float font_size = NAUI_DPI(naui_theme_float(NAUI_PANEL_FONT_SIZE_TAG));
     const float rounding = naui_theme_float(NAUI_PANEL_ROUNDING_TAG);
-    const Leaf_Color text_color = naui_theme_leaf_color(NAUI_PANEL_TITLEBAR_TEXT_COLOR_TAG);
-    const Naui_Vec2 padding = naui_vec2_scale(naui_theme_vec2(NAUI_PANEL_TITLEBAR_PADDING_TAG), dpi_scale);
+    const Leaf_Color text_color = naui_theme_color(NAUI_PANEL_TITLEBAR_TEXT_COLOR_TAG);
+    const Naui_Vec2 padding = naui_vec2_scale(naui_theme_vec2(NAUI_PANEL_TITLEBAR_PADDING_TAG), naui_app_dpi_scale());
 
     const Leaf_Color bg_color = is_active
-        ? naui_theme_leaf_color(NAUI_PANEL_BODY_BG_COLOR_TAG)
-        : naui_theme_leaf_color(NAUI_PANEL_TITLEBAR_BG_COLOR_TAG);
+        ? naui_theme_color(NAUI_PANEL_BODY_BG_COLOR_TAG)
+        : naui_theme_color(NAUI_PANEL_TITLEBAR_BG_COLOR_TAG);
 
     leaf({
         .id = id,
         .direction = LEAF_DIRECTION_HORIZONAL,
         .size = {LEAF_SIZE_FIT, LEAF_SIZE_FIXED(font_size)},
         .padding = LEAF_PADDING_AXES(padding.x, padding.y),
-        .rounding = { rounding * dpi_scale, LEAF_CORNER_TL | LEAF_CORNER_TR },
+        .rounding = { NAUI_DPI(rounding), LEAF_CORNER_TL | LEAF_CORNER_TR },
         .color = bg_color,
-        .child_gap = 2.0f * dpi_scale
+        .child_gap = NAUI_DPI(2.0f)
     })
     {
         leaf_text(node->title, { .font_size = font_size, .color = text_color });
@@ -719,7 +766,6 @@ static inline void naui_render_docked_panel_tab(Naui_PanelNode *node, Naui_Panel
 
 static inline void naui_render_docked_panel_titlebar(Naui_PanelNode *node)
 {
-    const float dpi_scale = naui_app_dpi_scale();
     leaf({
         .size = {LEAF_SIZE_FULL, LEAF_SIZE_FIT},
         .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER},
@@ -729,7 +775,7 @@ static inline void naui_render_docked_panel_titlebar(Naui_PanelNode *node)
             .direction = LEAF_DIRECTION_HORIZONAL,
             .size = {LEAF_SIZE_FULL, LEAF_SIZE_FIT},
             .child_alignment = {LEAF_ALIGN_X_LEFT, LEAF_ALIGN_Y_CENTER},
-            .child_gap = 2.0f * dpi_scale
+            .child_gap = NAUI_DPI(2.0f)
         })
         {
             if (node->tabs)
@@ -747,15 +793,14 @@ static inline void naui_render_docked_panel_titlebar(Naui_PanelNode *node)
 
 static inline void naui_render_panel_titlebar(Naui_PanelNode *node)
 {
-    const float dpi_scale = naui_app_dpi_scale();
-    const Leaf_Color bg_color = naui_theme_leaf_color(NAUI_PANEL_TITLEBAR_BG_COLOR_TAG);
+    const Leaf_Color bg_color = naui_theme_color(NAUI_PANEL_TITLEBAR_BG_COLOR_TAG);
 
     leaf({
         .id = leaf_id_indexed(NAUI_PANEL_TITLEBAR_ID, (Naui_PanelID)node),
         .size = {LEAF_SIZE_FULL, LEAF_SIZE_FIT},
         .color = bg_color,
         .rounding = {
-            naui_theme_float(NAUI_PANEL_ROUNDING_TAG) * dpi_scale,
+            NAUI_DPI(naui_theme_float(NAUI_PANEL_ROUNDING_TAG)),
             LEAF_CORNER_TL | LEAF_CORNER_TR
         }
     })
@@ -768,28 +813,23 @@ static inline void naui_render_panel_titlebar(Naui_PanelNode *node)
 
 static inline void naui_render_panel_body(Naui_PanelNode *node)
 {
-    const float dpi_scale = naui_app_dpi_scale();
     Naui_Vec2 padding = naui_theme_vec2(NAUI_PANEL_BODY_PADDING_TAG);
 
     leaf({
         .size = {LEAF_SIZE_FULL, LEAF_SIZE_GROW},
         .padding = LEAF_PADDING_AXES(padding.x, padding.y),
-        .color = naui_theme_leaf_color(NAUI_PANEL_BODY_BG_COLOR_TAG),
+        .color = naui_theme_color(NAUI_PANEL_BODY_BG_COLOR_TAG),
         .rounding = {
-            naui_theme_float(NAUI_PANEL_ROUNDING_TAG) * dpi_scale,
+            NAUI_DPI(naui_theme_float(NAUI_PANEL_ROUNDING_TAG)),
             LEAF_CORNER_BL | LEAF_CORNER_BR
-        },
-        .inner_shadow = {
-            .blur_radius = 64.0f,
-            .color = naui_theme_leaf_color(NAUI_PANEL_INNER_SHADOW_COLOR_TAG)
         },
         .clip_children = true
     })
     {
         Naui_PanelNode *tab = node->tabs ? node->tabs[node->active_tab] : node;
         pm.current_panel = tab;
-        if (tab->type.on_render)
-            tab->type.on_render(tab->user_data);
+        if (tab->type.on_update)
+            tab->type.on_update(tab->user_data);
         if (naui_can_show_dock_guides(node))
             naui_render_dock_guides(node);
     }
@@ -799,7 +839,7 @@ static void naui_render_next_panel_child(Naui_PanelNode *node)
 {
     if (node->children[0])
     {
-        Leaf_Color border_color = naui_theme_leaf_color(NAUI_PANEL_BORDER_COLOR_TAG);
+        Leaf_Color border_color = naui_theme_color(NAUI_PANEL_BORDER_COLOR_TAG);
         float border_width = naui_theme_float(NAUI_PANEL_BORDER_WIDTH_TAG);
 
         leaf({
@@ -843,8 +883,6 @@ static void naui_render_next_panel_child(Naui_PanelNode *node)
 
 static void naui_render_panel(Naui_PanelNode *node)
 {
-    const float dpi_scale = naui_app_dpi_scale();
-
     leaf({
         .id = leaf_id_indexed(NAUI_ROOT_PANEL_ID, (Naui_PanelID)node),
         .positioning = LEAF_POSITIONING_FLOATING_TO_ROOT,
@@ -853,17 +891,17 @@ static void naui_render_panel(Naui_PanelNode *node)
         .border = {
             .width = naui_theme_float(NAUI_PANEL_BORDER_WIDTH_TAG),
             .sides = LEAF_SIDE_ALL,
-            .color = naui_theme_leaf_color(NAUI_PANEL_BORDER_COLOR_TAG)
+            .color = naui_theme_color(NAUI_PANEL_BORDER_COLOR_TAG)
         },
         .shadow = {
             .blur_radius = 32.0f,
-            .color = naui_theme_leaf_color(NAUI_PANEL_SHADOW_COLOR_TAG)
+            .color = naui_theme_color(NAUI_PANEL_SHADOW_COLOR_TAG)
         },
         .rounding = {
-            naui_theme_float(NAUI_PANEL_ROUNDING_TAG) * dpi_scale,
+            NAUI_DPI(naui_theme_float(NAUI_PANEL_ROUNDING_TAG)),
             LEAF_CORNER_ALL
         },
-        .color = naui_theme_leaf_color(NAUI_PANEL_BORDER_COLOR_TAG),
+        .color = naui_theme_color(NAUI_PANEL_BORDER_COLOR_TAG),
         .clip_children = true
     })
     {
@@ -879,14 +917,8 @@ static void naui_render_main_viewport(void)
         .id = id,
         .size = {LEAF_SIZE_GROW, LEAF_SIZE_GROW},
         .color = node ?
-            naui_theme_leaf_color(NAUI_PANEL_BORDER_COLOR_TAG) :
-            naui_theme_leaf_color(NAUI_VIEWPORT_BG_COLOR_TAG),
-        .inner_shadow = node ?
-            (Leaf_InnerShadow){ 0 } :
-            (Leaf_InnerShadow){
-                .blur_radius = 64.0f,
-                .color = naui_theme_leaf_color(NAUI_PANEL_INNER_SHADOW_COLOR_TAG)
-            }
+            naui_theme_color(NAUI_PANEL_BORDER_COLOR_TAG) :
+            naui_theme_color(NAUI_VIEWPORT_BG_COLOR_TAG)
     })
     {
         if (node)
@@ -920,7 +952,7 @@ static void naui_render_dock_guide_area(void)
         .positioning = LEAF_POSITIONING_FLOATING_TO_ROOT,
         .size = {LEAF_SIZE_FIXED(pm.dock_guide_area.width), LEAF_SIZE_FIXED(pm.dock_guide_area.height)},
         .floating.offset = {pm.dock_guide_area.x, pm.dock_guide_area.y},
-        .color = naui_theme_leaf_color(NAUI_DOCK_GUIDE_HOVERED_COLOR_TAG)
+        .color = naui_theme_color(NAUI_DOCK_GUIDE_HOVERED_COLOR_TAG)
     });
 }
 
@@ -1272,11 +1304,6 @@ static void naui_update_panel(Naui_PanelNode *node)
 
     if (naui_can_show_dock_guides(node))
         naui_update_panel_dock_guides(node);
-
-    Naui_PanelNode *tab = node->tabs ? node->tabs[node->active_tab] : node;
-    pm.current_panel = tab;
-    if (tab->type.on_update)
-        tab->type.on_update(tab->user_data);
 }
 
 static void naui_update_main_viewport(void)
@@ -1320,6 +1347,7 @@ void naui_render_panels_and_viewport(void)
         naui_render_panel(pm.root_nodes[i]);
 
     naui_render_dock_guide_area();
+    pm.current_panel = NULL;
 }
 
 #pragma region Serialization
@@ -1330,7 +1358,7 @@ static inline const char *naui_get_panel_type(Naui_PanelNode *node)
     return node->type.type_name;
 }
 
-static inline Naui_PanelNode *naui_find_panel_of_type(const char *type_name)
+static inline Naui_PanelNode *naui_find_root_panel_of_type(const char *type_name)
 {
     for (int32_t i = 0; i < (int32_t)naui_list_len(pm.root_nodes); i++)
     {
@@ -1425,7 +1453,7 @@ static Naui_PanelNode *naui_deserialize_panel_node(Naui_JsonValue *json_parent)
         Naui_JsonValue *type = naui_json_object_get(json_parent, "type");
         char type_name[64];
         naui_json_copy_string(type, type_name, sizeof(type_name));
-        return naui_find_panel_of_type(type_name);
+        return naui_find_root_panel_of_type(type_name);
     }
     else if (!strncmp(kind_name, "split", sizeof(kind_name)))
     {
@@ -1456,13 +1484,13 @@ static Naui_PanelNode *naui_deserialize_panel_node(Naui_JsonValue *json_parent)
 
         char tab_type_name[64] = {0};
         naui_json_copy_string(naui_json_array_get(tabs_arr, 0), tab_type_name, sizeof(tab_type_name));
-        Naui_PanelNode *main_tab = naui_find_panel_of_type(tab_type_name);
+        Naui_PanelNode *main_tab = naui_find_root_panel_of_type(tab_type_name);
 
         for (size_t i = 1; i < tab_count; i++)
         {
             naui_json_copy_string(naui_json_array_get(tabs_arr, i), tab_type_name, sizeof(tab_type_name));
             naui_dock_panel(
-                (Naui_PanelID)main_tab, (Naui_PanelID)naui_find_panel_of_type(tab_type_name),
+                (Naui_PanelID)main_tab, (Naui_PanelID)naui_find_root_panel_of_type(tab_type_name),
                 NAUI_DOCK_DIRECTION_CENTER, 0.0f);
         }
 

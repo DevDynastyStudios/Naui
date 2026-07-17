@@ -38,11 +38,11 @@ void naui_render_main_titlebar(const char *title)
 	naui_app_set_caption_area(0, 0, naui_app_width() - 80 * dpi_scale, naui_any_panel_hovered() ? 0 : titlebar_height);
 
 	Naui_Vec2 padding = naui_theme_vec2(NAUI_PANEL_TITLEBAR_PADDING_TAG);
-	Leaf_Color text_color = naui_theme_leaf_color(NAUI_PANEL_TITLEBAR_TEXT_COLOR_TAG);
+	Leaf_Color text_color = naui_theme_color(NAUI_PANEL_TITLEBAR_TEXT_COLOR_TAG);
 
 	leaf({
 		.size = {LEAF_SIZE_FULL, LEAF_SIZE_FIXED(titlebar_height)},
-		.color = {naui_theme_leaf_color(NAUI_PANEL_TITLEBAR_BG_COLOR_TAG)},
+		.color = {naui_theme_color(NAUI_PANEL_TITLEBAR_BG_COLOR_TAG)},
 		.child_alignment = {LEAF_ALIGN_X_LEFT, LEAF_ALIGN_Y_CENTER}
 	})
 	{
@@ -75,9 +75,9 @@ void naui_render_main_titlebar(const char *title)
 			.child_alignment = {LEAF_ALIGN_X_RIGHT, LEAF_ALIGN_Y_CENTER}
 		})
 		{
-			naui_render_titlebar_icon_button(naui_get_image(NAUI_MINIMIZE_ICON_TAG), leaf_id_indexed("__naui_titlebar_btn", 0), text_color, naui_theme_leaf_color(NAUI_PANEL_BUTTON_HOVERED_BG_COLOR_TAG), minimize);
-			naui_render_titlebar_icon_button(naui_get_image(NAUI_MAXIMIZE_ICON_TAG), leaf_id_indexed("__naui_titlebar_btn", 1), text_color, naui_theme_leaf_color(NAUI_PANEL_BUTTON_HOVERED_BG_COLOR_TAG), maximize);
-			naui_render_titlebar_icon_button(naui_get_image(NAUI_CLOSE_ICON_TAG), leaf_id_indexed("__naui_titlebar_btn", 2), text_color, naui_theme_leaf_color(NAUI_PANEL_CLOSE_HOVERED_BG_COLOR_TAG), naui_app_close);
+			naui_render_titlebar_icon_button(naui_get_image(NAUI_MINIMIZE_ICON_TAG), leaf_id_indexed("__naui_titlebar_btn", 0), text_color, naui_theme_color(NAUI_PANEL_BUTTON_HOVERED_BG_COLOR_TAG), minimize);
+			naui_render_titlebar_icon_button(naui_get_image(NAUI_MAXIMIZE_ICON_TAG), leaf_id_indexed("__naui_titlebar_btn", 1), text_color, naui_theme_color(NAUI_PANEL_BUTTON_HOVERED_BG_COLOR_TAG), maximize);
+			naui_render_titlebar_icon_button(naui_get_image(NAUI_CLOSE_ICON_TAG), leaf_id_indexed("__naui_titlebar_btn", 2), text_color, naui_theme_color(NAUI_PANEL_CLOSE_HOVERED_BG_COLOR_TAG), naui_app_close);
 		}
 	}
 }

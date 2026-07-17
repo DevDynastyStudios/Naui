@@ -100,7 +100,6 @@ typedef struct
     NauiPanelEvent on_attach;
     NauiPanelEvent on_detach;
     NauiPanelEvent on_update;
-    NauiPanelEvent on_render;
     size_t user_data_size;
     const char *type_name;
 }
@@ -123,6 +122,7 @@ enum
 };
 
 #define NAUI_ATTACH_PANEL(type_name) naui_attach_panel(#type_name)
+#define NAUI_FIND_PANEL_OF_TYPE(type_name) naui_find_panel_of_type(#type_name)
 
 NAUI_API Naui_PanelID       naui_attach_panel               (const char *type_name);
 NAUI_API void               naui_detach_panel               (Naui_PanelID id);
@@ -142,6 +142,8 @@ NAUI_API Naui_PanelID       naui_get_main_viewport          (void);
 
 NAUI_API bool               naui_panel_hovered              (Naui_PanelID id);
 NAUI_API bool               naui_any_panel_hovered          (void);
+
+NAUI_API Naui_PanelID       naui_find_panel_of_type         (const char *type_name);
 
 NAUI_API void               naui_render_panels_and_viewport (void);
 NAUI_API Naui_PanelID       naui_current_panel              (void);
@@ -165,7 +167,6 @@ NAUI_API bool               naui_deserialize_viewport       (const char *file_pa
         (NauiPanelEvent)on_attach, \
         (NauiPanelEvent)on_detach, \
         (NauiPanelEvent)on_update, \
-        (NauiPanelEvent)on_render, \
         data_size, \
         #name \
     }; \

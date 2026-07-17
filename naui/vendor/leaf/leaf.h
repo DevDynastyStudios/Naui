@@ -3,11 +3,14 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define LEAF_FEATURE_SHADOWS 1
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #define LEAF_COLOR_WHITE (Leaf_Color) { 255, 255, 255, 255 }
+#define LEAF_COLOR_BLACK (Leaf_Color) { 0, 0, 0, 255 }
 #define LEAF_COLOR_TRANSPARENT (Leaf_Color) { 0 }
 
 #define LEAF_API // TODO(box): implement proper dll/wasm exporting
@@ -58,8 +61,8 @@ Leaf_ColorFill;
 #define LEAF_GRADIENT(c1, c2, angle) (Leaf_ColorFill){ (c1), (c2), 0.0f, 1.0f, angle, LEAF_GRADIENT_LINEAR_COLOR_FILL }
 #define LEAF_GRADIENT_PERCENT(c1, p1, c2, p2, angle) (Leaf_ColorFill){ (c1), (c2), (p1), (p2), angle, LEAF_GRADIENT_LINEAR_COLOR_FILL }
 
-#define leaf_deg(v) ((v) * 0.0174532925f)
-#define leaf_rad(v) (v)
+#define LEAF_DEG(v) ((v) * 0.0174532925f)
+#define LEAF_RAD(v) (v)
 
 static inline Leaf_Color leaf_rgb(uint8_t r, uint8_t g, uint8_t b)
 {
@@ -215,18 +218,21 @@ typedef void (*Leaf_CustomDrawFn)(Leaf_BoundingBox box, void *user_data);
 
 typedef struct
 {
+    void *data;
+    size_t size;
+}
+Leaf_DataSlice;
+#define LEAF_DATA_SLICE(x) (Leaf_DataSlice) { .data = &(x), .size = sizeof(x) }
+
+#ifdef LEAF_FEATURE_SHADOWS
+typedef struct
+{
     float blur_radius;
     Leaf_Vec2 offset;
     Leaf_Color color;
 }
 Leaf_Shadow;
-
-typedef struct
-{
-    float blur_radius;
-    Leaf_Color color;
-}
-Leaf_InnerShadow;
+#endif
 
 typedef struct
 {
@@ -239,10 +245,10 @@ Leaf_Floating;
 typedef struct
 {
     Leaf_ID id;
-
     Leaf_Image image;
+
     Leaf_CustomDrawFn custom_draw;
-    void *custom_draw_user_data;
+    Leaf_DataSlice custom_draw_data;
 
     Leaf_Size size;
     Leaf_Padding padding;
@@ -253,8 +259,9 @@ typedef struct
 
     Leaf_Floating floating;
 
+#ifdef LEAF_FEATURE_SHADOWS
     Leaf_Shadow shadow;
-    Leaf_InnerShadow inner_shadow;
+#endif
     Leaf_Rounding rounding;
 
     float child_gap;
@@ -310,11 +317,12 @@ enum
     LEAF_RENDER_CMD_RECT_LINES,
     LEAF_RENDER_CMD_TEXT,
     LEAF_RENDER_CMD_IMAGE,
-    LEAF_RENDER_CMD_SHADOW,
-    LEAF_RENDER_CMD_INNER_SHADOW,
     LEAF_RENDER_CMD_SCISSOR_PUSH,
     LEAF_RENDER_CMD_SCISSOR_POP,
-    LEAF_RENDER_CMD_CUSTOM
+    LEAF_RENDER_CMD_CUSTOM,
+#ifdef LEAF_FEATURE_SHADOWS
+    LEAF_RENDER_CMD_SHADOW
+#endif
 };
 
 typedef struct
@@ -344,6 +352,7 @@ typedef struct
         }
         image;
 
+#ifdef LEAF_FEATURE_SHADOWS
         struct
         {
             Leaf_Vec2 offset;
@@ -351,6 +360,7 @@ typedef struct
             Leaf_Rounding rounding;
         }
         shadow;
+#endif
 
         struct
         {
@@ -408,7 +418,7 @@ typedef struct { Leaf_ElementConfig wrapped; } Leaf_ElementConfigWrapper;
 LEAF_API Leaf_ID leaf_id(const char *label);
 LEAF_API Leaf_ID leaf_id_indexed(const char *label, uint64_t index);
 
-LEAF_API void leaf_initialize(void);
+LEAF_API void leaf_init(void);
 LEAF_API void leaf_shutdown(void);
 
 LEAF_API void leaf_set_measure_text(Leaf_MeasureTextFn fn);
@@ -449,6 +459,7 @@ struct Leaf_Node
         struct
         {
             Leaf_ElementConfig config;
+            void *custom_data;
             int32_t child_count;
             int32_t relative_child_count;
         }
@@ -618,7 +629,7 @@ Leaf_ID leaf_id_indexed(const char *label, uint64_t index)
     return (Leaf_ID){leaf_murmur(label, (int)strlen(label), base + index), label};
 }
 
-void leaf_initialize(void)
+void leaf_init(void)
 {
     leaf_ctx = (Leaf_Context*)calloc(1, sizeof(Leaf_Context));
     leaf_arena_init(&leaf_ctx->arena, LEAF_CONFIG_MIN_MEMORY_SIZE);
@@ -849,6 +860,12 @@ void leaf_begin_element(Leaf_ElementConfig config)
     if (config.size.height.type == LEAF_SIZE_TYPE_FIXED)
         node->bounding_box.height = config.size.height.size.min_max.min;
 
+    if (config.custom_draw_data.size)
+    {
+        node->element.custom_data = leaf_arena_alloc(&leaf_ctx->arena, config.custom_draw_data.size);
+        memcpy(node->element.custom_data, config.custom_draw_data.data, config.custom_draw_data.size);
+    }
+
     node->parent = leaf_stack_top();
     leaf_stack_push(node);
 }
@@ -915,23 +932,6 @@ static inline bool leaf_is_color_fill_empty(Leaf_ColorFill fill)
     return fill.color1.a == 0 && fill.color2.a == 0;
 }
 
-static inline void leaf_render_inner_shadow(Leaf_Node *node)
-{
-    const Leaf_ElementConfig *config = &node->element.config;
-    if (!config->inner_shadow.color.a) return;
-
-    leaf_push_render_cmd((Leaf_RenderCmd){
-        .type = LEAF_RENDER_CMD_INNER_SHADOW,
-        .color = (Leaf_ColorFill){
-            .color1 = config->inner_shadow.color,
-            .type = LEAF_SOLID_COLOR_FILL
-        },
-        .bounding_box = node->bounding_box,
-        .shadow.blur_radius = config->inner_shadow.blur_radius,
-        .shadow.rounding = config->rounding,
-    });
-}
-
 static inline bool leaf_box_offscreen(Leaf_BoundingBox box)
 {
     Leaf_BoundingBox screen = leaf_ctx->stack[0]->bounding_box;
@@ -953,6 +953,8 @@ static void leaf_render_node(Leaf_Node *node)
     case LEAF_NODE_TYPE_ELEMENT:
     {
         const Leaf_ElementConfig *config = &node->element.config;
+
+#ifdef LEAF_FEATURE_SHADOWS
         if (config->shadow.color.a)
         {
             Leaf_BoundingBox shadow_box = {
@@ -973,6 +975,7 @@ static void leaf_render_node(Leaf_Node *node)
                 .shadow.rounding = config->rounding
             });
         }
+#endif
 
         if (!leaf_is_color_fill_empty(config->color))
         {
@@ -1003,7 +1006,7 @@ static void leaf_render_node(Leaf_Node *node)
                 .type = LEAF_RENDER_CMD_CUSTOM,
                 .bounding_box = node->bounding_box,
                 .custom.draw = config->custom_draw,
-                .custom.user_data = config->custom_draw_user_data
+                .custom.user_data = node->element.custom_data
             });
         }
 
@@ -1206,8 +1209,7 @@ static void leaf_recompute_fit(Leaf_Node *parent)
     {
         float avail_main =
             LEAF_MAIN(h, parent->bounding_box.width,  parent->bounding_box.height) -
-            LEAF_MAIN(h, cfg->padding.left + cfg->padding.right,
-                         cfg->padding.top  + cfg->padding.bottom);
+            LEAF_MAIN(h, cfg->padding.left + cfg->padding.right, cfg->padding.top + cfg->padding.bottom);
 
         float cross_total = 0.0f;
         float row_main = 0.0f, row_cross = 0.0f;
@@ -1259,13 +1261,11 @@ static void leaf_recompute_fit(Leaf_Node *parent)
             if (fit_w)
             {
                 if (h) parent->bounding_box.width += cw;
-                else   parent->bounding_box.width = LEAF_MAX(cw + cfg->padding.left + cfg->padding.right,
-                                                             parent->bounding_box.width);
+                else   parent->bounding_box.width = LEAF_MAX(cw + cfg->padding.left + cfg->padding.right, parent->bounding_box.width);
             }
             if (fit_h)
             {
-                if (h) parent->bounding_box.height = LEAF_MAX(ch + cfg->padding.top + cfg->padding.bottom,
-                                                              parent->bounding_box.height);
+                if (h) parent->bounding_box.height = LEAF_MAX(ch + cfg->padding.top + cfg->padding.bottom, parent->bounding_box.height);
                 else   parent->bounding_box.height += ch;
             }
         }
@@ -1319,6 +1319,8 @@ static void leaf_size_pass(Leaf_Node *parent)
             float avail = parent->bounding_box.height - parent_config->padding.top - parent_config->padding.bottom;
             child->bounding_box.height = avail * child_config->size.height.size.percent;
         }
+
+        leaf_resolve_aspect_ratio(child);
 
         if (child_config->positioning != LEAF_POSITIONING_RELATIVE)
             continue;
@@ -1583,7 +1585,6 @@ static void leaf_position_render(Leaf_Node *parent)
                 leaf_position_render(child);
                 if (child_config->clip_children)
                     leaf_push_render_cmd((Leaf_RenderCmd){ .type = LEAF_RENDER_CMD_SCISSOR_POP });
-                leaf_render_inner_shadow(child);
                 continue;
             }
         }
@@ -1663,7 +1664,6 @@ static void leaf_position_render(Leaf_Node *parent)
             leaf_position_render(child);
             if (child_config->clip_children)
                 leaf_push_render_cmd((Leaf_RenderCmd){ .type = LEAF_RENDER_CMD_SCISSOR_POP });
-            leaf_render_inner_shadow(child);
         }
     }
 

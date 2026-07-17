@@ -1,29 +1,26 @@
 #include "renderer.h"
 
+#include "core/app.h"
+#include "math/math.h"
+
+#include <stb/stb_truetype.h>
 #include <magma/mgapp.h>
 #include <magma/mgfx.h>
 
-#include "math/math.h"
-
 #include "shaders/base.glsl.h"
-
-#include <stb/stb_truetype.h>
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 
-#define NAUI_RENDERER_MAX_VERTICES (1 << 16)
+#define NAUI_RENDERER_MAX_VERTICES (1 << 18)
 #define NAUI_RENDERER_MAX_INDICES (NAUI_RENDERER_MAX_VERTICES * 6 / 4)
 #define NAUI_RENDERER_CORNER_SEGMENTS 8
 
-#define NAUI_FONT_ATLAS_SIZE_SMALL  1024
-#define NAUI_FONT_ATLAS_SIZE_LARGE  4096
 #define NAUI_FONT_MAX_SLOTS         4
-#define NAUI_FONT_SIZE_SMALL        32.0f
-#define NAUI_FONT_SIZE_LARGE        128.0f
-#define NAUI_FONT_SIZE_THRESHOLD    32.0f
 #define NAUI_FONT_MAX_RANGES        64
+
+#define NAUI_FONT_BAKE_SIZE         32.0f
 
 #define NAUI_CLIP_STACK_MAX 1024
 
@@ -90,8 +87,10 @@ typedef struct
     int             atlas_size;
     float           ascent;
     float           descent;
+    float           baked_size;
+    bool            loaded;
 }
-Naui_FontTier;
+Naui_FontBake;
 
 typedef struct
 {
@@ -106,12 +105,12 @@ typedef struct
     mgfx_pipeline base_pipeline;
     mgfx_buffer batch_vb, batch_ib;
 
-    mgfx_sampler image_sampler;
+    mgfx_sampler linear_sampler;
+    mgfx_sampler nearest_sampler;
+
     mgfx_image image_atlas;
 
-    mgfx_sampler  font_sampler;
-    Naui_FontTier font_small[NAUI_FONT_MAX_SLOTS];
-    Naui_FontTier font_large[NAUI_FONT_MAX_SLOTS];
+    Naui_FontBake font[NAUI_FONT_MAX_SLOTS];
     bool          font_loaded[NAUI_FONT_MAX_SLOTS];
     int8_t        font_current_index;
 
@@ -180,11 +179,11 @@ static const char *naui_utf8_decode(const char *s, int *cp_out)
     return s;
 }
 
-static const stbtt_packedchar *naui_tier_lookup(const Naui_FontTier *tier, int cp)
+static const stbtt_packedchar *naui_bake_lookup(const Naui_FontBake *bake, int cp)
 {
-    for (int i = 0; i < tier->range_count; i++)
+    for (int i = 0; i < bake->range_count; i++)
     {
-        const Naui_FontRange *r = &tier->ranges[i];
+        const Naui_FontRange *r = &bake->ranges[i];
         if (cp >= r->first_codepoint && cp < r->first_codepoint + r->num_chars)
             return &r->chars[cp - r->first_codepoint];
     }
@@ -278,8 +277,18 @@ static void naui_renderer_flush(void)
     rdata->index_offset = rdata->index_count;
 }
 
+static inline bool naui_reserve(uint32_t vert_needed, uint32_t idx_needed)
+{
+    if (rdata->vertex_count + vert_needed > NAUI_RENDERER_MAX_VERTICES) return false;
+    if (rdata->index_count  + idx_needed  > NAUI_RENDERER_MAX_INDICES)  return false;
+    return true;
+}
+
 static void naui_push_quad4(Naui_Vec2 a, Naui_Vec2 b, Naui_Vec2 c, Naui_Vec2 d, uint32_t color, int32_t texture_id)
 {
+    if (!naui_reserve(4, 6))
+        return;
+
     uint32_t base = rdata->vertex_count;
     Naui_BatchVertex *v = &rdata->vertices[base];
 
@@ -298,6 +307,9 @@ static void naui_push_quad4(Naui_Vec2 a, Naui_Vec2 b, Naui_Vec2 c, Naui_Vec2 d, 
 static void naui_push_gradient_quad4(Naui_Vec2 a, Naui_Vec2 b, Naui_Vec2 c, Naui_Vec2 d,
     uint32_t ca, uint32_t cb, uint32_t cc, uint32_t cd, int32_t texture_id)
 {
+    if (!naui_reserve(4, 6))
+        return;
+
     uint32_t base = rdata->vertex_count;
     Naui_BatchVertex *v = &rdata->vertices[base];
 
@@ -315,6 +327,9 @@ static void naui_push_gradient_quad4(Naui_Vec2 a, Naui_Vec2 b, Naui_Vec2 c, Naui
 
 static void naui_push_textured_quad4(Naui_Vec2 a, Naui_Vec2 b, Naui_Vec2 c, Naui_Vec2 d, Naui_Vec4 texture_area, uint32_t color, int32_t texture_id)
 {
+    if (!naui_reserve(4, 6))
+        return;
+
     uint32_t base = rdata->vertex_count;
     Naui_BatchVertex *v = &rdata->vertices[base];
 
@@ -355,6 +370,9 @@ static void naui_push_textured_rect(Naui_Vec2 tl, Naui_Vec2 br, Naui_Vec4 uv, ui
 
 static void naui_push_triangle(Naui_Vec2 a, Naui_Vec2 b, Naui_Vec2 c, uint32_t color)
 {
+    if (!naui_reserve(3, 3))
+        return;
+
     uint32_t base = rdata->vertex_count;
     Naui_BatchVertex *v = &rdata->vertices[base];
 
@@ -371,6 +389,9 @@ static void naui_push_triangle(Naui_Vec2 a, Naui_Vec2 b, Naui_Vec2 c, uint32_t c
 static void naui_push_gradient_triangle(Naui_Vec2 a, Naui_Vec2 b, Naui_Vec2 c,
     uint32_t ca, uint32_t cb, uint32_t cc)
 {
+    if (!naui_reserve(3, 3))
+        return;
+
     uint32_t base = rdata->vertex_count;
     Naui_BatchVertex *v = &rdata->vertices[base];
 
@@ -545,7 +566,7 @@ void naui_renderer_build_atlas(uint32_t width, uint32_t height, void *data)
         .usage = MGFX_IMAGE_USAGE_COLOR_ATTACHMENT,
         .width = width,
         .height = height,
-        .data = data,
+        .data = data
     });
 }
 
@@ -598,17 +619,17 @@ void naui_renderer_initialize(void)
         }
     });
 
-    rdata->image_sampler = mgfx_create_sampler(&(mgfx_sampler_create_info){
-        .min_filter     = MGFX_SAMPLER_FILTER_NEAREST,
-        .mag_filter     = MGFX_SAMPLER_FILTER_NEAREST,
+    rdata->linear_sampler = mgfx_create_sampler(&(mgfx_sampler_create_info){
+        .min_filter     = MGFX_SAMPLER_FILTER_LINEAR,
+        .mag_filter     = MGFX_SAMPLER_FILTER_LINEAR,
         .address_mode_u = MGFX_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
         .address_mode_v = MGFX_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
         .address_mode_w = MGFX_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE
     });
 
-    rdata->font_sampler = mgfx_create_sampler(&(mgfx_sampler_create_info){
-        .min_filter     = MGFX_SAMPLER_FILTER_LINEAR,
-        .mag_filter     = MGFX_SAMPLER_FILTER_LINEAR,
+    rdata->nearest_sampler = mgfx_create_sampler(&(mgfx_sampler_create_info){
+        .min_filter     = MGFX_SAMPLER_FILTER_NEAREST,
+        .mag_filter     = MGFX_SAMPLER_FILTER_NEAREST,
         .address_mode_u = MGFX_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
         .address_mode_v = MGFX_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
         .address_mode_w = MGFX_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE
@@ -618,28 +639,29 @@ void naui_renderer_initialize(void)
     rdata->height = mg_app_height();
 }
 
-static void naui_free_tier(Naui_FontTier *tier)
+static void naui_free_bake(Naui_FontBake *bake)
 {
-    for (int i = 0; i < tier->range_count; i++)
-        free(tier->ranges[i].chars);
-    free(tier->ranges);
-    tier->ranges = NULL;
-    tier->range_count = 0;
+    if (!bake->loaded) return;
+
+    for (int i = 0; i < bake->range_count; i++)
+        free(bake->ranges[i].chars);
+    free(bake->ranges);
+    bake->ranges = NULL;
+    bake->range_count = 0;
+
+    mgfx_destroy_image(bake->atlas);
+    bake->loaded = false;
 }
+
 void naui_renderer_shutdown(void)
 {
-    mgfx_destroy_sampler(rdata->image_sampler);
     for (int i = 0; i < NAUI_FONT_MAX_SLOTS; i++)
     {
         if (rdata->font_loaded[i])
-        {
-            naui_free_tier(&rdata->font_small[i]);
-            naui_free_tier(&rdata->font_large[i]);
-            mgfx_destroy_image(rdata->font_small[i].atlas);
-            mgfx_destroy_image(rdata->font_large[i].atlas);
-        }
+            naui_free_bake(&rdata->font[i]);
     }
-    mgfx_destroy_sampler(rdata->font_sampler);
+    mgfx_destroy_sampler(rdata->linear_sampler);
+    mgfx_destroy_sampler(rdata->nearest_sampler);
     mgfx_destroy_buffer(rdata->batch_vb);
     mgfx_destroy_buffer(rdata->batch_ib);
     mgfx_destroy_pipeline(rdata->base_pipeline);
@@ -664,11 +686,11 @@ void naui_renderer_begin(void)
     rdata->font_current_index = -1;
 
     mgfx_begin();
-    mgfx_bind_pass(&(mgfx_pass_info){});
+    mgfx_bind_pass(&(mgfx_pass_info){ 0 });
     mgfx_bind_pipeline(rdata->base_pipeline);
     mgfx_bind_vertex_buffer(rdata->batch_vb);
     mgfx_bind_index_buffer(rdata->batch_ib, MGFX_INDEX_TYPE_UINT32);
-    mgfx_bind_image(rdata->image_atlas, rdata->image_sampler, 0);
+    mgfx_bind_image(rdata->image_atlas, rdata->linear_sampler, 0);
 
     struct { Naui_Vec2 u_resolution; } ub_data;
     ub_data.u_resolution = (Naui_Vec2){(float)rdata->width, (float)rdata->height};
@@ -681,14 +703,14 @@ void naui_renderer_end(void)
     mgfx_end();
 }
 
-void naui_push_clip_rect(Naui_Vec2 position, Naui_Vec2 size)
+void naui_push_clip_rect(float x, float y, float width, float height)
 {
     if (rdata->clip_stack_depth >= NAUI_CLIP_STACK_MAX) return;
 
     naui_renderer_flush();
 
-    float x0 = position.x, y0 = position.y;
-    float x1 = x0 + size.x, y1 = y0 + size.y;
+    float x0 = x, y0 = y;
+    float x1 = x0 + width, y1 = y0 + height;
 
     if (rdata->clip_stack_depth > 0)
     {
@@ -714,20 +736,17 @@ void naui_pop_clip_rect(void)
     naui_apply_scissor();
 }
 
-static int naui_bake_font_tier(
+static int naui_bake_font_size(
     const uint8_t  *ttf_buf,
+    stbtt_fontinfo *info,
     float           bake_size,
-    Naui_FontTier  *tier)
+    Naui_FontBake  *bake)
 {
-    stbtt_fontinfo info;
-    if (!stbtt_InitFont(&info, ttf_buf, 0))
-        return 0;
-
     int raw_ascent, raw_descent, raw_line_gap;
-    stbtt_GetFontVMetrics(&info, &raw_ascent, &raw_descent, &raw_line_gap);
-    float font_scale = stbtt_ScaleForPixelHeight(&info, bake_size);
-    tier->ascent  = raw_ascent  * font_scale;
-    tier->descent = -raw_descent * font_scale;
+    stbtt_GetFontVMetrics(info, &raw_ascent, &raw_descent, &raw_line_gap);
+    float font_scale = stbtt_ScaleForPixelHeight(info, bake_size);
+    bake->ascent  = raw_ascent  * font_scale;
+    bake->descent = -raw_descent * font_scale;
 
     int total_codepoints = 0;
     for (int b = 0; b < K_NUM_UNICODE_BLOCKS; b++)
@@ -748,7 +767,7 @@ static int naui_bake_font_tier(
 
         for (int cp = block_start; cp <= block_end; cp++)
         {
-            int present = (cp < block_end) && (stbtt_FindGlyphIndex(&info, cp) != 0);
+            int present = (cp < block_end) && (stbtt_FindGlyphIndex(info, cp) != 0);
 
             if (present && run_start < 0)
             {
@@ -831,7 +850,7 @@ static int naui_bake_font_tier(
         return 0;
     }
 
-    tier->atlas = mgfx_create_image(&(mgfx_image_create_info){
+    bake->atlas = mgfx_create_image(&(mgfx_image_create_info){
         .type   = MGFX_IMAGE_TYPE_2D,
         .format = MGFX_FORMAT_R8_UNORM,
         .usage  = MGFX_IMAGE_USAGE_COLOR_ATTACHMENT,
@@ -842,23 +861,26 @@ static int naui_bake_font_tier(
 
     free(alpha);
 
-    tier->ranges = malloc(range_count * sizeof(Naui_FontRange));
-    if (!tier->ranges)
+    bake->ranges = malloc(range_count * sizeof(Naui_FontRange));
+    if (!bake->ranges)
     {
         for (int i = 0; i < range_count; i++) free(tmp_ranges[i].chardata_for_range);
         free(tmp_ranges);
         return 0;
     }
 
-    tier->atlas_size  = chosen_atlas_size;
-    tier->range_count = range_count;
+    bake->atlas_size  = chosen_atlas_size;
+    bake->range_count = range_count;
     for (int i = 0; i < range_count; i++)
     {
-        tier->ranges[i].first_codepoint = tmp_ranges[i].first_unicode_codepoint_in_range;
-        tier->ranges[i].num_chars       = tmp_ranges[i].num_chars;
-        tier->ranges[i].chars           = tmp_ranges[i].chardata_for_range;
+        bake->ranges[i].first_codepoint = tmp_ranges[i].first_unicode_codepoint_in_range;
+        bake->ranges[i].num_chars       = tmp_ranges[i].num_chars;
+        bake->ranges[i].chars           = tmp_ranges[i].chardata_for_range;
     }
     free(tmp_ranges);
+
+    bake->baked_size = bake_size;
+    bake->loaded     = true;
     return 1;
 }
 
@@ -883,11 +905,17 @@ void naui_load_font(uint8_t index, const char *file_name)
 
     naui_unload_font(index);
 
-    naui_bake_font_tier(ttf_buf, NAUI_FONT_SIZE_SMALL, &rdata->font_small[index]);
-    naui_bake_font_tier(ttf_buf, NAUI_FONT_SIZE_LARGE, &rdata->font_large[index]);
+    stbtt_fontinfo info;
+    if (!stbtt_InitFont(&info, ttf_buf, 0))
+    {
+        free(ttf_buf);
+        return;
+    }
+
+    bool loaded = naui_bake_font_size(ttf_buf, &info, NAUI_FONT_BAKE_SIZE, &rdata->font[index]);
 
     free(ttf_buf);
-    rdata->font_loaded[index] = true;
+    rdata->font_loaded[index] = loaded;
 }
 
 void naui_unload_font(uint8_t index)
@@ -895,11 +923,7 @@ void naui_unload_font(uint8_t index)
     if (!rdata->font_loaded[index])
         return;
 
-    naui_free_tier(&rdata->font_small[index]);
-    naui_free_tier(&rdata->font_large[index]);
-    mgfx_destroy_image(rdata->font_small[index].atlas);
-    mgfx_destroy_image(rdata->font_large[index].atlas);
-
+    naui_free_bake(&rdata->font[index]);
     rdata->font_loaded[index] = false;
 }
 
@@ -909,13 +933,9 @@ Naui_Vec2 naui_measure_text(const char *text, uint32_t length, float font_size, 
     if (font_index >= NAUI_FONT_MAX_SLOTS) return (Naui_Vec2){0};
     if (!rdata->font_loaded[font_index]) return (Naui_Vec2){0};
 
-    int use_large = (font_size > NAUI_FONT_SIZE_THRESHOLD);
-    float bake_size = use_large ? NAUI_FONT_SIZE_LARGE : NAUI_FONT_SIZE_SMALL;
-    const Naui_FontTier *tier = use_large
-        ? &rdata->font_large[font_index]
-        : &rdata->font_small[font_index];
+    const Naui_FontBake *bake = &rdata->font[font_index];
 
-    float scale  = font_size / bake_size;
+    float scale  = font_size / bake->baked_size;
     float x = 0.0f;
     float max_x  = 0.0f;
     int num_lines = 1;
@@ -938,8 +958,8 @@ Naui_Vec2 naui_measure_text(const char *text, uint32_t length, float font_size, 
         }
         if (cp == '\r') continue;
 
-        const stbtt_packedchar *bc = naui_tier_lookup(tier, cp);
-        if (!bc) bc = naui_tier_lookup(tier, '?');
+        const stbtt_packedchar *bc = naui_bake_lookup(bake, cp);
+        if (!bc) bc = naui_bake_lookup(bake, '?');
         if (!bc)
         {
             x += font_size * 0.25f;
@@ -962,31 +982,24 @@ void naui_draw_text(Naui_Vec2 position, const char *text, float size, uint8_t fo
     if (font_index >= NAUI_FONT_MAX_SLOTS) return;
     if (!rdata->font_loaded[font_index]) return;
 
-    int use_large = (size > NAUI_FONT_SIZE_THRESHOLD);
-    float bake_size = use_large ? NAUI_FONT_SIZE_LARGE : NAUI_FONT_SIZE_SMALL;
-    const Naui_FontTier *tier = use_large
-        ? &rdata->font_large[font_index]
-        : &rdata->font_small[font_index];
+    const Naui_FontBake *bake = &rdata->font[font_index];
 
-    int8_t wanted = (int8_t)(font_index * 2 + use_large);
-    if (rdata->font_current_index != wanted)
+    if (rdata->font_current_index != (int8_t)font_index)
     {
         naui_renderer_flush();
-        mgfx_bind_image(
-            use_large ? rdata->font_large[font_index].atlas : rdata->font_small[font_index].atlas,
-            rdata->font_sampler, 1);
-        rdata->font_current_index = wanted;
+        mgfx_bind_image(bake->atlas, rdata->linear_sampler , 1);
+        rdata->font_current_index = (int8_t)font_index;
     }
 
-    float scale    = size / bake_size;
-    float atlas_sz = (float)tier->atlas_size;
+    float scale = size / bake->baked_size;
+    float atlas_sz = (float)bake->atlas_size;
 
     int num_lines = 1;
     for (const char *p = text; *p; p++)
         if (*p == '\n') num_lines++;
 
-    float line_ascent  = tier->ascent  * scale;
-    float line_descent = tier->descent * scale;
+    float line_ascent  = bake->ascent  * scale;
+    float line_descent = bake->descent * scale;
     float line_height  = line_ascent + line_descent;
 
     float start_x   = position.x;
@@ -995,6 +1008,8 @@ void naui_draw_text(Naui_Vec2 position, const char *text, float size, uint8_t fo
     float y = block_top + line_ascent;
 
     uint32_t c = naui_pack_color(color);
+
+    Naui_ClipRect clip = naui_current_clip();
 
     for (const char *p = text; *p; )
     {
@@ -1009,8 +1024,8 @@ void naui_draw_text(Naui_Vec2 position, const char *text, float size, uint8_t fo
         }
         if (cp == '\r') continue;
 
-        const stbtt_packedchar *bc = naui_tier_lookup(tier, cp);
-        if (!bc) bc = naui_tier_lookup(tier, '?');
+        const stbtt_packedchar *bc = naui_bake_lookup(bake, cp);
+        if (!bc) bc = naui_bake_lookup(bake, '?');
         if (!bc)
         {
             x += size * 0.25f;
@@ -1021,6 +1036,16 @@ void naui_draw_text(Naui_Vec2 position, const char *text, float size, uint8_t fo
         float gy0 = y + bc->yoff  * scale;
         float gx1 = gx0 + (bc->x1 - bc->x0) * scale;
         float gy1 = gy0 + (bc->y1 - bc->y0) * scale;
+
+        if (gx1 < clip.x0 || gx0 > clip.x1 || gy1 < clip.y0 || gy0 > clip.y1)
+        {
+            x += bc->xadvance * scale;
+            continue;
+        }
+
+        if (!naui_reserve(4, 6))
+            break;
+
         float gu0 = bc->x0 / atlas_sz, gv0 = bc->y0 / atlas_sz;
         float gu1 = bc->x1 / atlas_sz, gv1 = bc->y1 / atlas_sz;
 
@@ -1211,12 +1236,13 @@ void naui_draw_line(Naui_Vec2 a, Naui_Vec2 b, Naui_Color color, float line_width
 {
     float dx = b.x - a.x;
     float dy = b.y - a.y;
-    float inv_len = line_width * 0.5f / sqrtf(dx * dx + dy * dy);
-    if (inv_len > 1e10f) return;
-
-    float nx = -dy * inv_len;
-    float ny =  dx * inv_len;
-
+    float len_sq = dx * dx + dy * dy;
+    if (len_sq < 1e-20f)
+        return;
+    float len = sqrtf(len_sq);
+    float half_w = line_width * 0.5f / len;
+    float nx = -dy * half_w;
+    float ny =  dx * half_w;
     naui_push_quad4(
         (Naui_Vec2){ a.x + nx, a.y + ny },
         (Naui_Vec2){ b.x + nx, b.y + ny },
@@ -1364,6 +1390,9 @@ static void naui_push_textured_gradient_triangle(
     uint32_t ca, uint32_t cb, uint32_t cc,
     int32_t texture_id)
 {
+    if (!naui_reserve(3, 3))
+        return;
+
     uint32_t base = rdata->vertex_count;
     Naui_BatchVertex *v = &rdata->vertices[base];
 
@@ -1610,84 +1639,20 @@ void naui_draw_shadow(Naui_Vec2 position, Naui_Vec2 scale, float blur_radius, Na
     }
 }
 
-void naui_draw_inner_shadow(Naui_Vec2 position, Naui_Vec2 scale, float blur_radius, Naui_Color color)
+void naui_fill_polygon(const Naui_Vec2 *points, int point_count, Naui_Color color)
 {
-    if (blur_radius <= 0.0f)
+    if (!points || point_count < 3)
         return;
 
-    float x0 = position.x, y0 = position.y;
-    float x1 = position.x + scale.x, y1 = position.y + scale.y;
-    float br = blur_radius;
+    uint32_t c = naui_pack_color(color);
 
-    float half_w = scale.x * 0.5f;
-    float half_h = scale.y * 0.5f;
-    if (br > half_w) br = half_w;
-    if (br > half_h) br = half_h;
+    Naui_Vec2 p0 = points[0];
+    for (int i = 1; i + 1 < point_count; i++)
+        naui_push_triangle(p0, points[i], points[i + 1], c);
+}
 
-    uint32_t c_full = naui_pack_color(color);
-    uint32_t c_zero = naui_pack_color((Naui_Color){ color.r, color.g, color.b, 0 });
-
-    naui_push_gradient_quad4(
-        (Naui_Vec2){x0+br, y0   }, (Naui_Vec2){x1-br, y0   },
-        (Naui_Vec2){x1-br, y0+br}, (Naui_Vec2){x0+br, y0+br},
-        c_full, c_full, c_zero, c_zero, -1);
-
-    naui_push_gradient_quad4(
-        (Naui_Vec2){x0+br, y1-br}, (Naui_Vec2){x1-br, y1-br},
-        (Naui_Vec2){x1-br, y1   }, (Naui_Vec2){x0+br, y1   },
-        c_zero, c_zero, c_full, c_full, -1);
-
-    naui_push_gradient_quad4(
-        (Naui_Vec2){x0,    y0+br}, (Naui_Vec2){x0+br, y0+br},
-        (Naui_Vec2){x0+br, y1-br}, (Naui_Vec2){x0,    y1-br},
-        c_full, c_zero, c_zero, c_full, -1);
-
-    naui_push_gradient_quad4(
-        (Naui_Vec2){x1-br, y0+br}, (Naui_Vec2){x1,    y0+br},
-        (Naui_Vec2){x1,    y1-br}, (Naui_Vec2){x1-br, y1-br},
-        c_zero, c_full, c_full, c_zero, -1);
-
-    naui_push_gradient_triangle(
-        (Naui_Vec2){x0,    y0   },
-        (Naui_Vec2){x0+br, y0   },
-        (Naui_Vec2){x0+br, y0+br},
-        c_full, c_full, c_zero);
-    naui_push_gradient_triangle(
-        (Naui_Vec2){x0,    y0   },
-        (Naui_Vec2){x0+br, y0+br},
-        (Naui_Vec2){x0,    y0+br},
-        c_full, c_zero, c_full);
-
-    naui_push_gradient_triangle(
-        (Naui_Vec2){x1,    y0   },
-        (Naui_Vec2){x1-br, y0+br},
-        (Naui_Vec2){x1-br, y0   },
-        c_full, c_zero, c_full);
-    naui_push_gradient_triangle(
-        (Naui_Vec2){x1,    y0   },
-        (Naui_Vec2){x1,    y0+br},
-        (Naui_Vec2){x1-br, y0+br},
-        c_full, c_full, c_zero);
-
-    naui_push_gradient_triangle(
-        (Naui_Vec2){x1,    y1   },
-        (Naui_Vec2){x1-br, y1-br},
-        (Naui_Vec2){x1,    y1-br},
-        c_full, c_zero, c_full);
-    naui_push_gradient_triangle(
-        (Naui_Vec2){x1,    y1   },
-        (Naui_Vec2){x1-br, y1   },
-        (Naui_Vec2){x1-br, y1-br},
-        c_full, c_full, c_zero);
-
-    naui_push_gradient_triangle(
-        (Naui_Vec2){x0,    y1   },
-        (Naui_Vec2){x0,    y1-br},
-        (Naui_Vec2){x0+br, y1-br},
-        c_full, c_full, c_zero);
-    naui_push_gradient_triangle(
-        (Naui_Vec2){x0,    y1   },
-        (Naui_Vec2){x0+br, y1-br},
-        (Naui_Vec2){x0+br, y1   },
-        c_full, c_zero, c_full);
+Naui_Vec4 naui_current_clip_rect(void)
+{
+    Naui_ClipRect c = naui_current_clip();
+    return (Naui_Vec4){ c.x0, c.y0, c.x1 - c.x0, c.y1 - c.y0 };
 }
