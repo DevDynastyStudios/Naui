@@ -3,8 +3,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-// TODO(box): key repeats and fix left and right control
-
 #ifndef MG_APP_API
 #if defined(_WIN32) && defined(MG_DLL) && defined(MG_APP_IMPL)
 #define MG_APP_API __declspec(dllexport)
@@ -37,6 +35,7 @@ enum
     MG_KEY_SHIFT = 0x10,
     MG_KEY_CONTROL = 0x11,
 
+    MG_KEY_ALT = 0x12,
     MG_KEY_PAUSE = 0x13,
     MG_KEY_CAPITAL = 0x14,
 
@@ -665,6 +664,26 @@ static LRESULT CALLBACK mg_win32_process_message(HWND hwnd, uint32_t msg, WPARAM
         {
             bool pressed = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
             mg_key key = (mg_key)w_param;
+
+            bool extended = (l_param & (1 << 24)) != 0;
+
+            switch (key)
+            {
+                case MG_KEY_CONTROL:
+                    key = extended ? MG_KEY_RCONTROL : MG_KEY_LCONTROL;
+                    break;
+                case MG_KEY_ALT:
+                    key = extended ? MG_KEY_RALT : MG_KEY_LALT;
+                    break;
+                case MG_KEY_SHIFT:
+                {
+                    uint32_t scancode = (l_param >> 16) & 0xFF;
+                    uint32_t vk = MapVirtualKey(scancode, MAPVK_VSC_TO_VK_EX);
+                    key = (vk == VK_RSHIFT) ? MG_KEY_RSHIFT : MG_KEY_LSHIFT;
+                    break;
+                }
+            }
+
             mg_app_input_process_key(key, pressed);
             mg_app_call_event(&(mg_app_event){
                 .key = key,
@@ -1462,6 +1481,22 @@ int32_t mg_app_run(const mg_app_init_info *info)
                     bool pressed = (xev.type == KeyPress);
 
                     mg_app_input_process_key(key, pressed);
+
+                    switch (key)
+                    {
+                        case MG_KEY_LCONTROL:
+                        case MG_KEY_RCONTROL:
+                            mg_app_input_process_key(MG_KEY_CONTROL, pressed);
+                            break;
+                        case MG_KEY_LSHIFT:
+                        case MG_KEY_RSHIFT:
+                            mg_app_input_process_key(MG_KEY_SHIFT, pressed);
+                            break;
+                        case MG_KEY_LALT:
+                        case MG_KEY_RALT:
+                            mg_app_input_process_key(MG_KEY_ALT, pressed);
+                            break;
+                    }
 
                     mg_app_call_event(&(mg_app_event){
                         .key  = key,
