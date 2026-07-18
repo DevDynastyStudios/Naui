@@ -224,7 +224,7 @@ void test_dir_iterator_hidden_files()
         const char* name = naui_file_filename(it.entry.path);
 
         if (strcmp(name, "visible.txt") == 0) saw_visible = true;
-        if (strcmp(name, "secret.txt") == 0) saw_hidden = true;
+        if (strcmp(name, ".secret.txt") == 0) saw_hidden = true;
 
         naui_dir_iterator_next(&it);
     }

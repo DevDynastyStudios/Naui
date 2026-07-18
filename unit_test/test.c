@@ -84,6 +84,22 @@ void test_assert_str_eq(const char* a, const char* b, const char* file, int line
 	}
 }
 
+void test_assert_sv_eq(Naui_StringView a, Naui_StringView b, const char* file, int line)
+{
+	ensure_suite_active(file, line);
+
+	bool ok = naui_sv_cmp(a, b, true);
+	if (ok) {
+		printf("  \033[1;32mPASS\033[0m  \"%.*s\" == \"%.*s\"\n", (int)a.len, a.data, (int)b.len, b.data);
+		record(true);
+	} else {
+        if (!naui_sv_valid(a)) a = NAUI_STR("(null)");
+        if (!naui_sv_valid(b)) b = NAUI_STR("(null)");
+		printf("  \033[1;31mFAIL\033[0m  str_eq: got \"%.*s\", want \"%.*s\"  (%s:%d)\n", (int)a.len, a.data, (int)b.len, b.data, file, line);
+		record(false);
+	}
+}
+
 void test_assert_null(const void* ptr, const char* file, int line)
 {
 	ensure_suite_active(file, line);

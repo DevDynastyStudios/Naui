@@ -1,5 +1,6 @@
 #pragma once
 
+#include "base.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -10,7 +11,9 @@ typedef struct Naui_Arena
 	Naui_ArenaBlock* head;
 } Naui_Arena;
 
-void naui_arena_init(Naui_Arena* arena, size_t size);
-void naui_arena_free(Naui_Arena* arena);
-void naui_arena_reset(Naui_Arena* arena);
-void* naui_arena_alloc(Naui_Arena* arena, size_t size);
+NAUI_API void naui_arena_init(Naui_Arena* arena, size_t size);
+NAUI_API void naui_arena_free(Naui_Arena* arena);
+NAUI_API void naui_arena_reset(Naui_Arena* arena);
+NAUI_API void* naui_arena_alloc(Naui_Arena* arena, size_t size);
+
+NAUI_API Naui_Arena *naui_arena_temp(void);

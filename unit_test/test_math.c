@@ -1,4 +1,3 @@
-#pragma once
 #include "test.h"
 #include "test_func.h"
 #include "naui/math/math.h"

@@ -94,3 +94,9 @@ void* naui_arena_alloc(Naui_Arena* arena, size_t size)
 
 	return (char*)(new_block + 1);
 }
+
+static Naui_Arena temp_arena = {0};
+
+NAUI_API Naui_Arena *naui_arena_temp(void) {
+    return &temp_arena;
+}

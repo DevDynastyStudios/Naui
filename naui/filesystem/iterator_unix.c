@@ -30,7 +30,7 @@ static bool iterator_match_filter(const char* name, const char* filter, bool cas
 		return true;
 
 	size_t filter_len = strlen(filter);
-	return naui_strncmp(name, filter, filter_len, case_sensitive) == 0;
+	return naui_cstr_strncmp(name, filter, filter_len, case_sensitive) == 0;
 }
 
 static bool iterator_match_extensions(const char* name, const char** exts, bool case_sensitive)
@@ -45,7 +45,7 @@ static bool iterator_match_extensions(const char* name, const char** exts, bool 
 	size_t index = 0;
 	while (exts[index] != NULL)
 	{
-		if (exts[index] && naui_strcmp(dot, exts[index], case_sensitive) == 0)
+		if (exts[index] && naui_cstr_strcmp(dot, exts[index], case_sensitive) == 0)
 			return true;
 
 		index++;

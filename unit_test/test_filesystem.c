@@ -447,7 +447,7 @@ static void test_path_variadic_join(void)
 
 	{
 		/* Two plain parts. */
-		Naui_Path p = NAUI_PATH("Language\\", "/en-US.lang");
+		Naui_Path p = NAUI_PATH("Language", "/en-US.lang");
 		ASSERT_STR_EQ(p.data, "Language" SEP "en-US.lang");
 	}
 

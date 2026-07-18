@@ -142,6 +142,7 @@ static void __naui_app_event(const mg_app_event* event)
 
 static void __naui_app_start(void)
 {
+    naui_arena_init(naui_arena_temp(), 2 * 1024 * 1024); // 2mb should be enough for most string operations
     naui_renderer_initialize();
     naui_asset_manager_load_images("Assets/Images");
     naui_themes_initialize();
@@ -161,6 +162,7 @@ static void __naui_app_end(void)
     naui_themes_shutdown();
     naui_list_free(state.deferred_entries);
     naui_arena_free(&state.deferred_arg_arena);
+    naui_arena_free(naui_arena_temp());
 }
 
 static inline void naui_process_deferred(void)
@@ -176,6 +178,7 @@ static inline void naui_process_deferred(void)
 
 static void __naui_app_update(void)
 {
+    naui_arena_reset(naui_arena_temp());
     naui_process_deferred();
     naui_input_update();
 	naui_shortcut_update();

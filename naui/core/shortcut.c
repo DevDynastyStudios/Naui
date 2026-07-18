@@ -10,7 +10,7 @@
 
 typedef struct
 {
-	const char *name;
+	Naui_StringView name;
 	Naui_List(Naui_Key) keys;
 	Naui_List(Naui_ShortcutCtx) contexts;
 
@@ -95,7 +95,7 @@ void naui_shortcut_init(Naui_ShortcutKind kind)
 	s_initialized = true;
 }
 
-void __naui_register_shortcut(const char *name, Naui_Shortcut shortcut)
+void __naui_register_shortcut(Naui_StringView name, Naui_Shortcut shortcut)
 {
 	NAUI_SHORTCUT_FATAL_IF(!s_initialized, "naui_register_shortcut called before naui_shortcut_init -- the system doesn't know which mode to validate against.");
 	NAUI_SHORTCUT_FATAL_IF(shortcut.keys.count == 0, "No keys were registered. A shortcut needs at least one key.");
@@ -135,11 +135,11 @@ void __naui_register_shortcut(const char *name, Naui_Shortcut shortcut)
 	naui_list_push(s_shortcuts, entry);
 }
 
-void naui_unregister_shortcut(const char *name)
+void naui_unregister_shortcut(Naui_StringView name)
 {
 	for(size_t i = 0; i < naui_list_len(s_shortcuts); i++)
 	{
-		if(naui_strcmp(s_shortcuts[i].name, name, true) == 0)
+		if(naui_sv_cmp(s_shortcuts[i].name, name, true))
 		{
 			free_registered_shortcut(&s_shortcuts[i]);
 			naui_list_uremove(s_shortcuts, i);
