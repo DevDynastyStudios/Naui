@@ -5,6 +5,7 @@
 *.slnx
 .vscode
 .vs
+*.exe
 build
 obj
 makefile
