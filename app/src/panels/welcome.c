@@ -19,11 +19,6 @@ static void on_detach(void)
 
 static void on_update(void)
 {
-    
-}
-
-static void on_render(void)
-{
     leaf({
         .size = {LEAF_SIZE_FULL, LEAF_SIZE_FULL},
         .child_alignment = {LEAF_ALIGN_X_CENTER, LEAF_ALIGN_Y_CENTER}
@@ -42,7 +37,6 @@ static void on_render(void)
                 .color = leaf_rgba(0, 0, 0, 64)
             }
         });
-
     }
 }
 
