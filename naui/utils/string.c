@@ -30,7 +30,7 @@ Naui_StringView naui_sv_clone(Naui_Arena *a, Naui_StringView s) {
 
 Naui_StringView naui_sv_to_lower_temp(Naui_StringView s) {
     if (!naui_sv_valid(s)) return (Naui_StringView){0};
-    Naui_StringView r = naui_sv_clone(naui_arena_temp(), s);
+    Naui_StringView r = naui_sv_clone(naui_arena_frame(), s);
     for (size_t i = 0; i < s.len; i++)
         r.data[i] = (char)tolower((int)s.data[i]);
     return r;
@@ -38,7 +38,7 @@ Naui_StringView naui_sv_to_lower_temp(Naui_StringView s) {
 
 Naui_StringView naui_sv_to_upper_temp(Naui_StringView s) {
     if (!naui_sv_valid(s)) return (Naui_StringView){0};
-    Naui_StringView r = naui_sv_clone(naui_arena_temp(), s);
+    Naui_StringView r = naui_sv_clone(naui_arena_frame(), s);
     for (size_t i = 0; i < s.len; i++)
         r.data[i] = (char)toupper((int)s.data[i]);
     return r;
