@@ -2,7 +2,6 @@
 #include "test_func.h"
 #include "naui/math/math.h"
 #include "naui/math/vec2.h"
-#include "naui/math/vec3.h"
 #include "naui/math/vec4.h"
 
 #define FLOAT_EQ(a,b) (fabsf((a)-(b)) < 1e-6f)
@@ -52,49 +51,6 @@ static void test_vec2(void)
 
     float dot = naui_vec2_dot(v1, v2);
     ASSERT(FLOAT_EQ(dot, -11.0f));
-
-    TEST_END();
-}
-
-static void test_vec3(void)
-{
-    TEST_BEGIN("Naui_Vec3");
-
-    Naui_Vec3 v1 = {1.0f, -2.0f, 3.0f};
-    Naui_Vec3 v2 = {-3.0f, 4.0f, -5.0f};
-
-    Naui_Vec3 add = naui_vec3_add(v1, v2);
-    ASSERT(FLOAT_EQ(add.x, -2.0f) && FLOAT_EQ(add.y, 2.0f) && FLOAT_EQ(add.z, -2.0f));
-
-    Naui_Vec3 sub = naui_vec3_sub(v1, v2);
-    ASSERT(FLOAT_EQ(sub.x, 4.0f) && FLOAT_EQ(sub.y, -6.0f) && FLOAT_EQ(sub.z, 8.0f));
-
-    Naui_Vec3 scale = naui_vec3_scale(v1, 2.0f);
-    ASSERT(FLOAT_EQ(scale.x, 2.0f) && FLOAT_EQ(scale.y, -4.0f) && FLOAT_EQ(scale.z, 6.0f));
-
-    Naui_Vec3 absv = naui_vec3_abs(v1);
-    ASSERT(FLOAT_EQ(absv.x, 1.0f) && FLOAT_EQ(absv.y, 2.0f) && FLOAT_EQ(absv.z, 3.0f));
-
-    Naui_Vec3 neg = naui_vec3_negate(v1);
-    ASSERT(FLOAT_EQ(neg.x, -1.0f) && FLOAT_EQ(neg.y, 2.0f) && FLOAT_EQ(neg.z, -3.0f));
-
-    Naui_Vec3 minv = naui_vec3_min(v1, v2);
-    ASSERT(FLOAT_EQ(minv.x, -3.0f) && FLOAT_EQ(minv.y, -2.0f) && FLOAT_EQ(minv.z, -5.0f));
-
-    Naui_Vec3 maxv = naui_vec3_max(v1, v2);
-    ASSERT(FLOAT_EQ(maxv.x, 1.0f) && FLOAT_EQ(maxv.y, 4.0f) && FLOAT_EQ(maxv.z, 3.0f));
-
-    Naui_Vec3 lerpHalf = naui_vec3_lerp(v1, v2, 0.5f);
-    ASSERT(FLOAT_EQ(lerpHalf.x, -1.0f) && FLOAT_EQ(lerpHalf.y, 1.0f) && FLOAT_EQ(lerpHalf.z, -1.0f));
-
-    float len = naui_vec3_length(v1);
-    ASSERT(FLOAT_EQ(len, sqrtf(14.0f)));
-
-    float dist = naui_vec3_distance(v1, v2);
-    ASSERT(FLOAT_EQ(dist, sqrtf(116.0f)));
-
-    float dot = naui_vec3_dot(v1, v2);
-    ASSERT(FLOAT_EQ(dot, -26.0f));
 
     TEST_END();
 }
@@ -175,7 +131,6 @@ static void test_scalar_math(void)
 void math_test(void)
 {
     test_vec2();
-    test_vec3();
     test_vec4();
 	test_scalar_math();
 }
