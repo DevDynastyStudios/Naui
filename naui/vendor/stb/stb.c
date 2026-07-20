@@ -2,6 +2,8 @@
 #include "stb_ds.h"
 
 #define STB_IMAGE_IMPLEMENTATION
+#define STB_MALLOC(s) naui_arena_alloc(&temp_arena, (s))
+#define STB_FREE(p)
 #include "stb_image.h"
 
 #define STB_RECT_PACK_IMPLEMENTATION

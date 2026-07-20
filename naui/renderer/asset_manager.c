@@ -1,12 +1,16 @@
 #include "base.h"
 #include "asset_manager.h"
+#include "core/log.h"
 #include "utils/list.h"
+#include "utils/arena.h"
+#include "filesystem/filesystem.h"
 
 #include <stdio.h>
 #if NAUI_WINDOWS
 #include <dirent/dirent.h>
 #else
 #include <dirent.h>
+#include <unistd.h>
 #endif
 #include <stb/stb_image.h>
 #include <stb/stb_rect_pack.h>
@@ -15,7 +19,6 @@
 
 static Naui_ImageHashEntry *image_hm = NULL;
 
-// TODO(doomguy): use arena for this.
 Naui_Map(Naui_ImageHashEntry) naui_asset_manager_load_images(const char *const images_path)
 {
     typedef struct
@@ -26,6 +29,8 @@ Naui_Map(Naui_ImageHashEntry) naui_asset_manager_load_images(const char *const i
     Naui_TempImageData;
 
     Naui_List(Naui_TempImageData) images = NULL;
+    Naui_Arena temp_arena;
+    naui_arena_init(&temp_arena, 0);
 
     // looping thru the images directory.
     {
@@ -37,10 +42,8 @@ Naui_Map(Naui_ImageHashEntry) naui_asset_manager_load_images(const char *const i
             exit(1);
         }
 
-        char path[256];
-
-        // TODO(doomguy): does windows have the ./.. directories when using dirent?
-        // if yes, replace the strcmp with a simple int.
+        char path[256] = {0};
+        char cwd[512]; getcwd(cwd, sizeof(cwd));
 
         while (dp = readdir(dir))
         {
@@ -54,13 +57,19 @@ Naui_Map(Naui_ImageHashEntry) naui_asset_manager_load_images(const char *const i
             char *image_name = strtok(name, "."); // this is also a hack, should iterate backwards thru str instead.
 
             Naui_TempImageData image;
-            int32_t temp_channels;
-            image.pixels = stbi_load(path, &image.width, &image.height, &temp_channels, 4);
-            if (!image.pixels)
             {
-                fprintf(stderr, "[Naui]: failed to load image: %s\n", path);
-                exit(1);
+                Naui_FileHandle file_handle;
+                naui_file_open(&file_handle, NAUI_PATH(path), NAUI_FILE_READ);
+                const size_t file_len = naui_file_size(NAUI_PATH(path));
+                char file_data[file_len];
+                naui_file_read(&file_handle, file_data, file_len);
+                naui_file_close(&file_handle);
+
+                int32_t temp_channels;
+                image.pixels = stbi_load_from_memory(file_data, file_len, &image.width, &image.height, &temp_channels, 4);
+                if (!image.pixels) naui_log(NAUI_LOG_FUCKED, "failed to load image: %s\n", path);
             }
+
             const Naui_Image sprite = (Naui_Image){ .width = image.width, .height = image.height };
             naui_strmap_put(image_hm, strdup(image_name), sprite);
             naui_list_push(images, image);
@@ -74,9 +83,9 @@ Naui_Map(Naui_ImageHashEntry) naui_asset_manager_load_images(const char *const i
                      image_count = naui_list_len(images);
 
         stbrp_context ctx;
-        stbrp_node *nodes = malloc(sizeof(*nodes) * node_count);
-        stbrp_rect *rects = malloc(sizeof(*rects) * image_count);
-        uint8_t *pixels = malloc(atlas_size);
+        stbrp_node *nodes = naui_arena_alloc(&temp_arena, sizeof(*nodes) * node_count);
+        stbrp_rect *rects = naui_arena_alloc(&temp_arena, sizeof(*rects) * image_count);
+        uint8_t *pixels =   naui_arena_alloc(&temp_arena, atlas_size);
 
         stbrp_init_target(&ctx, NAUI_IMAGE_ATLAS_SIZE, NAUI_IMAGE_ATLAS_SIZE, nodes, node_count);
         for (int i=0; i < image_count; ++i)
@@ -114,14 +123,9 @@ Naui_Map(Naui_ImageHashEntry) naui_asset_manager_load_images(const char *const i
 
         extern void naui_renderer_build_atlas(uint32_t width, uint32_t height, void *data);
         naui_renderer_build_atlas(NAUI_IMAGE_ATLAS_SIZE, NAUI_IMAGE_ATLAS_SIZE, pixels);
-
-        free(nodes);
-        free(rects);
-        free(pixels);
     }
 
-    for (int32_t i = 0; i < naui_list_len(images); ++i)
-        stbi_image_free(images[i].pixels);
+    naui_arena_free(&temp_arena);
     naui_list_free(images);
 
     return image_hm;
