@@ -19,7 +19,7 @@
 
 static Naui_ImageHashEntry *image_hm = NULL;
 
-Naui_Map(Naui_ImageHashEntry) naui_asset_manager_load_images(const char *const images_path)
+void naui_asset_manager_load_images(const char *const images_path)
 {
     typedef struct
     {
@@ -29,8 +29,7 @@ Naui_Map(Naui_ImageHashEntry) naui_asset_manager_load_images(const char *const i
     Naui_TempImageData;
 
     Naui_List(Naui_TempImageData) images = NULL;
-    Naui_Arena temp_arena;
-    naui_arena_init(&temp_arena, 0);
+    Naui_Arena temp_arena = { 0 };
 
     // looping thru the images directory.
     {
@@ -61,7 +60,7 @@ Naui_Map(Naui_ImageHashEntry) naui_asset_manager_load_images(const char *const i
                 Naui_FileHandle file_handle;
                 naui_file_open(&file_handle, NAUI_PATH(path), NAUI_FILE_READ);
                 const size_t file_len = naui_file_size(NAUI_PATH(path));
-                char file_data[file_len];
+                char *file_data = naui_arena_alloc(&temp_arena, file_len);
                 naui_file_read(&file_handle, file_data, file_len);
                 naui_file_close(&file_handle);
 
@@ -75,6 +74,11 @@ Naui_Map(Naui_ImageHashEntry) naui_asset_manager_load_images(const char *const i
             naui_list_push(images, image);
         }
     }
+    
+    if (naui_list_len(images) == 0)
+        return;
+
+    naui_arena_reset(&temp_arena);
 
     // building the atlas.
     {
@@ -127,8 +131,6 @@ Naui_Map(Naui_ImageHashEntry) naui_asset_manager_load_images(const char *const i
 
     naui_arena_free(&temp_arena);
     naui_list_free(images);
-
-    return image_hm;
 }
 
 void naui_asset_manager_free(void)
