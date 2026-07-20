@@ -36,15 +36,14 @@ project "NauiApp"
     targetdir "build/%{cfg.buildcfg}"
 
     files {
-        "app/src/**.c",
-        "app/vendor/**.c"
+        "app/**.c"
     }
 
     links { "Naui" }
 
     includedirs {
         ".",
-        "app/src",
+        "app",
         "app/vendor",
         "naui",
         "naui/vendor"
