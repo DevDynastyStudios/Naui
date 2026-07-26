@@ -327,24 +327,24 @@ static void test_file_stem(void)
         Naui_Path file = tp("dir/file.txt");
         Naui_StringView s1 = naui_file_stem(file);
         ASSERT(naui_sv_cmp(s1, NAUI_STR("file"), true));
-        NAUI_PATH_FREE(file, s1);
+        NAUI_PATH_FREE(file);
 
         Naui_Path archive = tp("dir/archive.tar.gz");
         Naui_StringView s2 = naui_file_stem(archive);
         ASSERT(naui_sv_cmp(s2, NAUI_STR("archive.tar"), true));
-        NAUI_PATH_FREE(archive, s2);
+        NAUI_PATH_FREE(archive);
 
         /* No extension - full filename is the stem */
         Naui_Path noext = tp("dir/noext");
         Naui_StringView s3 = naui_file_stem(noext);
         ASSERT_STR_EQ(s3.data, "noext");
-        NAUI_PATH_FREE(noext, s3);
+        NAUI_PATH_FREE(noext);
 
         /* Dotfile - the whole name is the stem */
         Naui_Path hidden = tp("dir/.hidden");
         Naui_StringView s4 = naui_file_stem(hidden);
         ASSERT_STR_EQ(s4.data, ".hidden");
-        NAUI_PATH_FREE(hidden, s4);
+        NAUI_PATH_FREE(hidden);
     }
 
     TEST_END();
