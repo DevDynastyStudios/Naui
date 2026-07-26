@@ -1437,9 +1437,11 @@ bool naui_serialize_viewport(const char *file_path)
 
     Naui_Json json = naui_json_result_create();
     Naui_JsonValue *root = naui_json_object(&json);
+	Naui_Path file_dir = NAUI_PATH(file_path);
     naui_serialize_panel_node(&json, root, pm.main_viewport);
-    naui_json_write_file(root, NAUI_PATH(file_path), true);
+    naui_json_write_file(root, file_dir, true);
     naui_json_free(&json);
+	NAUI_PATH_FREE(file_dir);
 }
 
 static Naui_PanelNode *naui_deserialize_panel_node(Naui_JsonValue *json_parent)

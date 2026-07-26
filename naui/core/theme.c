@@ -56,7 +56,9 @@ void naui_load_theme(const char *file_name)
     char final_file_name[64];
     strncpy(final_file_name, file_name, strlen(file_name) + 1);
     strncat(final_file_name, ".json", sizeof(final_file_name));
-    Naui_Json json = naui_json_parse_file(NAUI_PATH("Assets/Themes", final_file_name));
+	Naui_Path json_path = NAUI_PATH("Assets/Themes", final_file_name);
+    Naui_Json json = naui_json_parse_file(json_path);
+	NAUI_PATH_FREE(json_path);
 
     NAUI_JSON_FOREACH(json.root, key, val)
     {
@@ -80,6 +82,7 @@ void naui_load_theme(const char *file_name)
         else if (val->type == NAUI_JSON_NUMBER)
             naui_strmap_put(tm.float_map, key_str, (float)naui_json_get_number(val, 0.0));
     }
+	
     naui_json_free(&json);
 }
 

@@ -58,15 +58,21 @@ void naui_asset_manager_load_images(const char *const images_path)
             Naui_TempImageData image;
             {
                 Naui_FileHandle file_handle;
-                naui_file_open(&file_handle, NAUI_PATH(path), NAUI_FILE_READ);
-                const size_t file_len = naui_file_size(NAUI_PATH(path));
+				Naui_Path file_path = NAUI_PATH(path);
+                naui_file_open(&file_handle, file_path, NAUI_FILE_READ);
+                const size_t file_len = naui_file_size(file_path);
                 char *file_data = naui_arena_alloc(&temp_arena, file_len);
                 naui_file_read(&file_handle, file_data, file_len);
                 naui_file_close(&file_handle);
+				NAUI_PATH_FREE(file_path);
 
                 int32_t temp_channels;
                 image.pixels = stbi_load_from_memory(file_data, file_len, &image.width, &image.height, &temp_channels, 4);
-                if (!image.pixels) naui_log(NAUI_LOG_FUCKED, "failed to load image: %s\n", path);
+                if (!image.pixels)
+				{
+					naui_log(NAUI_LOG_FUCKED, "failed to load image: %s\n", path);
+					continue;
+				}
             }
 
             const Naui_Image sprite = (Naui_Image){ .width = image.width, .height = image.height };
@@ -76,7 +82,10 @@ void naui_asset_manager_load_images(const char *const images_path)
     }
     
     if (naui_list_len(images) == 0)
+	{
+		naui_arena_free(&temp_arena);
         return;
+	}
 
     naui_arena_reset(&temp_arena);
 
@@ -117,6 +126,9 @@ void naui_asset_manager_load_images(const char *const images_path)
                 uint8_t *src_row = images[i].pixels + (y * r.w) * 4;
                 memcpy(dst_row, src_row, r.w * 4);
             }
+
+			stbi_image_free(images[i].pixels);
+			images[i].pixels = NULL;
 
             const float inv_img_atlas_size = 1.0f / (float)NAUI_IMAGE_ATLAS_SIZE;
             sprite->texture_area[0] = (float)r.x * inv_img_atlas_size;

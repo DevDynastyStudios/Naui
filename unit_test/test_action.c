@@ -461,7 +461,4 @@ int action_test(void)
 	test_empty_group_is_not_pushed();
 	test_partial_failure_group_only_contains_successes();
 	test_group_costs_exactly_one_history_slot();
-
-	test_conclusion();
-	return 0;
 }

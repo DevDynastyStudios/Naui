@@ -893,7 +893,10 @@ void naui_load_font(uint8_t index, const char *file_name)
     strncpy(final_file_name, file_name, strlen(file_name) + 1);
     strncat(final_file_name, ".ttf", sizeof(final_file_name) - 1);
 
-    FILE *f = fopen(NAUI_PATH("Assets/Fonts", final_file_name).data, "rb");
+	Naui_Path font_path = NAUI_PATH("Assets/Fonts", final_file_name);
+    FILE *f = fopen(font_path.data, "rb");
+	NAUI_PATH_FREE(font_path);
+	
     if (!f) return;
 
     fseek(f, 0, SEEK_END);

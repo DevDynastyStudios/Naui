@@ -15,28 +15,37 @@
 
 static Naui_Path TEST_ROOT;
 
+/* Thin, non-allocating wrap of a C string - callers own the string's
+ * lifetime, same contract as naui_path_from_cstr. */
 static Naui_Path make_path(const char* s)
 {
-    Naui_Path p;
-    snprintf(p.data, NAUI_PATH_MAX, "%s", s);
-    return p;
+    return naui_path_from_cstr(s);
 }
 
 static void init_test_root(void)
 {
     Naui_Path cwd = naui_directory_get(NAUI_DIR_WORKING);
-    TEST_ROOT = naui_path_join(cwd, NAUI_PATH("naui_test"));
-    TEST_ROOT = naui_path_normalize(TEST_ROOT);
+    Naui_Path naui_test = NAUI_PATH("naui_test");
+    Naui_Path joined = naui_path_join(cwd, naui_test);
+    NAUI_PATH_FREE(cwd, naui_test);
+
+    TEST_ROOT = naui_path_normalize(joined);
+    NAUI_PATH_FREE(joined);
+
     naui_directory_create(TEST_ROOT);
 }
 
+/* Builds a path under TEST_ROOT. Always an owned allocation - the
+ * caller must naui_path_free() the result. */
 static Naui_Path tp(const char* sub)
 {
-    Naui_Path p = naui_path_join(TEST_ROOT, make_path(sub));
-    return naui_path_normalize(p);
+    Naui_Path joined = naui_path_join(TEST_ROOT, make_path(sub));
+    Naui_Path result = naui_path_normalize(joined);
+    NAUI_PATH_FREE(joined);
+    return result;
 }
 
-static void write_text(Naui_Path path, const char* text)
+static void write_text(const Naui_Path path, const char* text)
 {
     naui_file_write_all(path, text, strlen(text));
 }
@@ -53,19 +62,23 @@ static void test_file_open(void)
         ASSERT(naui_file_is_valid(&h));
         naui_file_close(&h);
         ASSERT(!naui_file_is_valid(&h));
+        NAUI_PATH_FREE(open_test);
 
         /* Nonexistent file opened for reading must fail */
         Naui_Path not_exists = tp("does_not_exist.txt");
         ASSERT(!naui_file_open(&h, not_exists, NAUI_FILE_READ));
         ASSERT(!naui_file_is_valid(&h));
+        NAUI_PATH_FREE(not_exists);
 
         /* NULL handle */
         Naui_Path txt_file = tp("x.txt");
         ASSERT(!naui_file_open(NULL, txt_file, NAUI_FILE_WRITE));
+        NAUI_PATH_FREE(txt_file);
 
         /* Empty path */
         Naui_Path empty = NAUI_PATH("");
         ASSERT(!naui_file_open(&h, empty, NAUI_FILE_WRITE));
+        NAUI_PATH_FREE(empty);
     }
 
     TEST_END();
@@ -93,6 +106,7 @@ static void test_file_write_read(void)
 
         ASSERT(got == plen);
         ASSERT_STR_EQ(buf, payload);
+        NAUI_PATH_FREE(rw_test);
 
         /* Invalid handle returns 0 */
         Naui_FileHandle bad = NAUI_FILE_HANDLE_INIT;
@@ -120,7 +134,9 @@ static void test_file_append(void)
         char* all = naui_file_read_all(append_test, &sz);
         ASSERT_NOT_NULL(all);
         ASSERT_STR_EQ(all, "Line1\nLine2\n");
-        free(all);
+        free(all); /* raw malloc'd buffer, not a Naui_Path - plain free() */
+
+        NAUI_PATH_FREE(append_test);
     }
 
     TEST_END();
@@ -133,11 +149,14 @@ static void test_file_size(void)
     {
         Naui_Path size_test = tp("size_test.txt");
         Naui_Path no_file = tp("no_such_file.txt");
+        Naui_Path empty = NAUI_PATH("");
 
         write_text(size_test, "12345");
         ASSERT(naui_file_size(size_test) == 5);
         ASSERT(naui_file_size(no_file) == 0);
-        ASSERT(naui_file_size(NAUI_PATH("")) == 0);
+        ASSERT(naui_file_size(empty) == 0);
+
+        NAUI_PATH_FREE(size_test, no_file, empty);
     }
 
     TEST_END();
@@ -166,8 +185,11 @@ static void test_file_read_all(void)
 
         /* Nonexistent / empty path return NULL */
         Naui_Path ghost = tp("ghost.txt");
+        Naui_Path empty = NAUI_PATH("");
         ASSERT_NULL(naui_file_read_all(ghost, &sz));
-        ASSERT_NULL(naui_file_read_all(NAUI_PATH(""), &sz));
+        ASSERT_NULL(naui_file_read_all(empty, &sz));
+
+        NAUI_PATH_FREE(read_all, ghost, empty);
     }
 
     TEST_END();
@@ -179,16 +201,19 @@ static void test_file_write_all(void)
 
     {
         Naui_Path write_all = tp("writeall.txt");
+        Naui_Path empty = NAUI_PATH("");
         const char* data = "WriteAll test";
 
         ASSERT(naui_file_write_all(write_all, data, strlen(data)));
-        ASSERT(!naui_file_write_all(NAUI_PATH(""), data, strlen(data)));
+        ASSERT(!naui_file_write_all(empty, data, strlen(data)));
         ASSERT(!naui_file_write_all(write_all, NULL, 10));
 
         char* back = naui_file_read_all(write_all, NULL);
         ASSERT_NOT_NULL(back);
         ASSERT_STR_EQ(back, data);
         free(back);
+
+        NAUI_PATH_FREE(write_all, empty);
     }
 
     TEST_END();
@@ -221,6 +246,8 @@ static void test_file_seek(void)
 
         ASSERT(!naui_file_seek(&h, 0, SEEK_SET));
         ASSERT(!naui_file_seek(NULL, 0, SEEK_SET));
+
+        NAUI_PATH_FREE(seek_test);
     }
 
     TEST_END();
@@ -231,7 +258,9 @@ static void test_file_delete_rename(void)
     TEST_BEGIN("naui_file_delete / naui_file_rename");
 
     {
-        ASSERT(!naui_path_exists(NAUI_PATH("Test.txt")));
+        Naui_Path not_test = NAUI_PATH("Test.txt");
+        ASSERT(!naui_path_exists(not_test));
+        NAUI_PATH_FREE(not_test);
 
         Naui_Path delete_me = tp("del_me.txt");
         write_text(delete_me, "bye");
@@ -239,6 +268,7 @@ static void test_file_delete_rename(void)
         ASSERT(naui_file_delete(delete_me));
         ASSERT(!naui_path_exists(delete_me));
         ASSERT(!naui_file_delete(delete_me));
+        NAUI_PATH_FREE(delete_me);
 
         Naui_Path rename_src = tp("rename_src.txt");
         Naui_Path rename_dst = tp("rename_dst.txt");
@@ -247,11 +277,14 @@ static void test_file_delete_rename(void)
         ASSERT(!naui_path_exists(rename_src));
         ASSERT(naui_path_exists(rename_dst));
         naui_file_delete(rename_dst);
+        NAUI_PATH_FREE(rename_src, rename_dst);
 
         Naui_Path x_files = tp("x.txt");
-        ASSERT(!naui_file_delete(NAUI_PATH("")));
-        ASSERT(!naui_file_rename(NAUI_PATH(""), x_files));
-        ASSERT(!naui_file_rename(x_files, NAUI_PATH("")));
+        Naui_Path empty = NAUI_PATH("");
+        ASSERT(!naui_file_delete(empty));
+        ASSERT(!naui_file_rename(empty, x_files));
+        ASSERT(!naui_file_rename(x_files, empty));
+        NAUI_PATH_FREE(x_files, empty);
     }
 
     TEST_END();
@@ -262,14 +295,22 @@ static void test_file_filename(void)
     TEST_BEGIN("naui_file_filename");
 
     {
+        /* naui_file_filename returns a VIEW into its input - it must be
+         * read before the input is freed, and must never be freed itself. */
         Naui_Path p1 = tp("foo/bar/baz.txt");
-        ASSERT_STR_EQ(naui_file_filename(p1), "baz.txt");
+        Naui_StringView f1 = naui_file_filename(p1);
+        ASSERT_STR_EQ(f1.data, "baz.txt");
+        NAUI_PATH_FREE(p1);
 
         Naui_Path p2 = tp("baz.txt");
-        ASSERT_STR_EQ(naui_file_filename(p2), "baz.txt");
+        Naui_StringView f2 = naui_file_filename(p2);
+        ASSERT_STR_EQ(f2.data, "baz.txt");
+        NAUI_PATH_FREE(p2);
 
         Naui_Path p3 = NAUI_PATH("");
-        ASSERT_STR_EQ(naui_file_filename(p3), "");
+        Naui_StringView f3 = naui_file_filename(p3);
+        ASSERT(f3.len == 0);
+        NAUI_PATH_FREE(p3);
     }
 
     TEST_END();
@@ -280,23 +321,30 @@ static void test_file_stem(void)
     TEST_BEGIN("naui_file_stem");
 
     {
+        /* Unlike filename/extension, stem is a PREFIX of the filename,
+         * so it can't safely be a view (the byte after it is '.', not
+         * a null terminator) - it's always an owned allocation. */
         Naui_Path file = tp("dir/file.txt");
-        Naui_Path s1 = naui_file_stem(file);
-        ASSERT_STR_EQ(s1.data, "file");
+        Naui_StringView s1 = naui_file_stem(file);
+        ASSERT(naui_sv_cmp(s1, NAUI_STR("file"), true));
+        NAUI_PATH_FREE(file, s1);
 
         Naui_Path archive = tp("dir/archive.tar.gz");
-        Naui_Path s2 = naui_file_stem(archive);
-        ASSERT_STR_EQ(s2.data, "archive.tar");
+        Naui_StringView s2 = naui_file_stem(archive);
+        ASSERT(naui_sv_cmp(s2, NAUI_STR("archive.tar"), true));
+        NAUI_PATH_FREE(archive, s2);
 
         /* No extension - full filename is the stem */
         Naui_Path noext = tp("dir/noext");
-        Naui_Path s3 = naui_file_stem(noext);
+        Naui_StringView s3 = naui_file_stem(noext);
         ASSERT_STR_EQ(s3.data, "noext");
+        NAUI_PATH_FREE(noext, s3);
 
         /* Dotfile - the whole name is the stem */
         Naui_Path hidden = tp("dir/.hidden");
-        Naui_Path s4 = naui_file_stem(hidden);
+        Naui_StringView s4 = naui_file_stem(hidden);
         ASSERT_STR_EQ(s4.data, ".hidden");
+        NAUI_PATH_FREE(hidden, s4);
     }
 
     TEST_END();
@@ -307,23 +355,29 @@ static void test_file_extension(void)
     TEST_BEGIN("naui_file_extension");
 
     {
+        /* extension IS a suffix, so (unlike stem) it's a view - use it
+         * before freeing the path it came from. */
         Naui_Path file = tp("file.txt");
-        Naui_Path e1 = naui_file_extension(file);
+        Naui_StringView e1 = naui_file_extension(file);
         ASSERT_STR_EQ(e1.data, ".txt");
+        NAUI_PATH_FREE(file);
 
         Naui_Path archive = tp("archive.tar.gz");
-        Naui_Path e2 = naui_file_extension(archive);
+        Naui_StringView e2 = naui_file_extension(archive);
         ASSERT_STR_EQ(e2.data, ".gz");
+        NAUI_PATH_FREE(archive);
 
-        /* No extension - empty path returned */
+        /* No extension - empty result */
         Naui_Path noext = tp("noext");
-        Naui_Path e3 = naui_file_extension(noext);
-        ASSERT(e3.data[0] == '\0');
+        Naui_StringView e3 = naui_file_extension(noext);
+        ASSERT(e3.len == 0);
+        NAUI_PATH_FREE(noext);
 
         /* Dotfile has no extension */
         Naui_Path hidden = tp(".hidden");
-        Naui_Path e4 = naui_file_extension(hidden);
-        ASSERT(e4.data[0] == '\0');
+        Naui_StringView e4 = naui_file_extension(hidden);
+        ASSERT(e4.len == 0);
+        NAUI_PATH_FREE(hidden);
     }
 
     TEST_END();
@@ -339,24 +393,35 @@ static void test_file_hide_is_hidden(void)
 
         ASSERT(!naui_file_is_hidden(original));
 
-        /* Hide it — returned path may differ on Unix */
+        /* naui_file_hide's contract: it may hand back the exact same
+         * path unchanged (a view aliasing the input - e.g. Windows,
+         * which only flips an attribute) or a freshly renamed, owned
+         * path (e.g. POSIX, which adds/strips a leading dot). Which
+         * one you get isn't tracked at runtime, so we tell them apart
+         * by pointer identity before freeing, which is correct on
+         * both platforms without needing an #ifdef here. */
         Naui_Path hidden = naui_file_hide(original, true);
         ASSERT(naui_file_is_hidden(hidden));
         ASSERT(naui_path_exists(hidden));
 
-        /* Unhide it — returned path may differ on Unix */
         Naui_Path unhidden = naui_file_hide(hidden, false);
         ASSERT(!naui_file_is_hidden(unhidden));
         ASSERT(naui_path_exists(unhidden));
 
-        /* Cleanup */
         naui_file_delete(unhidden);
 
-        /* Empty path: should return the same empty path */
+        if (unhidden.data != hidden.data)
+            NAUI_PATH_FREE(unhidden);
+        if (hidden.data != original.data)
+            NAUI_PATH_FREE(hidden);
+        NAUI_PATH_FREE(original);
+
+        /* Empty path: hide is a no-op and always returns empty */
         Naui_Path empty = NAUI_PATH("");
         Naui_Path result = naui_file_hide(empty, true);
         ASSERT(naui_path_is_empty(result));
         ASSERT(!naui_file_is_hidden(empty));
+        NAUI_PATH_FREE(empty, result);
     }
 
     TEST_END();
@@ -369,12 +434,15 @@ static void test_path_exists(void)
     {
         Naui_Path exists = tp("exists_check.txt");
         Naui_Path ghost = tp("ghost_file_xyz.txt");
+        Naui_Path empty = NAUI_PATH("");
 
         write_text(exists, "x");
         ASSERT(naui_path_exists(exists));
         ASSERT(!naui_path_exists(ghost));
-        ASSERT(!naui_path_exists(NAUI_PATH("")));
+        ASSERT(!naui_path_exists(empty));
+
         naui_file_delete(exists);
+        NAUI_PATH_FREE(exists, ghost, empty);
     }
 
     TEST_END();
@@ -390,17 +458,24 @@ static void test_path_parent(void)
 
         Naui_Path foo = tp("foo/bar");
         ASSERT_STR_EQ(p1.data, foo.data);
+        NAUI_PATH_FREE(baz, p1, foo);
 
         Naui_Path root = NAUI_PATH("/foo");
         Naui_Path p2 = naui_path_parent(root);
         ASSERT_STR_EQ(p2.data, "/");
+        NAUI_PATH_FREE(root, p2);
 
         Naui_Path bare = NAUI_PATH("only_filename");
         Naui_Path p3 = naui_path_parent(bare);
         ASSERT_STR_EQ(p3.data, ".");
+        NAUI_PATH_FREE(bare, p3);
 
-        Naui_Path p4 = naui_path_parent(NAUI_PATH(""));
+        /* Parent of an empty path is "." - same as a bare filename
+         * with no separators, not an empty result. */
+        Naui_Path empty = NAUI_PATH("");
+        Naui_Path p4 = naui_path_parent(empty);
         ASSERT_STR_EQ(p4.data, ".");
+        NAUI_PATH_FREE(empty, p4);
     }
 
     TEST_END();
@@ -416,20 +491,28 @@ static void test_path_join(void)
 
         Naui_Path joined = naui_path_join(base, rel);
         ASSERT_STR_EQ(joined.data, "/foo/bar" SEP "baz.txt");
+        NAUI_PATH_FREE(joined);
 
-		// Confusing names, but filesystem no longer replaces param1 with param2 if param2 is absolute
+        /* naui_path_join always allocates fresh, even in these
+         * "trivial" cases - never a passthrough view - so every result
+         * here is safe to free independently. */
         Naui_Path abs_b = NAUI_PATH("/absolute/path");
         Naui_Path joined_abs = naui_path_join(base, abs_b);
         ASSERT_STR_EQ(joined_abs.data, "/foo/bar" SEP "absolute/path");
+        NAUI_PATH_FREE(abs_b, joined_abs);
 
-        /* Empty a returns b */
+        /* Empty a returns (a copy of) b */
         Naui_Path empty = NAUI_PATH("");
         Naui_Path from_empty = naui_path_join(empty, rel);
         ASSERT_STR_EQ(from_empty.data, rel.data);
+        NAUI_PATH_FREE(from_empty);
 
         Naui_Path abs = NAUI_PATH("/foo/bar");
         Naui_Path abs_joined = naui_path_join(empty, abs);
         ASSERT_STR_EQ(abs_joined.data, abs.data);
+        NAUI_PATH_FREE(abs_joined);
+
+        NAUI_PATH_FREE(base, rel, empty, abs);
     }
 
     TEST_END();
@@ -440,47 +523,55 @@ static void test_path_variadic_join(void)
 	TEST_BEGIN("NAUI_PATH variadic join");
 
 	{
-		/* Single argument behaves like the old naui_path_from_cstr. */
+		/* Single argument behaves like the old naui_path_from_cstr,
+		 * except NAUI_PATH always allocates. */
 		Naui_Path p = NAUI_PATH("file.txt");
 		ASSERT_STR_EQ(p.data, "file.txt");
+		NAUI_PATH_FREE(p);
 	}
 
 	{
 		/* Two plain parts. */
 		Naui_Path p = NAUI_PATH("Language", "/en-US.lang");
 		ASSERT_STR_EQ(p.data, "Language" SEP "en-US.lang");
+		NAUI_PATH_FREE(p);
 	}
 
 	{
 		/* Three parts, the classic motivating example. */
 		Naui_Path p = NAUI_PATH("Some/", "Folder", "file.txt");
 		ASSERT_STR_EQ(p.data, "Some" SEP "Folder" SEP "file.txt");
+		NAUI_PATH_FREE(p);
 	}
 
 	{
 		/* Trailing separator on an earlier part doesn't double up. */
 		Naui_Path p = NAUI_PATH("a" SEP, "b");
 		ASSERT_STR_EQ(p.data, "a" SEP "b");
+		NAUI_PATH_FREE(p);
 	}
 
 	{
 		/* Leading separator on a later part is normalized, not a
-		 * reset - consistent with naui_path_join's new no-reset
-		 * behavior, since NAUI_PATH(...) shares the same join logic. */
+		 * reset - consistent with naui_path_join's no-reset behavior,
+		 * since NAUI_PATH(...) shares the same join logic. */
 		Naui_Path p = NAUI_PATH("a", SEP "b", SEP "c");
 		ASSERT_STR_EQ(p.data, "a" SEP "b" SEP "c");
+		NAUI_PATH_FREE(p);
 	}
 
 	{
 		/* Separators on both sides of a seam collapse to exactly one. */
 		Naui_Path p = NAUI_PATH("a" SEP, SEP "b");
 		ASSERT_STR_EQ(p.data, "a" SEP "b");
+		NAUI_PATH_FREE(p);
 	}
 
 	{
 		/* Empty string parts are skipped, no double separators. */
 		Naui_Path p = NAUI_PATH("a", "", "b");
 		ASSERT_STR_EQ(p.data, "a" SEP "b");
+		NAUI_PATH_FREE(p);
 	}
 
 	{
@@ -488,12 +579,14 @@ static void test_path_variadic_join(void)
 		 * what makes an absolute path absolute. */
 		Naui_Path p = NAUI_PATH(SEP "root", "child");
 		ASSERT_STR_EQ(p.data, SEP "root" SEP "child");
+		NAUI_PATH_FREE(p);
 	}
 
 	{
 		/* Many parts, mixed separator placement at each seam. */
 		Naui_Path p = NAUI_PATH("one", "two" SEP, SEP "three", "four" SEP);
 		ASSERT_STR_EQ(p.data, "one" SEP "two" SEP "three" SEP "four");
+		NAUI_PATH_FREE(p);
 	}
 
 	{
@@ -506,6 +599,7 @@ static void test_path_variadic_join(void)
 
 		Naui_Path lang_file = NAUI_PATH(bin_dir.data, "Language", filename);
 		ASSERT_STR_EQ(lang_file.data, "usr" SEP "local" SEP "MyApp" SEP "Language" SEP "en-US.lang");
+		NAUI_PATH_FREE(bin_dir, lang_file);
 	}
 
 	TEST_END();
@@ -518,19 +612,22 @@ static void test_path_normalize(void)
     {
         Naui_Path p1 = NAUI_PATH("/foo/bar/../baz/./qux");
         Naui_Path n1 = naui_path_normalize(p1);
-#if defined(_WIN32) || defined(_WIN64)
+#if NAUI_WINDOWS
         ASSERT_STR_EQ(n1.data, "\\foo\\baz\\qux");
 #else
         ASSERT_STR_EQ(n1.data, "/foo/baz/qux");
 #endif
+        NAUI_PATH_FREE(p1, n1);
 
         Naui_Path p2 = NAUI_PATH(".");
         Naui_Path n2 = naui_path_normalize(p2);
         ASSERT_STR_EQ(n2.data, ".");
+        NAUI_PATH_FREE(p2, n2);
 
         Naui_Path p3 = NAUI_PATH("a/b/../../c");
         Naui_Path n3 = naui_path_normalize(p3);
         ASSERT_STR_EQ(n3.data, "c");
+        NAUI_PATH_FREE(p3, n3);
     }
 
     TEST_END();
@@ -541,17 +638,22 @@ static void test_path_absolute(void)
     TEST_BEGIN("naui_path_absolute");
 
     {
-        /* An already-absolute path is returned unchanged */
+        /* An already-absolute path is returned as a view aliasing the
+         * input - only the input needs freeing. */
         Naui_Path abs_in = NAUI_PATH("/already/absolute");
         Naui_Path abs_out = naui_path_absolute(abs_in);
         ASSERT_STR_EQ(abs_out.data, "/already/absolute");
+        NAUI_PATH_FREE(abs_in);
 
-        /* A relative path gets the cwd prepended */
+        /* A relative path gets the cwd prepended - owned, since it's
+         * genuinely new data. */
         Naui_Path rel = NAUI_PATH("relative_file.txt");
         Naui_Path made_abs = naui_path_absolute(rel);
 
         Naui_Path cwd = naui_directory_get(NAUI_DIR_WORKING);
         ASSERT(strncmp(made_abs.data, cwd.data, strlen(cwd.data)) == 0);
+
+        NAUI_PATH_FREE(rel, made_abs, cwd);
     }
 
     TEST_END();
@@ -562,16 +664,19 @@ static void test_path_canonical(void)
     TEST_BEGIN("naui_path_canonical");
 
     {
-        Naui_Path temp = TEST_ROOT;
-        Naui_Path canon = naui_path_canonical(temp);
-        ASSERT(canon.data[0] != '\0');
+        Naui_Path canon = naui_path_canonical(TEST_ROOT);
+        ASSERT(!naui_path_is_empty(canon));
+        NAUI_PATH_FREE(canon);
 
-        Naui_Path canonical = tp("does_not_exist_for_canonical");
-        Naui_Path bad = naui_path_canonical(canonical);
-        ASSERT(bad.data[0] == '\0');
+        Naui_Path missing = tp("does_not_exist_for_canonical");
+        Naui_Path bad = naui_path_canonical(missing);
+        ASSERT(naui_path_is_empty(bad));
+        NAUI_PATH_FREE(missing, bad);
 
-        Naui_Path empty = naui_path_canonical(NAUI_PATH(""));
-        ASSERT(empty.data[0] == '\0');
+        Naui_Path empty_in = NAUI_PATH("");
+        Naui_Path empty_out = naui_path_canonical(empty_in);
+        ASSERT(naui_path_is_empty(empty_out));
+        NAUI_PATH_FREE(empty_in, empty_out);
     }
 
     TEST_END();
@@ -583,16 +688,17 @@ static void test_path_weakly_canonical(void)
 
     {
         /* Fully existing path behaves like canonical */
-        Naui_Path temp = TEST_ROOT;
-        Naui_Path wc1 = naui_path_weakly_canonical(temp);
-        ASSERT(wc1.data[0] != '\0');
+        Naui_Path wc1 = naui_path_weakly_canonical(TEST_ROOT);
+        ASSERT(!naui_path_is_empty(wc1));
+        NAUI_PATH_FREE(wc1);
 
         /* Partially existing: existing prefix is canonicalized,
          * non-existing tail is normalized and appended. */
         Naui_Path check_dir = tp("nonexistent_dir/and/sub");
         Naui_Path wc2 = naui_path_weakly_canonical(check_dir);
-        ASSERT(wc2.data[0] != '\0');
+        ASSERT(!naui_path_is_empty(wc2));
         ASSERT(strstr(wc2.data, "nonexistent_dir") != NULL);
+        NAUI_PATH_FREE(check_dir, wc2);
     }
 
     TEST_END();
@@ -603,15 +709,18 @@ static void test_directory_create_remove(void)
     TEST_BEGIN("naui_directory_create / naui_directory_remove");
 
     {
-        Naui_Path mkdir = tp("mkdir_test");
-        ASSERT(naui_directory_create(mkdir));
-        ASSERT(naui_path_exists(mkdir));
-        ASSERT(naui_directory_create(mkdir)); /* EEXIST is OK */
-        ASSERT(naui_directory_remove(mkdir));
-        ASSERT(!naui_path_exists(mkdir));
+        Naui_Path mkdir_path = tp("mkdir_test");
+        ASSERT(naui_directory_create(mkdir_path));
+        ASSERT(naui_path_exists(mkdir_path));
+        ASSERT(naui_directory_create(mkdir_path)); /* EEXIST is OK */
+        ASSERT(naui_directory_remove(mkdir_path));
+        ASSERT(!naui_path_exists(mkdir_path));
+        NAUI_PATH_FREE(mkdir_path);
 
-        ASSERT(!naui_directory_create(NAUI_PATH("")));
-        ASSERT(!naui_directory_remove(NAUI_PATH("")));
+        Naui_Path empty = NAUI_PATH("");
+        ASSERT(!naui_directory_create(empty));
+        ASSERT(!naui_directory_remove(empty));
+        NAUI_PATH_FREE(empty);
     }
 
     TEST_END();
@@ -635,7 +744,10 @@ static void test_directory_remove_all(void)
         ASSERT(naui_directory_remove_all(rm));
         ASSERT(!naui_path_exists(rm));
 
-        ASSERT(!naui_directory_remove_all(NAUI_PATH("")));
+        Naui_Path empty = NAUI_PATH("");
+        ASSERT(!naui_directory_remove_all(empty));
+
+        NAUI_PATH_FREE(rm, sub, leaf, empty);
     }
 
     TEST_END();
@@ -654,9 +766,12 @@ static void test_directory_rename(void)
         ASSERT(!naui_path_exists(src));
         ASSERT(naui_path_exists(dst));
 
-        ASSERT(!naui_directory_rename(NAUI_PATH(""), dst));
-        ASSERT(!naui_directory_rename(dst, NAUI_PATH("")));
-		ASSERT(naui_directory_remove(dst));
+        Naui_Path empty = NAUI_PATH("");
+        ASSERT(!naui_directory_rename(empty, dst));
+        ASSERT(!naui_directory_rename(dst, empty));
+        ASSERT(naui_directory_remove(dst));
+
+        NAUI_PATH_FREE(src, dst, empty);
     }
 
     TEST_END();
@@ -667,18 +782,23 @@ static void test_directory_get(void)
     TEST_BEGIN("naui_directory_get");
 
     {
+        /* WORKING is backed by a mutable cache, so it's always an
+         * owned copy - must be freed. */
         Naui_Path cwd = naui_directory_get(NAUI_DIR_WORKING);
-        ASSERT(cwd.data[0] != '\0');
+        ASSERT(!naui_path_is_empty(cwd));
+        NAUI_PATH_FREE(cwd);
 
+        /* HOME/BIN are write-once caches returned as views into static
+         * storage - must NOT be freed. */
         Naui_Path home = naui_directory_get(NAUI_DIR_HOME);
-        ASSERT(home.data[0] != '\0');
+        ASSERT(!naui_path_is_empty(home));
 
         Naui_Path bin = naui_directory_get(NAUI_DIR_BIN);
-        ASSERT(bin.data[0] != '\0');
+        ASSERT(!naui_path_is_empty(bin));
 
-        /* Invalid enum */
+        /* Invalid enum - naui_path_empty(), harmless either way */
         Naui_Path bad = naui_directory_get((Naui_Dir)9999);
-        ASSERT(bad.data[0] == '\0');
+        ASSERT(naui_path_is_empty(bad));
     }
 
     TEST_END();
@@ -708,7 +828,7 @@ static void test_directory_filter(void)
 
         ASSERT(list != NULL);
 
-        size_t count = naui_list_len(list);
+        size_t count = (size_t)naui_list_len(list);
         ASSERT(count == 2);
 
         bool saw_a = false;
@@ -725,8 +845,10 @@ static void test_directory_filter(void)
         ASSERT(saw_a);
         ASSERT(saw_c);
 
-        naui_directory_filter_free(list);
+        naui_directory_filter_free(list); /* frees each entry's path, then the list */
         naui_directory_remove_all(root);
+
+        NAUI_PATH_FREE(root, a, b, c);
     }
 
     TEST_END();
@@ -753,6 +875,8 @@ static void test_path_absolute_parent(void)
 #endif
 
     ASSERT_STR_EQ(abs.data, expected);
+
+    NAUI_PATH_FREE(rel, abs, cwd);
 
     TEST_END();
 }
@@ -783,6 +907,8 @@ static void test_path_lock(void)
         ASSERT(!naui_path_lock(empty));
         ASSERT(!naui_path_is_locked(empty));
         naui_path_unlock(empty);
+
+        NAUI_PATH_FREE(lockfile, empty);
     }
 
     TEST_END();
@@ -813,6 +939,8 @@ static void test_path_lock_independent(void)
         /* Unlock B */
         naui_path_unlock(b);
         ASSERT(!naui_path_is_locked(b));
+
+        NAUI_PATH_FREE(a, b);
     }
 
     TEST_END();
@@ -832,8 +960,10 @@ static void test_current_directory_all(void)
 
         Naui_Path cwd = naui_directory_get(NAUI_DIR_WORKING);
         ASSERT_STR_EQ(cwd.data, dir.data);
+        NAUI_PATH_FREE(cwd);
 
         ASSERT(naui_path_set_current(original));
+        NAUI_PATH_FREE(dir);
     }
 
     {
@@ -841,9 +971,11 @@ static void test_current_directory_all(void)
 
         Naui_Path empty = NAUI_PATH("");
         ASSERT(!naui_path_set_current(empty));
+        NAUI_PATH_FREE(empty);
 
         Naui_Path after = naui_directory_get(NAUI_DIR_WORKING);
         ASSERT_STR_EQ(before.data, after.data);
+        NAUI_PATH_FREE(before, after);
     }
 
     {
@@ -851,9 +983,11 @@ static void test_current_directory_all(void)
 
         Naui_Path bad = tp("this_directory_should_not_exist_12345");
         ASSERT(!naui_path_set_current(bad));
+        NAUI_PATH_FREE(bad);
 
         Naui_Path after = naui_directory_get(NAUI_DIR_WORKING);
         ASSERT_STR_EQ(before.data, after.data);
+        NAUI_PATH_FREE(before, after);
     }
 
     {
@@ -864,8 +998,10 @@ static void test_current_directory_all(void)
 
         Naui_Path cwd = naui_directory_get(NAUI_DIR_WORKING);
         ASSERT_STR_EQ(cwd.data, dir.data);
+        NAUI_PATH_FREE(cwd);
 
         ASSERT(naui_path_set_current(original));
+        NAUI_PATH_FREE(dir);
     }
 
     {
@@ -879,23 +1015,28 @@ static void test_current_directory_all(void)
 
         Naui_Path now = naui_directory_get(NAUI_DIR_WORKING);
         ASSERT_STR_EQ(now.data, parent.data);
+        NAUI_PATH_FREE(now);
 
         ASSERT(naui_path_set_current(original));
+        NAUI_PATH_FREE(cwd, parent);
     }
+
+    NAUI_PATH_FREE(original);
 
     TEST_END();
 }
 
-static void test_cleanup()
+static void test_cleanup(void)
 {
 	TEST_BEGIN("Cleanup test root directory");
 	ASSERT(naui_directory_remove_all(TEST_ROOT));
 	ASSERT(!naui_path_exists(TEST_ROOT));
 	ASSERT(!naui_directory_remove_all(TEST_ROOT));
+	NAUI_PATH_FREE(TEST_ROOT); /* release TEST_ROOT's own memory - separate from removing the directory from disk above */
 	TEST_END();
 }
 
-void filesystem_test()
+void filesystem_test(void)
 {
     init_test_root();
 

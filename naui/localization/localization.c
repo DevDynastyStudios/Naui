@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define NAUI_LOCALIZATION_NAME_SIZE 128
+
 static Naui_Language g_current_language;
 static Naui_List(Naui_LanguageMeta) g_meta_cache = NULL;
 static bool g_current_loaded = false;
@@ -88,10 +90,12 @@ static Naui_Path naui_localization_build_path_(const char* code)
 	Naui_Path bin_dir = naui_directory_get(NAUI_DIR_BIN);
 	Naui_Path lang_dir = naui_path_join(bin_dir, naui_path_from_cstr("Language"));
 
-	char filename[NAUI_PATH_MAX];
+	char filename[NAUI_LOCALIZATION_NAME_SIZE];
 	snprintf(filename, sizeof(filename), "%s.lang", code);
 
-	return naui_path_join(lang_dir, naui_path_from_cstr(filename));
+	Naui_Path result = naui_path_join(lang_dir, naui_path_from_cstr(filename));
+	NAUI_PATH_FREE(lang_dir);
+	return result;
 }
 
 bool naui_localization_load_file(const char* path, Naui_Language* out_language)
@@ -233,7 +237,9 @@ bool naui_localization_load(const char* language_code, Naui_Language* out_langua
 		return false;
 
 	Naui_Path path = naui_localization_build_path_(language_code);
-	return naui_localization_load_file(path.data, out_language);
+	bool ok = naui_localization_load_file(path.data, out_language);
+	NAUI_PATH_FREE(path);
+	return ok;
 }
 
 void naui_localization_set_current(const char* language_code)
@@ -289,15 +295,18 @@ void naui_localization_reload_meta_cache(void)
 	}
 
 	g_meta_cache_init = true;
-
 	Naui_Path bin_dir = naui_directory_get(NAUI_DIR_BIN);
 	Naui_Path lang_dir = naui_path_join(bin_dir, naui_path_from_cstr("Language"));
 
 	if (!naui_path_exists(lang_dir))
+	{
+		NAUI_PATH_FREE(lang_dir);
 		return;
+	}
 
 	const char* extensions[] = { ".lang", NULL };
 	Naui_List(Naui_DirEntry) entries = naui_directory_filter(lang_dir, NULL, extensions, 1);
+	NAUI_PATH_FREE(lang_dir);
 	for (ptrdiff_t i = 0; i < naui_list_len(entries); ++i)
 	{
 		if (entries[i].is_directory)

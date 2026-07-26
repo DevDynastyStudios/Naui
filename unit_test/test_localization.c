@@ -9,7 +9,9 @@
 static Naui_Path make_test_dir(void)
 {
 	Naui_Path cwd = naui_directory_get(NAUI_DIR_WORKING);
-	Naui_Path testdir = naui_path_join(cwd, NAUI_PATH("naui_test"));
+	Naui_Path naui_test = NAUI_PATH("naui_test");
+	Naui_Path testdir = naui_path_join(cwd, naui_test);
+	NAUI_PATH_FREE(cwd, naui_test);
 
 	if (naui_path_exists(testdir))
 		naui_directory_remove_all(testdir);
@@ -18,9 +20,22 @@ static Naui_Path make_test_dir(void)
 	return testdir;
 }
 
+static Naui_Path get_lang_dir(void)
+{
+	Naui_Path bin_dir = naui_directory_get(NAUI_DIR_BIN);
+	Naui_Path name = NAUI_PATH("Language");
+	Naui_Path lang_dir = naui_path_join(bin_dir, name);
+	NAUI_PATH_FREE(name);
+	naui_directory_create(lang_dir);
+	return lang_dir;
+}
+
 static Naui_Path write_test_lang(Naui_Path testdir, const char* filename, const char* contents)
 {
-	Naui_Path path = naui_path_join(testdir, NAUI_PATH(filename));
+	Naui_Path name = NAUI_PATH(filename);
+	Naui_Path path = naui_path_join(testdir, name);
+	NAUI_PATH_FREE(name);
+
 	bool ok = naui_file_write_all(path, contents, strlen(contents));
 	ASSERT(ok);
 	return path;
@@ -29,6 +44,7 @@ static Naui_Path write_test_lang(Naui_Path testdir, const char* filename, const 
 static void cleanup_test_dir(Naui_Path testdir)
 {
 	naui_directory_remove_all(testdir);
+	NAUI_PATH_FREE(testdir);
 }
 
 static void test_localization_basic(void)
@@ -57,6 +73,7 @@ static void test_localization_basic(void)
 	ASSERT_STR_EQ(naui_localization_get(&lang, "missing"), "missing");
 
 	naui_localization_free(&lang);
+	NAUI_PATH_FREE(file);
 	cleanup_test_dir(testdir);
 
 	TEST_END();
@@ -93,6 +110,7 @@ static void test_localization_interpolation(void)
 
 	free(out);
 	naui_localization_free(&lang);
+	NAUI_PATH_FREE(file);
 	cleanup_test_dir(testdir);
 
 	TEST_END();
@@ -125,6 +143,7 @@ static void test_localization_missing_arg(void)
 
 	free(out);
 	naui_localization_free(&lang);
+	NAUI_PATH_FREE(file);
 	cleanup_test_dir(testdir);
 
 	TEST_END();
@@ -152,17 +171,17 @@ static void test_localization_freeing(void)
 
 	naui_localization_free(&lang);
 	ASSERT_STR_EQ(naui_localization_get(&lang, "hello"), "hello");
+	NAUI_PATH_FREE(file);
 	cleanup_test_dir(testdir);
 
 	TEST_END();
 }
+
 static void test_localization_global_set(void)
 {
 	TEST_BEGIN("Localization - global set_current");
 
-	Naui_Path bin_dir = naui_directory_get(NAUI_DIR_BIN);
-	Naui_Path lang_dir = naui_path_join(bin_dir, NAUI_PATH("Language"));
-	naui_directory_create(lang_dir);
+	Naui_Path lang_dir = get_lang_dir();
 
 	Naui_Path file = write_test_lang(lang_dir, "en-US.lang",
 		"{"
@@ -181,6 +200,8 @@ static void test_localization_global_set(void)
 	ASSERT_NOT_NULL(cur);
 	ASSERT_STR_EQ(naui_localization_get(cur, "hello"), "Hello");
 	naui_file_delete(file);
+
+	NAUI_PATH_FREE(file, lang_dir);
 
 	TEST_END();
 }
@@ -203,11 +224,12 @@ static void test_localization_TR_macro(void)
 
 	Naui_Language lang;
 	ASSERT(naui_localization_load_file(file.data, &lang));
-	naui_localization_set_current_lang(&lang);
+	naui_localization_set_current_lang(&lang); /* takes ownership of lang's table/meta - no naui_localization_free(&lang) needed */
 
 	ASSERT_STR_EQ(NAUI_TR("hello"), "Hello World");
 	ASSERT_STR_EQ(NAUI_TR("missing"), "missing");
 
+	NAUI_PATH_FREE(file);
 	cleanup_test_dir(testdir);
 	TEST_END();
 }
@@ -236,6 +258,7 @@ static void test_localization_global_fallback(void)
 	ASSERT_NOT_NULL(cur);
 	ASSERT_STR_EQ(naui_localization_get(cur, "hello"), "Bonjour");
 
+	NAUI_PATH_FREE(file);
 	cleanup_test_dir(testdir);
 	TEST_END();
 }
@@ -244,9 +267,7 @@ static void test_localization_meta_cache_basic(void)
 {
 	TEST_BEGIN("Localization - meta cache basic");
 
-	Naui_Path bin_dir  = naui_directory_get(NAUI_DIR_BIN);
-	Naui_Path lang_dir = naui_path_join(bin_dir, NAUI_PATH("Language"));
-	naui_directory_create(lang_dir);
+	Naui_Path lang_dir = get_lang_dir();
 
 	Naui_Path en_file = write_test_lang(lang_dir, "en-US.lang",
 		"{"
@@ -291,6 +312,8 @@ static void test_localization_meta_cache_basic(void)
 	naui_file_delete(en_file);
 	naui_file_delete(fr_file);
 
+	NAUI_PATH_FREE(en_file, fr_file, lang_dir);
+
 	TEST_END();
 }
 
@@ -298,9 +321,7 @@ static void test_localization_meta_cache_stale_list(void)
 {
 	TEST_BEGIN("Localization - meta cache stale list after reload");
 
-	Naui_Path bin_dir  = naui_directory_get(NAUI_DIR_BIN);
-	Naui_Path lang_dir = naui_path_join(bin_dir, NAUI_PATH("Language"));
-	naui_directory_create(lang_dir);
+	Naui_Path lang_dir = get_lang_dir();
 
 	Naui_Path en_file = write_test_lang(lang_dir, "en-US.lang",
 		"{"
@@ -350,6 +371,8 @@ static void test_localization_meta_cache_stale_list(void)
 	naui_file_delete(en_file);
 	naui_file_delete(de_file);
 
+	NAUI_PATH_FREE(en_file, de_file, lang_dir);
+
 	TEST_END();
 }
 
@@ -357,9 +380,7 @@ static void test_localization_meta_cache_removed_file(void)
 {
 	TEST_BEGIN("Localization - meta cache reflects removed file");
 
-	Naui_Path bin_dir  = naui_directory_get(NAUI_DIR_BIN);
-	Naui_Path lang_dir = naui_path_join(bin_dir, NAUI_PATH("Language"));
-	naui_directory_create(lang_dir);
+	Naui_Path lang_dir = get_lang_dir();
 
 	Naui_Path en_file = write_test_lang(lang_dir, "en-US.lang",
 		"{"
@@ -406,6 +427,10 @@ static void test_localization_meta_cache_removed_file(void)
 
 	naui_file_delete(en_file);
 
+	/* es_file's underlying file is already gone, but the Naui_Path's
+	 * own backing memory is independent of that and still needs freeing. */
+	NAUI_PATH_FREE(en_file, es_file, lang_dir);
+
 	TEST_END();
 }
 
@@ -413,8 +438,7 @@ static void test_localization_meta_cache_empty_dir(void)
 {
 	TEST_BEGIN("Localization - meta cache empty language dir");
 
-	Naui_Path bin_dir  = naui_directory_get(NAUI_DIR_BIN);
-	Naui_Path lang_dir = naui_path_join(bin_dir, NAUI_PATH("Language"));
+	Naui_Path lang_dir = get_lang_dir();
 
 	/* Remove any existing lang files so the directory is empty. */
 	if (naui_path_exists(lang_dir))
@@ -426,6 +450,8 @@ static void test_localization_meta_cache_empty_dir(void)
 	Naui_List(Naui_LanguageMeta) langs = naui_localization_get_languages();
 	ASSERT(naui_list_len(langs) == 0);
 
+	NAUI_PATH_FREE(lang_dir);
+
 	TEST_END();
 }
 
@@ -433,9 +459,7 @@ static void test_localization_meta_cache_corrupt_file(void)
 {
 	TEST_BEGIN("Localization - meta cache skips corrupt file");
 
-	Naui_Path bin_dir  = naui_directory_get(NAUI_DIR_BIN);
-	Naui_Path lang_dir = naui_path_join(bin_dir, NAUI_PATH("Language"));
-	naui_directory_create(lang_dir);
+	Naui_Path lang_dir = get_lang_dir();
 
 	Naui_Path good_file = write_test_lang(lang_dir, "en-US.lang",
 		"{"
@@ -472,6 +496,8 @@ static void test_localization_meta_cache_corrupt_file(void)
 	naui_file_delete(good_file);
 	naui_file_delete(bad_file);
 
+	NAUI_PATH_FREE(good_file, bad_file, lang_dir);
+
 	TEST_END();
 }
 
@@ -479,9 +505,7 @@ static void test_localization_meta_cache_no_meta_block(void)
 {
 	TEST_BEGIN("Localization - meta cache file with no _meta block");
 
-	Naui_Path bin_dir  = naui_directory_get(NAUI_DIR_BIN);
-	Naui_Path lang_dir = naui_path_join(bin_dir, NAUI_PATH("Language"));
-	naui_directory_create(lang_dir);
+	Naui_Path lang_dir = get_lang_dir();
 
 	/* Valid JSON, valid entries, but no _meta block at all. */
 	Naui_Path file = write_test_lang(lang_dir, "zz-ZZ.lang",
@@ -498,14 +522,14 @@ static void test_localization_meta_cache_no_meta_block(void)
 	bool found = false;
 	for (ptrdiff_t i = 0; i < naui_list_len(langs); ++i)
 	{
-		if (langs[i].language_code &&
-			strcmp(langs[i].language_code, "zz") == 0)
+		if (langs[i].language_code && strcmp(langs[i].language_code, "zz") == 0)
 			found = true;
 	}
 
 	ASSERT(found);
 
 	naui_file_delete(file);
+	NAUI_PATH_FREE(file, lang_dir);
 
 	TEST_END();
 }
@@ -514,9 +538,7 @@ static void test_localization_meta_cache_metadata_fields(void)
 {
 	TEST_BEGIN("Localization - meta cache metadata fields");
 
-	Naui_Path bin_dir  = naui_directory_get(NAUI_DIR_BIN);
-	Naui_Path lang_dir = naui_path_join(bin_dir, NAUI_PATH("Language"));
-	naui_directory_create(lang_dir);
+	Naui_Path lang_dir = get_lang_dir();
 
 	Naui_Path file = write_test_lang(lang_dir, "ar-SA.lang",
 		"{"
@@ -541,15 +563,21 @@ static void test_localization_meta_cache_metadata_fields(void)
 			continue;
 
 		found = true;
-		ASSERT_STR_EQ(m->region_code,   "SA");
-		ASSERT_STR_EQ(m->display_name,  "Arabic");
+		ASSERT_STR_EQ(m->region_code, "SA");
+		ASSERT_STR_EQ(m->display_name, "Arabic");
 		ASSERT(m->text_direction == NAUI_TEXT_RTL);
+
+		char full_code[16];
+		snprintf(full_code, sizeof(full_code), "%s-%s", m->language_code, m->region_code);
+		naui_localization_set_current(full_code);
+		ASSERT_STR_EQ(NAUI_TR("hello"), "مرحبا");
 		break;
 	}
 
 	ASSERT(found);
 
 	naui_file_delete(file);
+	NAUI_PATH_FREE(file, lang_dir);
 
 	TEST_END();
 }
