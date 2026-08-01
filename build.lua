@@ -210,21 +210,22 @@ local function help()
 %sbuild.lua%s
 
 Usage:
-  lua build.lua debug       Build Debug
-  lua build.lua release     Build Release
-  lua build.lua run         Run Debug build
-  lua build.lua run release Run Release build
-  lua build.lua clean       Delete bin/
-  lua build.lua help        Show this help
+  lua build.lua debug         Build Debug
+  lua build.lua release       Build Release
+  lua build.lua run_debug     Run Debug build
+  lua build.lua run_release   Run Release build
+  lua build.lua clean         Delete bin/
+  lua build.lua help          Show this help
 ]]):format(COLOR.bold, COLOR.reset))
 end
 
 local COMMANDS = {
-    debug   = function(release) compile(release) end,
-    release = function(release) compile(release) end,
-    run     = function(release) run(release) end,
-    clean   = function(_)       clean() end,
-    help    = function(_)       help() end,
+    debug       = function(release) compile(release) end,
+    release     = function(release) compile(release) end,
+    run_debug   = function(_)       run(false) end,
+    run_release = function(_)       run(true) end,
+    clean       = function(_)       clean() end,
+    help        = function(_)       help() end,
 }
 
 local function main(args)
