@@ -38,7 +38,7 @@
 #include "naui/filesystem/filesystem_unix.c"
 
 #define APP "NauiApp"
-#define SRC "app/main.c"
+#define SRC "app/build.c"
 static char *out;
 
 #define cmd_append(cmd, s) naui_sb_append_string(cmd, naui_string_lit(s" "));
@@ -140,20 +140,18 @@ int main(int argc, char **argv) {
 #endif
 
     int return_code;
-    if (argc == 1)
-        return_code = cmd_compile(&arena, cmd, COMPILE_MODE_DEBUG);
+    if (argc == 1) {
+        fprintf(stderr, "build-cli: simple build utility for naui and app (very WIP)\n"
+                "usage: ./build-cli [commands]\n"
+                "arguments:\n"
+                "  no arguments or compile: compiles project (debug)\n"
+                "  release: compiles with release mode\n"
+                "  run: runs compiled project\n");
+        return 0;
+    }
     else {
         for (int i = 1; i < argc; i++) {
-            if (naui_cstr_strcmp(argv[i], "help", true) == 0) {
-                fprintf(stderr, "build: simple build utility for naui and app\n"
-                        "usage: ./build [commands]\n"
-                        "arguments:\n"
-                        "  no arguments: compiles project\n"
-                        "  run: runs compiled project\n"
-                        "  release: enables release mode (by default, build uses debug mode)\n");
-                return 0;
-            }
-            else if (naui_cstr_strcmp(argv[i], "compile", true) == 0) return_code = cmd_compile(&arena, cmd, COMPILE_MODE_DEBUG);
+            if (naui_cstr_strcmp(argv[i], "compile", true) == 0) return_code = cmd_compile(&arena, cmd, COMPILE_MODE_DEBUG);
             else if (naui_cstr_strcmp(argv[i], "run", true) == 0) return_code = cmd_run_target(&arena, cmd);
             else if (naui_cstr_strcmp(argv[i], "clean", true) == 0) return_code = cmd_clean(&arena, cmd);
             else if (naui_cstr_strcmp(argv[i], "release", true) == 0) {
