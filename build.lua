@@ -25,7 +25,7 @@ local COLOR = {
 
 local function log(level, color, fmt, ...)
     io.stderr:write(("%s%s[%s]%s " .. fmt .. "\n"):format(
-        COLOR.bold, color, level, COLOR.reset, ...
+        COLOR.bold, color, level, COLOR.reset, ..., COLOR.reset
     ))
 end
 
@@ -175,7 +175,7 @@ local function run(release)
         return 1
     end
 
-    info("Running '%s'...", out)
+    info("Running '%s'...\n", out)
 
     local ok
     if IS_WINDOWS then
@@ -184,6 +184,7 @@ local function run(release)
         ok = os.execute("./" .. out)
     end
 
+    io.stderr:write("\n")
     if ran_ok(ok) then
         success("Program exited successfully")
     else
