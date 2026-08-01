@@ -209,7 +209,7 @@ local function help()
 %sbuild.lua%s
 
 Usage:
-  lua build.lua compile     Build Debug
+  lua build.lua debug       Build Debug
   lua build.lua release     Build Release
   lua build.lua run         Run Debug build
   lua build.lua run release Run Release build
