@@ -823,7 +823,7 @@ static void test_directory_filter(void)
         /* We want only .txt files */
         const char* exts[] = { ".txt" };
 
-        Naui_List(Naui_DirEntry) list =
+        Naui_List<Naui_DirEntry> list =
             naui_directory_filter(root, NULL, exts, 1);
 
         ASSERT(list != NULL);

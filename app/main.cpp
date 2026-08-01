@@ -1,3 +1,5 @@
+// TODO(doomguy): rewrite the slop into human slop
+
 NAUI_APP("Naui Sandbox")
 
 void naui_app_start(void)

@@ -3,7 +3,7 @@ typedef struct {
     size_t length;
 } Naui_String;
 
-typedef char* Naui_StringBuilder;
+typedef Naui_List<char> Naui_StringBuilder;
 
 #define naui_string_lit(cstr) (Naui_String){ (char*)(cstr), sizeof(cstr) - 1 } // Pretty damn convenient
 #define naui_string_spread(s) (int)(s).len, (s).data

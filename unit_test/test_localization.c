@@ -293,7 +293,7 @@ static void test_localization_meta_cache_basic(void)
 
 	naui_localization_reload_meta_cache();
 
-	Naui_List(Naui_LanguageMeta) langs = naui_localization_get_languages();
+	Naui_List<Naui_LanguageMeta> langs = naui_localization_get_languages();
 	ASSERT(naui_list_len(langs) >= 2);
 
 	bool found_en = false;
@@ -337,7 +337,7 @@ static void test_localization_meta_cache_stale_list(void)
 	naui_localization_reload_meta_cache();
 
 	/* Grab a snapshot of the list pointer before the reload. */
-	Naui_List(Naui_LanguageMeta) stale = naui_localization_get_languages();
+	Naui_List<Naui_LanguageMeta> stale = naui_localization_get_languages();
 	ptrdiff_t stale_len = naui_list_len(stale);
 	ASSERT(stale_len >= 1);
 
@@ -356,7 +356,7 @@ static void test_localization_meta_cache_stale_list(void)
 	naui_localization_reload_meta_cache();
 
 	/* Fresh list must reflect the new file. */
-	Naui_List(Naui_LanguageMeta) fresh = naui_localization_get_languages();
+	Naui_List<Naui_LanguageMeta> fresh = naui_localization_get_languages();
 	ASSERT(naui_list_len(fresh) > stale_len);
 
 	bool found_de = false;
@@ -413,7 +413,7 @@ static void test_localization_meta_cache_removed_file(void)
 	naui_file_delete(es_file);
 	naui_localization_reload_meta_cache();
 
-	Naui_List(Naui_LanguageMeta) langs = naui_localization_get_languages();
+	Naui_List<Naui_LanguageMeta> langs = naui_localization_get_languages();
 	ASSERT(naui_list_len(langs) == count_before - 1);
 
 	bool found_es = false;
@@ -447,7 +447,7 @@ static void test_localization_meta_cache_empty_dir(void)
 	naui_directory_create(lang_dir);
 	naui_localization_reload_meta_cache();
 
-	Naui_List(Naui_LanguageMeta) langs = naui_localization_get_languages();
+	Naui_List<Naui_LanguageMeta> langs = naui_localization_get_languages();
 	ASSERT(naui_list_len(langs) == 0);
 
 	NAUI_PATH_FREE(lang_dir);
@@ -480,7 +480,7 @@ static void test_localization_meta_cache_corrupt_file(void)
 	naui_localization_reload_meta_cache();
 
 	/* The corrupt file must be silently skipped — good file still loads. */
-	Naui_List(Naui_LanguageMeta) langs = naui_localization_get_languages();
+	Naui_List<Naui_LanguageMeta> langs = naui_localization_get_languages();
 	ASSERT(naui_list_len(langs) >= 1);
 
 	bool found_bad = false;
@@ -517,7 +517,7 @@ static void test_localization_meta_cache_no_meta_block(void)
 	naui_localization_reload_meta_cache();
 
 	/* Should still appear in the cache, code derived from filename. */
-	Naui_List(Naui_LanguageMeta) langs = naui_localization_get_languages();
+	Naui_List<Naui_LanguageMeta> langs = naui_localization_get_languages();
 
 	bool found = false;
 	for (ptrdiff_t i = 0; i < naui_list_len(langs); ++i)
@@ -553,7 +553,7 @@ static void test_localization_meta_cache_metadata_fields(void)
 
 	naui_localization_reload_meta_cache();
 
-	Naui_List(Naui_LanguageMeta) langs = naui_localization_get_languages();
+	Naui_List<Naui_LanguageMeta> langs = naui_localization_get_languages();
 
 	bool found = false;
 	for (ptrdiff_t i = 0; i < naui_list_len(langs); ++i)

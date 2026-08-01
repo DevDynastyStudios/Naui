@@ -61,6 +61,7 @@
 #include "localization/localization.h"
 
 // source files
+#include "utils/list.cpp"
 #include "utils/arena.cpp"
 #include "utils/uuid_unix.cpp"
 #include "utils/uuid_win32.cpp"

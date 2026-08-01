@@ -132,12 +132,12 @@ bool naui_archive_add_folder(Naui_Archive* archive, const Naui_Path folder, cons
 	if (!folder.data)
 		return false;
 
-	Naui_List(Naui_DirEntry) entries = naui_directory_filter_recursive(folder, NULL, NULL, 0);
-	if (!entries)
+	Naui_List<Naui_DirEntry> entries = naui_directory_filter_recursive(folder, NULL, NULL, 0);
+	if (!entries.items)
 		return true;
 
 	bool ok = true;
-	for (ptrdiff_t i = 0; i < naui_list_len(entries); ++i)
+	for (ptrdiff_t i = 0; i < entries.length; ++i)
 	{
 		if (entries[i].is_directory)
 			continue;
@@ -220,9 +220,9 @@ bool naui_archive_extract_file(Naui_Archive* archive, const Naui_Path entry, con
 	return zip_extract_entry_to_file(&archive->zip, entry.data, dest.data);
 }
 
-Naui_List(Naui_ArchiveEntry) naui_archive_list_entries(Naui_Archive* archive)
+Naui_List<Naui_ArchiveEntry> naui_archive_list_entries(Naui_Archive* archive)
 {
-	Naui_List(Naui_ArchiveEntry) list = NULL;
+	Naui_List<Naui_ArchiveEntry> list = {};
 	if (!archive->is_valid || archive->mode != NAUI_ARCHIVE_READ)
 		return list;
 
@@ -237,23 +237,23 @@ Naui_List(Naui_ArchiveEntry) naui_archive_list_entries(Naui_Archive* archive)
 		entry.path = naui_path_copy(naui_path_from_cstr(st.name));
 		entry.size = st.size;
 		entry.is_directory = st.is_directory;
-		naui_list_push(list, entry);
+		naui_list_push(&list, entry);
 	}
 
 	return list;
 }
 
-void naui_archive_list_free(Naui_List(Naui_ArchiveEntry) list)
+void naui_archive_list_free(Naui_List<Naui_ArchiveEntry> list)
 {
-	if (!list)
+	if (!list.items)
 		return;
 
-	for (ptrdiff_t i = 0; i < naui_list_len(list); ++i)
+	for (ptrdiff_t i = 0; i < list.length; ++i)
 	{
 		NAUI_PATH_FREE(list[i].path);
 	}
 
-	naui_list_free(list);
+	naui_list_free(&list);
 }
 
 bool naui_archive_create_custom(const Naui_Path folder, const Naui_Path archive_path)
@@ -261,7 +261,7 @@ bool naui_archive_create_custom(const Naui_Path folder, const Naui_Path archive_
 	if (!folder.data || !archive_path.data)
 		return false;
 
-	Naui_List(Naui_DirEntry) entries = naui_directory_filter_recursive(folder, NULL, NULL, 0);
+	Naui_List<Naui_DirEntry> entries = naui_directory_filter_recursive(folder, NULL, NULL, 0);
 	size_t blob_cap = 1024 * 1024;
 	size_t blob_len = 0;
 	uint8_t* blob = (uint8_t*)malloc(blob_cap);
@@ -282,7 +282,7 @@ bool naui_archive_create_custom(const Naui_Path folder, const Naui_Path archive_
 	}
 
 	bool ok = true;
-	size_t n = entries ? (size_t)naui_list_len(entries) : 0;
+	size_t n = entries.items ? (size_t)entries.length : 0;
 	for (size_t i = 0; i < n && ok; ++i)
 	{
 		if (entries[i].is_directory)

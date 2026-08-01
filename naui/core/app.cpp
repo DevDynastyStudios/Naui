@@ -16,7 +16,7 @@ typedef struct
         Naui_AppEvent update;
     }
     events;
-    Naui_List(Naui_DeferredEntry) deferred_entries;
+    Naui_List<Naui_DeferredEntry> deferred_entries;
     Naui_Arena deferred_arg_arena;
 }
 Naui_AppState;
@@ -150,18 +150,18 @@ static void __naui_app_end(void)
     leaf_shutdown();
     naui_renderer_shutdown();
     naui_themes_shutdown();
-    naui_list_free(state.deferred_entries);
+    naui_list_free(&state.deferred_entries);
     naui_arena_free(&state.deferred_arg_arena);
     naui_arena_free(naui_arena_frame());
 }
 
 static inline void naui_process_deferred(void)
 {
-    if (naui_list_len(state.deferred_entries) > 0)
+    if (state.deferred_entries.length > 0)
     {
-        for (uint32_t i = 0; i < (uint32_t)naui_list_len(state.deferred_entries); i++)
+        for (uint32_t i = 0; i < (uint32_t)state.deferred_entries.length; i++)
             state.deferred_entries[i].event(state.deferred_entries[i].data);
-        naui_list_clear(state.deferred_entries);
+        naui_list_clear(&state.deferred_entries);
         naui_arena_reset(&state.deferred_arg_arena);
     }
 }
@@ -190,7 +190,7 @@ void naui_defer(Naui_DeferredEvent event, void *data, size_t data_size)
         entry.data = NULL;
     }
     
-    naui_list_push(state.deferred_entries, entry);
+    naui_list_push(&state.deferred_entries, entry);
 }
 
 int32_t naui_app_width(void)

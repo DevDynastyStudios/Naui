@@ -119,23 +119,23 @@ Naui_String naui_string_replace(Naui_Arena *arena, Naui_String string, Naui_Stri
 }
 
 Naui_StringBuilder naui_sb_create(void) {
-    Naui_StringBuilder sb = 0;
-    naui_list_reserve(sb, 1024);
+    Naui_StringBuilder sb = {};
+    naui_list_reserve(&sb, 1024);
     return sb;
 }
 
 void naui_sb_destroy(Naui_StringBuilder sb) {
-    assert(sb);
-    naui_list_free(sb);
+    assert(sb.items);
+    naui_list_free(&sb);
 }
 
 Naui_String naui_sb_to_string(Naui_StringBuilder sb) {
-    return (Naui_String){ sb, (size_t)naui_list_len(sb) };
+    return (Naui_String){ sb.items, sb.length };
 }
 
 void naui_sb_append_string(Naui_StringBuilder sb, Naui_String string) {
     for (size_t i = 0; i < string.length; i++)
-        naui_list_push(sb, string.data[i]);
+        naui_list_push(&sb, string.data[i]);
 }
 
 // functions needed by iterator_win32 and iterator_unix

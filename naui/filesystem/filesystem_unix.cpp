@@ -133,7 +133,7 @@ static bool match_extensions(const char* name, const char** exts, int ext_count)
 	return false;
 }
 
-static void filter_recursive_impl(const char* path, const char* filter, const char** extensions, int ext_count, Naui_List(Naui_DirEntry)* list)
+static void filter_recursive_impl(const char* path, const char* filter, const char** extensions, int ext_count, Naui_List<Naui_DirEntry>* list)
 {
 	DIR* dir = opendir(path);
 	if (!dir)
@@ -161,7 +161,7 @@ static void filter_recursive_impl(const char* path, const char* filter, const ch
 			de.path = path_alloc(s_path_scratch, child_len);
 			de.is_directory = true;
 			de.size = 0;
-			naui_list_push(*list, de);
+			naui_list_push(list, de);
 			filter_recursive_impl(de.path.data, filter, extensions, ext_count, list);
 		}
 		else
@@ -176,7 +176,7 @@ static void filter_recursive_impl(const char* path, const char* filter, const ch
 			de.path = path_alloc(s_path_scratch, child_len);
 			de.is_directory = false;
 			de.size = (size_t)st.st_size;
-			naui_list_push(*list, de);
+			naui_list_push(list, de);
 		}
 	}
 
@@ -496,9 +496,9 @@ bool naui_directory_remove_all(const Naui_Path path)
 	return remove_all_recursive(path.data);
 }
 
-Naui_List(Naui_DirEntry) naui_directory_filter_recursive(const Naui_Path path, const char* filter, const char** extensions, int ext_count)
+Naui_List<Naui_DirEntry> naui_directory_filter_recursive(const Naui_Path path, const char* filter, const char** extensions, int ext_count)
 {
-	Naui_List(Naui_DirEntry) list = NULL;
+	Naui_List<Naui_DirEntry> list = {};
 
 	if (path.length == 0)
 		return list;
@@ -622,9 +622,9 @@ Naui_Path naui_directory_get(const Naui_Dir directory)
 	return naui_path_empty();
 }
 
-Naui_List(Naui_DirEntry) naui_directory_filter(const Naui_Path path, const char* filter, const char** extensions, int ext_count)
+Naui_List<Naui_DirEntry> naui_directory_filter(const Naui_Path path, const char* filter, const char** extensions, int ext_count)
 {
-	Naui_List(Naui_DirEntry) list = NULL;
+	Naui_List<Naui_DirEntry> list = {};
 
 	if (path.length == 0)
 		return list;
@@ -659,22 +659,22 @@ Naui_List(Naui_DirEntry) naui_directory_filter(const Naui_Path path, const char*
 		de.path = path_alloc(s_path_scratch, full_len);
 		de.is_directory = S_ISDIR(st.st_mode);
 		de.size = (size_t)st.st_size;
-		naui_list_push(list, de);
+		naui_list_push(&list, de);
 	}
 
 	closedir(dir);
 	return list;
 }
 
-void naui_directory_filter_free(Naui_List(Naui_DirEntry) list)
+void naui_directory_filter_free(Naui_List<Naui_DirEntry> list)
 {
-	if (!list)
+	if (!list.items)
 		return;
 
-	for (ptrdiff_t i = 0; i < naui_list_len(list); ++i)
+	for (ptrdiff_t i = 0; i < list.length; ++i)
 		NAUI_PATH_FREE(list[i].path);
 
-	naui_list_free(list);
+	naui_list_free(&list);
 }
 
 bool naui_path_set_current(const Naui_Path path)

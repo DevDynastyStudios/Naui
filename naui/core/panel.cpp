@@ -36,7 +36,7 @@ struct Naui_PanelNode
     Naui_PanelNode *children[2];
     Naui_PanelNode *parent;
     Naui_PanelNode *root;
-    Naui_List(Naui_PanelNode*) tabs;
+    Naui_List<Naui_PanelNode*> tabs;
     void           *user_data;
     Naui_Vec2       position, size, min_size;
     Naui_PanelFlags flags;
@@ -59,7 +59,7 @@ typedef struct { char *key; Naui_PanelType value; } Naui_PanelTypeMapEntry;
 typedef struct
 {
     Naui_Map(Naui_PanelTypeMapEntry) panel_type_map;
-    Naui_List(Naui_PanelNode*) root_nodes;
+    Naui_List<Naui_PanelNode*> root_nodes;
 
     Naui_PanelNode *main_viewport;
 
@@ -98,12 +98,12 @@ Naui_PanelID naui_attach_panel(const char *type_name)
     node->size = (Naui_Vec2) { NAUI_PANEL_DEFAULT_WIDTH, NAUI_PANEL_DEFAULT_HEIGHT };
     node->min_size = (Naui_Vec2) { 100.0f, 100.0f };
     node->root = node;
-    node->root_index = (uint32_t)naui_list_len(pm.root_nodes);
+    node->root_index = (uint32_t)pm.root_nodes.length;
 
     if (node->type.user_data_size)
         node->user_data = malloc(node->type.user_data_size);
 
-    naui_list_push(pm.root_nodes, node);
+    naui_list_push(&pm.root_nodes, node);
 
     Naui_PanelNode *prev = pm.current_panel;
     pm.current_panel = node;
@@ -141,7 +141,7 @@ void naui_panel_disable_flags(Naui_PanelID panel_id, Naui_PanelFlags flags)
 
 static inline void naui_reset_root_indexes(uint32_t from)
 {
-    for (uint32_t i = from; i < naui_list_len(pm.root_nodes); i++)
+    for (uint32_t i = from; i < pm.root_nodes.length; i++)
         pm.root_nodes[i]->root_index = i;
 }
 
@@ -149,7 +149,7 @@ void naui_set_main_viewport(Naui_PanelID id)
 {
     pm.main_viewport = (Naui_PanelNode*)id;
     uint32_t removed_index = pm.main_viewport->root_index;
-    naui_list_remove(pm.root_nodes, removed_index);
+    naui_list_remove(&pm.root_nodes, removed_index);
     naui_reset_root_indexes(removed_index);
 }
 
@@ -166,7 +166,7 @@ static void naui_panel_bring_to_front_immediate(Naui_PanelNodeWrapper *wrapper)
     if (root == pm.main_viewport)
         return;
 
-    uint32_t last = (uint32_t)(naui_list_len(pm.root_nodes) - 1);
+    uint32_t last = (uint32_t)(pm.root_nodes.length - 1);
     if (root->root_index == last)
         return;
 
@@ -209,43 +209,43 @@ Naui_PanelID naui_dock_panel(Naui_PanelID target_id, Naui_PanelID guest_id, Naui
 
     if (direction == NAUI_DOCK_DIRECTION_CENTER)
     {
-        naui_list_remove(pm.root_nodes, guest->root_index);
+        naui_list_remove(&pm.root_nodes, guest->root_index);
         naui_reset_root_indexes(guest->root_index);
 
-        Naui_List(Naui_PanelNode*) target_tabs;
-        if (target->parent && target->parent->tabs)
+        Naui_List<Naui_PanelNode*> target_tabs;
+        if (target->parent && target->parent->tabs.items)
             target_tabs = target->parent->tabs;
-        else if (!target->tabs)
+        else if (!target->tabs.items)
         {
             Naui_PanelNode *target_copy = naui_alloc_panel_node();
             *target_copy = *target;
             target_copy->parent = target;
-            naui_list_push(target->tabs, target_copy);
+            naui_list_push(&target->tabs, target_copy);
             target_tabs = target->tabs;
         }
         else
             target_tabs = target->tabs;
 
-        if (guest->tabs)
+        if (guest->tabs.items)
         {
-            for (int32_t i = 0; i < naui_list_len(guest->tabs); i++)
+            for (int32_t i = 0; i < guest->tabs.length; i++)
             {
                 Naui_PanelNode *guest_tab = guest->tabs[i];
                 guest_tab->parent = target;
                 guest_tab->root = target->root;
-                naui_list_push(target_tabs, guest_tab);
+                naui_list_push(&target_tabs, guest_tab);
             }
-            naui_list_free(guest->tabs);
+            naui_list_free(&guest->tabs);
             naui_free_panel_node(guest);
         }
         else
         {
             guest->parent = target;
             guest->root = target->root;
-            naui_list_push(target_tabs, guest);
+            naui_list_push(&target_tabs, guest);
         }
 
-        if (target->parent && target->parent->tabs)
+        if (target->parent && target->parent->tabs.items)
             target->parent->tabs = target_tabs;
         else
             target->tabs = target_tabs;
@@ -253,7 +253,7 @@ Naui_PanelID naui_dock_panel(Naui_PanelID target_id, Naui_PanelID guest_id, Naui
         return (Naui_PanelID)target;
     }
 
-    naui_list_remove(pm.root_nodes, guest->root_index);
+    naui_list_remove(&pm.root_nodes, guest->root_index);
     naui_reset_root_indexes(guest->root_index);
 
     Naui_PanelNode *dock_node = naui_alloc_panel_node();
@@ -315,8 +315,8 @@ static void naui_undock_panel_immediate(Naui_PanelNodeWrapper *wrapper)
 
         node->parent = NULL;
         node->root = node;
-        node->root_index = (uint32_t)naui_list_len(pm.root_nodes);
-        naui_list_push(pm.root_nodes, node);
+        node->root_index = (uint32_t)pm.root_nodes.length;
+        naui_list_push(&pm.root_nodes, node);
         return;
     }
 
@@ -325,10 +325,10 @@ static void naui_undock_panel_immediate(Naui_PanelNodeWrapper *wrapper)
     if (!dock_node)
         return;
 
-    if (dock_node->tabs)
+    if (dock_node->tabs.items)
     {
         Naui_PanelNode *group = dock_node;
-        int32_t count = naui_list_len(group->tabs);
+        int32_t count = group->tabs.length;
         int32_t found = -1;
 
         for (int32_t i = 0; i < count; i++)
@@ -343,7 +343,7 @@ static void naui_undock_panel_immediate(Naui_PanelNodeWrapper *wrapper)
         if (found < 0)
             return;
 
-        naui_list_remove(group->tabs, found);
+        naui_list_remove(&group->tabs, found);
         count--;
 
         if (group->active_tab >= count)
@@ -355,8 +355,8 @@ static void naui_undock_panel_immediate(Naui_PanelNodeWrapper *wrapper)
         {
             Naui_PanelNode *remaining = group->tabs[0];
 
-            naui_list_free(group->tabs);
-            remaining->tabs = NULL;
+            naui_list_free(&group->tabs);
+            remaining->tabs.items = NULL;
             remaining->active_tab = 0;
             remaining->parent = group->parent;
             remaining->root = group->root;
@@ -385,8 +385,8 @@ static void naui_undock_panel_immediate(Naui_PanelNodeWrapper *wrapper)
 
         node->parent = NULL;
         node->root = node;
-        node->root_index = (uint32_t)naui_list_len(pm.root_nodes);
-        naui_list_push(pm.root_nodes, node);
+        node->root_index = (uint32_t)pm.root_nodes.length;
+        naui_list_push(&pm.root_nodes, node);
         return;
     }
 
@@ -419,8 +419,8 @@ static void naui_undock_panel_immediate(Naui_PanelNodeWrapper *wrapper)
 
     node->parent = NULL;
     node->root = node;
-    node->root_index = (uint32_t)naui_list_len(pm.root_nodes);
-    naui_list_push(pm.root_nodes, node);
+    node->root_index = (uint32_t)pm.root_nodes.length;
+    naui_list_push(&pm.root_nodes, node);
 }
 
 void naui_undock_panel(Naui_PanelID id)
@@ -443,7 +443,7 @@ static void naui_detach_panel_immediate(Naui_PanelNodeWrapper *wrapper)
     if (node->user_data)
         free(node->user_data);
 
-    naui_list_remove(pm.root_nodes, node->root_index);
+    naui_list_remove(&pm.root_nodes, node->root_index);
     naui_free_panel_node(node);
 }
 
@@ -455,7 +455,7 @@ void naui_detach_panel(Naui_PanelID id)
 
 static bool naui_range_occludes_point(float mx, float my, uint32_t from, Naui_PanelNode *skip)
 {
-    for (uint32_t i = from; i < naui_list_len(pm.root_nodes); i++)
+    for (uint32_t i = from; i < pm.root_nodes.length; i++)
     {
         Naui_PanelNode *other = pm.root_nodes[i];
         if (skip && (other == skip || other == skip->root))
@@ -508,9 +508,9 @@ static Naui_PanelNode *naui_find_panel_of_type_recursive(Naui_PanelNode *node, c
         return naui_find_panel_of_type_recursive(node->children[1], type_name);
     }
 
-    if (node->tabs)
+    if (node->tabs.items)
     {
-        for (int32_t i = 0; i < naui_list_len(node->tabs); i++)
+        for (int32_t i = 0; i < node->tabs.length; i++)
         {
             Naui_PanelNode *tab = node->tabs[i];
             if (tab->type.type_name && !strcmp(tab->type.type_name, type_name))
@@ -534,7 +534,7 @@ Naui_PanelID naui_find_panel_of_type(const char *type_name)
             return (Naui_PanelID)found;
     }
 
-    for (int32_t i = 0; i < (int32_t)naui_list_len(pm.root_nodes); i++)
+    for (int32_t i = 0; i < (int32_t)pm.root_nodes.length; i++)
     {
         Naui_PanelNode *found = naui_find_panel_of_type_recursive(pm.root_nodes[i], type_name);
         if (found)
@@ -764,9 +764,9 @@ static inline void naui_render_docked_panel_titlebar(Naui_PanelNode *node)
             .child_gap = NAUI_DPI(2.0f)
         })
         {
-            if (node->tabs)
+            if (node->tabs.items)
             {
-                for (int32_t i = 0; i < naui_list_len(node->tabs); i++)
+                for (int32_t i = 0; i < node->tabs.length; i++)
                 {
                     Naui_PanelNode *tab = node->tabs[i];
                     naui_render_docked_panel_tab(tab, node, i == node->active_tab, leaf_id_indexed(NAUI_PANEL_TAB_ID, (uintptr_t)tab));
@@ -791,7 +791,7 @@ static inline void naui_render_panel_titlebar(Naui_PanelNode *node)
         }
     })
     {
-        if (node->parent || node->root == pm.main_viewport || node->tabs)
+        if (node->parent || node->root == pm.main_viewport || node->tabs.items)
             naui_render_docked_panel_titlebar(node);
         else naui_render_basic_panel_titlebar(node);
     }
@@ -812,7 +812,7 @@ static inline void naui_render_panel_body(Naui_PanelNode *node)
         .clip_children = true
     })
     {
-        Naui_PanelNode *tab = node->tabs ? node->tabs[node->active_tab] : node;
+        Naui_PanelNode *tab = node->tabs.items ? node->tabs[node->active_tab] : node;
         pm.current_panel = tab;
         if (tab->type.on_update)
             tab->type.on_update(tab->user_data);
@@ -956,9 +956,9 @@ static Naui_PanelNode *naui_find_hovered_tab(Naui_PanelNode *node, Naui_PanelNod
     if (node->flags & NAUI_PANEL_FLAG_NO_UNDOCK)
         return NULL;
 
-    if (node->tabs)
+    if (node->tabs.items)
     {
-        for (int32_t i = 0; i < naui_list_len(node->tabs); i++)
+        for (int32_t i = 0; i < node->tabs.length; i++)
         {
             Leaf_ID id = leaf_id_indexed(NAUI_PANEL_TAB_ID, (uintptr_t)node->tabs[i]);
             if (leaf_hovered(id))
@@ -1083,7 +1083,7 @@ static void naui_update_panel_dragging(Naui_PanelNode *node)
         return;
 
     Naui_PanelNode *root = node->root;
-    Naui_PanelNode *active_tab = node->tabs ? node->tabs[node->active_tab] : node;
+    Naui_PanelNode *active_tab = node->tabs.items ? node->tabs[node->active_tab] : node;
 
     naui_handle_panel_click(node, active_tab, &drag_offset, &pending_undock_node);
     naui_apply_pending_undock(node, active_tab, &drag_offset, &pending_undock_node);
@@ -1258,9 +1258,9 @@ static inline void naui_calculate_and_cache_panel_occlusion(Naui_PanelNode *node
 
 static void naui_update_panel_tabs(Naui_PanelNode *node)
 {
-    if (!node->tabs)
+    if (!node->tabs.items)
         return;
-    for (int32_t i = 0; i < naui_list_len(node->tabs); i++)
+    for (int32_t i = 0; i < node->tabs.length; i++)
     {
         if (naui_mouse_pressed(NAUI_MOUSE_LEFT) && !node->tabs[i]->close_hovered && leaf_hovered(leaf_id_indexed(NAUI_PANEL_TAB_ID, (uintptr_t)node->tabs[i])))
         {
@@ -1311,12 +1311,12 @@ void naui_render_panels_and_viewport(void)
 {
     pm.any_panel_hovered = false;
 
-    for (int32_t i = (int32_t)naui_list_len(pm.root_nodes); i-- > 0;)
+    for (int32_t i = (int32_t)pm.root_nodes.length; i-- > 0;)
         naui_update_splits_only(pm.root_nodes[i]);
     if (pm.main_viewport)
         naui_update_splits_only(pm.main_viewport);
 
-    for (int32_t i = (int32_t)naui_list_len(pm.root_nodes); i-- > 0;)
+    for (int32_t i = (int32_t)pm.root_nodes.length; i-- > 0;)
         naui_update_panel(pm.root_nodes[i]);
     naui_update_main_viewport();
 
@@ -1329,7 +1329,7 @@ void naui_render_panels_and_viewport(void)
     }
 
     naui_render_main_viewport();
-    for (int32_t i = 0; i < (int32_t)naui_list_len(pm.root_nodes); i++)
+    for (int32_t i = 0; i < (int32_t)pm.root_nodes.length; i++)
         naui_render_panel(pm.root_nodes[i]);
 
     naui_render_dock_guide_area();
@@ -1344,7 +1344,7 @@ static inline const char *naui_get_panel_type(Naui_PanelNode *node)
 
 static inline Naui_PanelNode *naui_find_root_panel_of_type(const char *type_name)
 {
-    for (int32_t i = 0; i < (int32_t)naui_list_len(pm.root_nodes); i++)
+    for (int32_t i = 0; i < (int32_t)pm.root_nodes.length; i++)
     {
         Naui_PanelNode *n = pm.root_nodes[i];
         if (n->children[0] || !n->type.type_name)
@@ -1378,11 +1378,11 @@ static bool naui_serialize_panel_node(Naui_Json *json, Naui_JsonValue *out, Naui
         return true;
     }
 
-    if (node->tabs)
+    if (node->tabs.items)
     {
         Naui_JsonValue *tabs_arr = naui_json_set_array(json, out, "tabs");
         bool any = false;
-        for (int32_t i = 0; i < naui_list_len(node->tabs); i++)
+        for (int32_t i = 0; i < node->tabs.length; i++)
         {
             Naui_PanelNode *tab = node->tabs[i];
             if (!(tab->flags & NAUI_PANEL_FLAG_SERIALIZABLE))
@@ -1480,7 +1480,7 @@ static Naui_PanelNode *naui_deserialize_panel_node(Naui_JsonValue *json_parent)
         }
 
         int32_t active_tab = naui_json_get_int(naui_json_object_get(json_parent, "active_tab"), 0);
-        if (main_tab->tabs && active_tab >= 0 && active_tab < naui_list_len(main_tab->tabs))
+        if (main_tab->tabs.items && active_tab >= 0 && active_tab < main_tab->tabs.length)
             main_tab->active_tab = active_tab;
 
         return main_tab;

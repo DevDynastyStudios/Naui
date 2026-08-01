@@ -44,8 +44,8 @@ bool naui_archive_extract_file(Naui_Archive* archive, const Naui_Path entry, con
 
 /* List all entries.
  * Call naui_archive_list_free() when done. */
-Naui_List(Naui_ArchiveEntry) naui_archive_list_entries(Naui_Archive* archive);
-void naui_archive_list_free(Naui_List(Naui_ArchiveEntry) list);
+Naui_List<Naui_ArchiveEntry> naui_archive_list_entries(Naui_Archive* archive);
+void naui_archive_list_free(Naui_List<Naui_ArchiveEntry> list);
 
 bool naui_archive_create_custom(const Naui_Path folder, const Naui_Path archive_path);
 bool naui_archive_extract_custom(const Naui_Path archive_path, const Naui_Path output_folder);

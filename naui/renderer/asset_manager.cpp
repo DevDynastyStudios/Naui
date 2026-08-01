@@ -11,7 +11,7 @@ void naui_asset_manager_load_images(const char *const images_path)
     }
     Naui_TempImageData;
 
-    Naui_List(Naui_TempImageData) images = NULL;
+    Naui_List<Naui_TempImageData> images;
     Naui_Arena temp_arena = { 0 };
 
     // looping thru the images directory.
@@ -59,11 +59,11 @@ void naui_asset_manager_load_images(const char *const images_path)
 
             const Naui_Image sprite = (Naui_Image){ .width = (uint32_t)image.width, .height = (uint32_t)image.height };
             naui_strmap_put(image_hm, strdup(image_name), sprite);
-            naui_list_push(images, image);
+            naui_list_push(&images, image);
         }
     }
     
-    if (naui_list_len(images) == 0)
+    if (images.length == 0)
         return;
 
     naui_arena_reset(&temp_arena);
@@ -72,7 +72,7 @@ void naui_asset_manager_load_images(const char *const images_path)
     {
         const size_t node_count = NAUI_IMAGE_ATLAS_SIZE,
                      atlas_size = NAUI_IMAGE_ATLAS_SIZE * NAUI_IMAGE_ATLAS_SIZE * 4,
-                     image_count = naui_list_len(images);
+                     image_count = images.length;
 
         stbrp_context ctx;
         stbrp_node *nodes = (stbrp_node*)naui_arena_alloc(&temp_arena, sizeof(*nodes) * node_count);
@@ -118,7 +118,7 @@ void naui_asset_manager_load_images(const char *const images_path)
     }
 
     naui_arena_free(&temp_arena);
-    naui_list_free(images);
+    naui_list_free(&images);
 }
 
 void naui_asset_manager_free(void)
