@@ -27,9 +27,9 @@ void naui_log(Naui_LogLevel log_level, const char *fmt, ...)
         switch (log_level)
         {
 #ifdef DEBUG
-            case NAUI_LOG_DEBUG:    strncpy(buffer, NAUI_LOG_COLOR_GRN "[DEBUG]: "   NAUI_LOG_COLOR_WHT, 23); break;
+            case NAUI_LOG_DEBUG:    strncpy(buffer, NAUI_LOG_COLOR_WHT "[DEBUG]: "   NAUI_LOG_COLOR_WHT, 23); break;
 #endif
-            case NAUI_LOG_INFO:     strncpy(buffer, NAUI_LOG_COLOR_WHT "[INFO]: "    NAUI_LOG_COLOR_WHT, 22); break;
+            case NAUI_LOG_INFO:     strncpy(buffer, NAUI_LOG_COLOR_GRN "[INFO]: "    NAUI_LOG_COLOR_WHT, 22); break;
             case NAUI_LOG_WARNING:  strncpy(buffer, NAUI_LOG_COLOR_YEL "[WARNING]: " NAUI_LOG_COLOR_WHT, 25); break;
             case NAUI_LOG_ERROR:    strncpy(buffer, NAUI_LOG_COLOR_RED "[ERROR]: "   NAUI_LOG_COLOR_WHT, 23); break;
             case NAUI_LOG_FUCKED:   strncpy(buffer, NAUI_LOG_COLOR_MAG "[FUCKED]: "  NAUI_LOG_COLOR_WHT, 24); break;

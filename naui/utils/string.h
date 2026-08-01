@@ -29,7 +29,7 @@ NAUI_API Naui_String naui_string_to_lower(Naui_Arena *arena, Naui_String string)
 NAUI_API Naui_String naui_string_to_upper(Naui_Arena *arena, Naui_String string);
 NAUI_API Naui_String naui_string_concat(Naui_Arena *arena, Naui_String a, Naui_String b);
 NAUI_API Naui_String naui_string_replace(Naui_Arena *arena, Naui_String string, Naui_String find, Naui_String replace);
-/*
+/* TODO(doomguy)
 NAUI_API naui_string_slice naui_string_split(Naui_Arena *arena, Naui_String string, Naui_String seperator);
 NAUI_API naui_string_slice naui_string_split_lines(Naui_Arena *arena, Naui_String string);
 NAUI_API naui_string_slice naui_string_split_char(Naui_Arena *arena, Naui_String string, char seperator);
@@ -39,6 +39,7 @@ NAUI_API Naui_StringBuilder naui_sb_create(void);
 NAUI_API void naui_sb_destroy(Naui_StringBuilder sb);
 NAUI_API Naui_String naui_sb_to_string(Naui_StringBuilder sb);
 NAUI_API void naui_sb_append_string(Naui_StringBuilder sb, Naui_String string);
+// TODO(doomguy): use variadic arguments for sb append functions
 
 // functions needed by iterator_win32 and iterator_unix
 int naui_cstr_strcmp(const char *str1, const char *str2, bool case_sensitive);

@@ -1,6 +1,6 @@
 @echo off
 set PROJECT=NauiApp
-set BUILD_PATH=build
+set BUILD_PATH=bin
 set CONFIG=Debug
 set ARGS=
 

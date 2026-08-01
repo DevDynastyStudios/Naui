@@ -9,4 +9,4 @@ elif [ "$1" = "-r" ]; then
     config=Release
 fi
 
-./build/$config/$project "$@"
+./bin/$config/$project "$@"

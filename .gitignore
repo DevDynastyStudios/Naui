@@ -1,16 +1,7 @@
-*.vcxproj
-*.vcxproj.filters
-*.vcxproj.user
-*.sln
-*.slnx
 .vscode
 .vs
 *.exe
 build
-obj
-makefile
-Makefile
-GNUmakefile
-*.make
+bin
 tags
 sokol-shdc*
