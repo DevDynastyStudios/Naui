@@ -1,5 +1,7 @@
 // TODO(doomguy): refactor this whole piece of hot garbage into build.h (core) and build.c (build recipe)
 // TODO(doomguy): specify graphics APIs from args
+// TODO(doomguy): unit tests
+// TODO(doomguy): its kinda annoying to use -lshell32 on windows, find workaround
 
 #include <string.h>
 #include <stdio.h>
