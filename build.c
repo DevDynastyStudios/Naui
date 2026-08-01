@@ -10,8 +10,10 @@
 #include <stdarg.h>
 #include <ctype.h>
 
+#include "naui/base.h"
+
 #if NAUI_WINDOWS
-#include "vendor/dirent/dirent.h"
+#include "naui/vendor/dirent/dirent.h"
 #include <direct.h>
 #else
 #include <unistd.h>
@@ -21,7 +23,6 @@
 #define STB_DS_IMPLEMENTATION
 #include "naui/vendor/stb/stb_ds.h"
 
-#include "naui/base.h"
 #include "naui/utils/list.h"
 #include "naui/utils/arena.h"
 #include "naui/utils/string.h"
@@ -131,7 +132,7 @@ int main(int argc, char **argv) {
     Naui_StringBuilder cmd = naui_sb_create();
 
 #if NAUI_WINDOWS
-    out = "bin/Debug/"APP".exe";
+    out = "bin\\Debug\\"APP".exe";
 #else
     out = "bin/Debug/"APP;
 #endif
@@ -154,7 +155,7 @@ int main(int argc, char **argv) {
             else if (naui_cstr_strcmp(argv[i], "clean", true) == 0) return_code = cmd_clean(&arena, cmd);
             else if (naui_cstr_strcmp(argv[i], "release", true) == 0) {
 #if NAUI_WINDOWS
-                out = "bin/Release/"APP".exe";
+                out = "bin\\Release\\"APP".exe";
 #else
                 out = "bin/Release/"APP;
 #endif

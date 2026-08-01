@@ -507,10 +507,10 @@ bool naui_file_is_hidden(const Naui_Path path)
 	return (attrs & FILE_ATTRIBUTE_HIDDEN) != 0;
 }
 
-Naui_StringView naui_file_filename(const Naui_Path path)
+Naui_String naui_file_filename(const Naui_Path path)
 {
 	if (!path.data)
-		return (Naui_StringView){ NULL, 0 };
+		return (Naui_String){ NULL, 0 };
 
 	const char* last = NULL;
 	for (const char* p = path.data; *p; ++p)
@@ -521,35 +521,35 @@ Naui_StringView naui_file_filename(const Naui_Path path)
 
 	const char* start = last ? last + 1 : path.data;
 	size_t len = path.length - (size_t)(start - path.data);
-	return (Naui_StringView){ (char*)start, len };
+	return (Naui_String){ (char*)start, len };
 }
 
-Naui_StringView naui_file_stem(const Naui_Path path)
+Naui_String naui_file_stem(const Naui_Path path)
 {
-	Naui_StringView filename = naui_file_filename(path);
+	Naui_String filename = naui_file_filename(path);
 	if (!filename.data)
-		return (Naui_StringView){ NULL, 0 };
+		return (Naui_String){ NULL, 0 };
 
 	const char* dot = strrchr(filename.data, '.');
 	if (!dot || dot == filename.data)
-		return (Naui_StringView){ filename.data, filename.len };
+		return (Naui_String){ filename.data, filename.length };
 
 	size_t len = (size_t)(dot - filename.data);
-	return (Naui_StringView){ filename.data, len };
+	return (Naui_String){ filename.data, len };
 }
 
-Naui_StringView naui_file_extension(const Naui_Path path)
+Naui_String naui_file_extension(const Naui_Path path)
 {
-	Naui_StringView filename = naui_file_filename(path);
+	Naui_String filename = naui_file_filename(path);
 	if (!filename.data)
-		return (Naui_StringView){ NULL, 0 };
+		return (Naui_String){ NULL, 0 };
 
 	char* dot = strrchr(filename.data, '.');
 	if (!dot || dot == filename.data)
-		return (Naui_StringView){ NULL, 0 };
+		return (Naui_String){ NULL, 0 };
 
-	size_t len = filename.len - (size_t)(dot - filename.data);
-	return (Naui_StringView){ dot, len };
+	size_t len = filename.length - (size_t)(dot - filename.data);
+	return (Naui_String){ dot, len };
 }
 
 bool naui_directory_create(const Naui_Path path)
@@ -1069,8 +1069,8 @@ Naui_Path naui_path_weakly_canonical(const Naui_Path path)
 	while (existing.length != 0 && !naui_path_exists(existing))
 	{
 		Naui_Path parent = naui_path_parent(existing);
-		Naui_StringView segment = naui_file_filename(existing);
-		size_t seg_copy = segment.len < NAUI_PATH_MAX - 1 ? segment.len : NAUI_PATH_MAX - 1;
+		Naui_String segment = naui_file_filename(existing);
+		size_t seg_copy = segment.length < NAUI_PATH_MAX - 1 ? segment.length : NAUI_PATH_MAX - 1;
 		memcpy(s_path_scratch, segment.data, seg_copy);
 		size_t w = seg_copy;
 

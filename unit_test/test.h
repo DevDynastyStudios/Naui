@@ -8,7 +8,7 @@ void test_conclusion(void);
 
 void test_assert(bool expr, const char* expr_str, const char* file, int line);
 void test_assert_str_eq(const char* a, const char* b, const char* file, int line);
-void test_assert_sv_eq(Naui_StringView a, Naui_StringView b, const char* file, int line);
+void test_assert_sv_eq(Naui_String a, Naui_String b, const char* file, int line);
 void test_assert_null(const void* ptr, const char* file, int line);
 void test_assert_not_null(const void* ptr, const char* file, int line);
 
