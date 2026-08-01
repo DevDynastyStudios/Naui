@@ -1085,6 +1085,47 @@ mgfx_d3d11_context;
 
 #endif
 
+typedef void (*mgfx_init_fn)(const mgfx_init_info *init_info);
+typedef void (*mgfx_shutdown_fn)(void);
+typedef void (*mgfx_begin_fn)(void);
+typedef void (*mgfx_end_fn)(void);
+typedef void (*mgfx_present_frame_fn)(void);
+
+typedef void (*mgfx_resize_fn)(uint32_t width, uint32_t height);
+typedef void (*mgfx_vsync_fn)(bool vsync);
+
+typedef void (*mgfx_viewport_fn)(int32_t x, int32_t y, uint32_t width, uint32_t height);
+typedef void (*mgfx_scissor_fn)(int32_t x, int32_t y, uint32_t width, uint32_t height);
+
+typedef void (*mgfx_bind_pass_fn)(const mgfx_pass_info *pass_info);
+
+typedef void *(*mgfx_create_pipeline_fn)(const mgfx_pipeline_create_info *create_info);
+typedef void (*mgfx_destroy_pipeline_fn)(void *pipeline);
+typedef void (*mgfx_bind_pipeline_fn)(void *pipeline);
+
+typedef void *(*mgfx_create_image_fn)(const mgfx_image_create_info *create_info);
+typedef void (*mgfx_destroy_image_fn)(void *image);
+typedef void (*mgfx_update_image_fn)(void *image, size_t size, void *data);
+typedef void (*mgfx_bind_image_fn)(void *image, void *sampler, uint32_t binding);
+
+typedef void *(*mgfx_create_sampler_fn)(const mgfx_sampler_create_info *create_info);
+typedef void (*mgfx_destroy_sampler_fn)(void *sampler);
+
+typedef void *(*mgfx_create_buffer_fn)(const mgfx_buffer_create_info *create_info);
+typedef void (*mgfx_destroy_buffer_fn)(void *buffer);
+typedef void (*mgfx_update_buffer_fn)(void *buffer, size_t offset, size_t size, void *data);
+
+typedef void (*mgfx_bind_vertex_buffer_fn)(void *buffer);
+typedef void (*mgfx_bind_index_buffer_fn)(void *buffer, mgfx_index_type index_type);
+
+typedef void (*mgfx_bind_uniforms_fn)(uint32_t binding, size_t size, void *data);
+
+typedef void (*mgfx_draw_fn)(uint32_t vertex_count, uint32_t first_vertex);
+typedef void (*mgfx_draw_indexed_fn)(uint32_t index_count, uint32_t first_index, int32_t vertex_offset);
+typedef void (*mgfx_draw_instanced_fn)(uint32_t vertex_count, uint32_t first_vertex, uint32_t instance_count, uint32_t first_instance);
+typedef void (*mgfx_draw_indexed_instanced_fn)(uint32_t index_count, uint32_t first_index, int32_t vertex_offset, uint32_t instance_count, uint32_t first_instance);
+typedef void (*mgfx_dispatch_fn)(uint32_t group_count_x, uint32_t group_count_y, uint32_t group_count_z);
+
 typedef struct
 {
     union
@@ -1099,6 +1140,51 @@ typedef struct
         mgfx_d3d11_context d3d11;
 #endif
     };
+
+    mgfx_init_fn                    init;
+    mgfx_shutdown_fn                shutdown;
+    
+    mgfx_begin_fn                   begin;
+    mgfx_end_fn                     end;
+    mgfx_present_frame_fn           present_frame;
+    
+    mgfx_resize_fn                  resize;
+    mgfx_vsync_fn                   vsync;
+    
+    mgfx_viewport_fn                viewport;
+    mgfx_scissor_fn                 scissor;
+    
+    mgfx_bind_pass_fn               bind_pass;
+    
+    mgfx_create_pipeline_fn         create_pipeline;
+    mgfx_destroy_pipeline_fn        destroy_pipeline;
+    mgfx_bind_pipeline_fn           bind_pipeline;
+    
+    mgfx_create_image_fn            create_image;
+    mgfx_destroy_image_fn           destroy_image;
+    mgfx_update_image_fn            update_image;
+    mgfx_bind_image_fn              bind_image;
+    
+    mgfx_create_sampler_fn          create_sampler;
+    mgfx_destroy_sampler_fn         destroy_sampler;
+    
+    mgfx_create_buffer_fn           create_buffer;
+    mgfx_destroy_buffer_fn          destroy_buffer;
+    mgfx_update_buffer_fn           update_buffer;
+    
+    mgfx_bind_vertex_buffer_fn      bind_vertex_buffer;
+    mgfx_bind_index_buffer_fn       bind_index_buffer;
+    
+    mgfx_bind_uniforms_fn           bind_uniforms;
+    
+    mgfx_draw_fn                    draw;
+    mgfx_draw_indexed_fn            draw_indexed;
+    mgfx_draw_instanced_fn          draw_instanced;
+    mgfx_draw_indexed_instanced_fn  draw_indexed_instanced;
+    mgfx_dispatch_fn                dispatch;
+    
+    mgfx_renderer_type type;
+    mgfx_shader_lang shader_lang;
 }
 mgfx_context;
 static mgfx_context ctx;
@@ -1667,7 +1753,7 @@ static VkExtent2D mgfx_vk_choose_swap_extent(const VkSurfaceCapabilitiesKHR *cap
         return capabilities->currentExtent;
     else
     {
-        VkExtent2D actual_extent = {width, height};
+        VkExtent2D actual_extent = {(uint32_t)width, (uint32_t)height};
         actual_extent.width = mgfx_clampi(actual_extent.width, capabilities->minImageExtent.width, capabilities->maxImageExtent.width);
         actual_extent.height = mgfx_clampi(actual_extent.height, capabilities->minImageExtent.height, capabilities->maxImageExtent.height);
         return actual_extent;
@@ -1791,7 +1877,7 @@ static void mgfx_vk_recycle(void)
 {
     while (!mgfx_queue_empty(&ctx.vk.release_queue))
     {
-        mgfx_vk_release_queue_entry *entry = mgfx_queue_pop(&ctx.vk.release_queue);
+        mgfx_vk_release_queue_entry *entry = (mgfx_vk_release_queue_entry*)mgfx_queue_pop(&ctx.vk.release_queue);
         switch (entry->type)
         {
             case MGFX_VK_RELEASE_QUEUE_ENTRY_BUFFER:
@@ -2022,10 +2108,11 @@ static mgfx_vk_buffer *mgfx_vk_create_buffer(const mgfx_buffer_create_info *crea
 
 static void mgfx_vk_destroy_buffer(mgfx_vk_buffer *buffer)
 {
-    mgfx_queue_push(&ctx.vk.release_queue, &(mgfx_vk_release_queue_entry){
-                        .buffer = buffer,
-                        .type = MGFX_VK_RELEASE_QUEUE_ENTRY_BUFFER
-                    });
+    mgfx_vk_release_queue_entry entry = {
+        .buffer = buffer,
+        .type = MGFX_VK_RELEASE_QUEUE_ENTRY_BUFFER
+    };
+    mgfx_queue_push(&ctx.vk.release_queue, &entry);
 }
 
 static void mgfx_vk_bind_vertex_buffer(mgfx_vk_buffer *buffer)
@@ -2151,7 +2238,7 @@ static mgfx_vk_image *mgfx_vk_create_image(const mgfx_image_create_info *create_
 {
     mgfx_vk_image *image = (mgfx_vk_image*)calloc(1, sizeof(mgfx_vk_image));
     
-    const VkImageUsageFlagBits usage_flags =
+    VkImageUsageFlags usage_flags =
         VK_IMAGE_USAGE_TRANSFER_DST_BIT |
         VK_IMAGE_USAGE_SAMPLED_BIT |
         mgfx_vk_get_image_usage(create_info->usage);
@@ -2206,7 +2293,11 @@ static mgfx_vk_image *mgfx_vk_create_image(const mgfx_image_create_info *create_
 
 static void mgfx_vk_destroy_image(mgfx_vk_image *image)
 {
-    mgfx_queue_push(&ctx.vk.release_queue, &(mgfx_vk_release_queue_entry){.image = image, .type = MGFX_VK_RELEASE_QUEUE_ENTRY_IMAGE});
+    mgfx_vk_release_queue_entry entry = {
+        .image = image,
+        .type = MGFX_VK_RELEASE_QUEUE_ENTRY_IMAGE
+    };
+    mgfx_queue_push(&ctx.vk.release_queue, &entry);
 }
 
 static void mgfx_vk_bind_image(mgfx_vk_image *image, VkSampler sampler, uint32_t binding)
@@ -2255,7 +2346,11 @@ static VkSampler mgfx_vk_create_sampler(const mgfx_sampler_create_info *create_i
 
 static void mgfx_vk_destroy_sampler(VkSampler sampler)
 {
-    mgfx_queue_push(&ctx.vk.release_queue, &(mgfx_vk_release_queue_entry){.sampler = sampler, .type = MGFX_VK_RELEASE_QUEUE_ENTRY_SAMPLER});
+    mgfx_vk_release_queue_entry entry = {
+        .sampler = sampler,
+        .type = MGFX_VK_RELEASE_QUEUE_ENTRY_SAMPLER
+    };
+    mgfx_queue_push(&ctx.vk.release_queue, &entry);
 }
 
 static VkShaderModule mgfx_vk_create_shader(const uint32_t *code, size_t size)
@@ -2275,8 +2370,8 @@ static VkShaderModule mgfx_vk_create_shader(const uint32_t *code, size_t size)
 
 static void mgfx_vk_fill_graphics_pipeline(mgfx_vk_pipeline *pipeline, const mgfx_pipeline_create_info *create_info)
 {
-    VkShaderModule vertex_shader_module = mgfx_vk_create_shader(create_info->shader.vertex.code, create_info->shader.vertex.size);
-    VkShaderModule fragment_shader_module = mgfx_vk_create_shader(create_info->shader.fragment.code, create_info->shader.fragment.size);
+    VkShaderModule vertex_shader_module = mgfx_vk_create_shader((const uint32_t*)create_info->shader.vertex.code, create_info->shader.vertex.size);
+    VkShaderModule fragment_shader_module = mgfx_vk_create_shader((const uint32_t*)create_info->shader.fragment.code, create_info->shader.fragment.size);
     
     VkPipelineShaderStageCreateInfo vert_shader_stage_info = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -2447,7 +2542,7 @@ static void mgfx_vk_fill_graphics_pipeline(mgfx_vk_pipeline *pipeline, const mgf
 
 static void mgfx_vk_fill_compute_pipeline(mgfx_vk_pipeline *pipeline, const mgfx_pipeline_create_info *create_info)
 {
-    VkShaderModule compute_shader = mgfx_vk_create_shader(create_info->shader.compute.code, create_info->shader.compute.size);
+    VkShaderModule compute_shader = mgfx_vk_create_shader((const uint32_t*)create_info->shader.compute.code, create_info->shader.compute.size);
     
     const VkDescriptorSetLayout set_layouts[] = {
         ctx.vk.layouts.scratch_buffer_layout,
@@ -2496,7 +2591,11 @@ mgfx_vk_pipeline *mgfx_vk_create_pipeline(const mgfx_pipeline_create_info *creat
 
 void mgfx_vk_destroy_pipeline(mgfx_vk_pipeline *pipeline)
 {
-    mgfx_queue_push(&ctx.vk.release_queue, &(mgfx_vk_release_queue_entry){.pipeline = pipeline, .type = MGFX_VK_RELEASE_QUEUE_ENTRY_PIPELINE});
+    mgfx_vk_release_queue_entry entry = {
+        .pipeline = pipeline,
+        .type = MGFX_VK_RELEASE_QUEUE_ENTRY_PIPELINE
+    };
+    mgfx_queue_push(&ctx.vk.release_queue, &entry);
 }
 
 void mgfx_vk_bind_pipeline(mgfx_vk_pipeline *pipeline)
@@ -2671,18 +2770,20 @@ static void mgfx_vk_bind_pass(const mgfx_pass_info *pass)
         ctx.vk.current_pass.depth_image = depth_image;
     }
     else ctx.vk.current_pass.depth_image = NULL;
+
+    VkRenderingInfo rendering_info = {
+        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+        .renderArea = {
+            .offset = {0, 0},
+            .extent = {actual_width, actual_height}
+        },
+        .layerCount = 1,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &color_attachment,
+        .pDepthAttachment = depth_attachment_ptr,
+    };
     
-    vkCmdBeginRendering(cmd, &(VkRenderingInfo){
-                            .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-                            .renderArea = {
-                                .offset = {0, 0},
-                                .extent = {actual_width, actual_height}
-                            },
-                            .layerCount = 1,
-                            .colorAttachmentCount = 1,
-                            .pColorAttachments = &color_attachment,
-                            .pDepthAttachment = depth_attachment_ptr,
-                        });
+    vkCmdBeginRendering(cmd, &rendering_info);
     
     mgfx_vk_command_buffer_set_viewport(cmd, 0, 0, actual_width, actual_height);
     mgfx_vk_command_buffer_set_scissor(cmd, 0, 0, actual_width, actual_height);
@@ -2955,27 +3056,26 @@ static void mgfx_vk_create_scratch_buffer(void)
     VkResult result = vkAllocateDescriptorSets(ctx.vk.device.handle, &alloc_info, &ctx.vk.scratch_buffer.ub_set);
     MGFX_ASSERT(result == VK_SUCCESS, "Failed to allocate vulkan descriptor sets.");
     
-    VkWriteDescriptorSet writes[MGFX_MAX_BINDABLE_UNIFORMS] = { 0 };
-    VkDescriptorBufferInfo buffer_infos[MGFX_MAX_BINDABLE_UNIFORMS] = { 0 };
+    VkWriteDescriptorSet writes[MGFX_MAX_BINDABLE_UNIFORMS];
+    VkDescriptorBufferInfo buffer_infos[MGFX_MAX_BINDABLE_UNIFORMS];
     
     for (uint32_t i = 0; i < MGFX_MAX_BINDABLE_UNIFORMS; i++)
     {
-        VkWriteDescriptorSet *write = &writes[i];
-        VkDescriptorBufferInfo *buffer_info = &buffer_infos[i];
-        
-        write->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        write->dstSet = ctx.vk.scratch_buffer.ub_set;
-        write->dstBinding = i;
-        write->dstArrayElement = 0;
-        
-        write->descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-        write->descriptorCount = 1;
-        
-        buffer_info->buffer = ctx.vk.scratch_buffer.buffer;
-        buffer_info->offset = 0;
-        buffer_info->range = MGFX_MAX_UNIFORM_UPDATE_SIZE;
-        
-        write->pBufferInfo = buffer_info;
+        buffer_infos[i] = (VkDescriptorBufferInfo){
+            .buffer = ctx.vk.scratch_buffer.buffer,
+            .offset = 0,
+            .range = MGFX_MAX_UNIFORM_UPDATE_SIZE
+        };
+
+        writes[i] = (VkWriteDescriptorSet){
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = ctx.vk.scratch_buffer.ub_set,
+            .dstBinding = i,
+            .dstArrayElement = 0,
+            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+            .descriptorCount = 1,
+            .pBufferInfo = &buffer_infos[i]
+        };
     }
     
     vkUpdateDescriptorSets(ctx.vk.device.handle, MGFX_MAX_BINDABLE_UNIFORMS, writes, 0, NULL);
@@ -3313,6 +3413,11 @@ static void _mgfx_gl_unload_opengl(void)
     FreeLibrary(ctx.gl.wgl.opengl32_dll);
 }
 
+#define WGL_CONTEXT_MAJOR_VERSION_ARB     0x2091
+#define WGL_CONTEXT_MINOR_VERSION_ARB     0x2092
+#define WGL_CONTEXT_PROFILE_MASK_ARB      0x9126
+#define WGL_CONTEXT_CORE_PROFILE_BIT_ARB  0x00000001
+
 typedef BOOL (WINAPI *PFNWGLSWAPINTERVALEXTPROC)(int);
 static PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT = NULL;
 
@@ -3320,14 +3425,36 @@ static void _mgfx_gl_load_platform(mgfx_platform_handle *handle)
 {
     ctx.gl.wgl.hwnd = (HWND)handle->win32.hwnd;
     ctx.gl.wgl.hdc = GetDC(ctx.gl.wgl.hwnd);
-    
-    PIXELFORMATDESCRIPTOR pfd = { sizeof(PIXELFORMATDESCRIPTOR), 1, PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER, PFD_TYPE_RGBA, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+    PIXELFORMATDESCRIPTOR pfd = {
+        .nSize = sizeof(PIXELFORMATDESCRIPTOR),
+        .nVersion = 1,
+        .dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
+        .iPixelType = PFD_TYPE_RGBA,
+        .cColorBits = 32
+    };
+
     INT format = ChoosePixelFormat(ctx.gl.wgl.hdc, &pfd);
     SetPixelFormat(ctx.gl.wgl.hdc, format, &pfd);
-    
-    ctx.gl.wgl.hrc = wglCreateContext(ctx.gl.wgl.hdc);
+
+    HGLRC temp_rc = wglCreateContext(ctx.gl.wgl.hdc);
+    wglMakeCurrent(ctx.gl.wgl.hdc, temp_rc);
+
+    typedef HGLRC (WINAPI *PFNWGLCREATECONTEXTATTRIBSARBPROC)(HDC, HGLRC, const int*);
+    PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribsARB =
+        (PFNWGLCREATECONTEXTATTRIBSARBPROC)wglGetProcAddress("wglCreateContextAttribsARB");
+
+    const int attribs[] = {
+        WGL_CONTEXT_MAJOR_VERSION_ARB, 4,
+        WGL_CONTEXT_MINOR_VERSION_ARB, 5,
+        WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
+        0
+    };
+    ctx.gl.wgl.hrc = wglCreateContextAttribsARB(ctx.gl.wgl.hdc, NULL, attribs);
+
     wglMakeCurrent(ctx.gl.wgl.hdc, ctx.gl.wgl.hrc);
-    
+    wglDeleteContext(temp_rc);
+
     wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
 }
 
@@ -3624,7 +3751,8 @@ static mgfx_gl_image *mgfx_gl_create_image(const mgfx_image_create_info *create_
     GLenum internal_format = mgfx_gl_get_internal_format(create_info->format);
     image->format = mgfx_gl_get_format(create_info->format);
     
-    const GLuint usage = create_info->usage == MGFX_IMAGE_USAGE_COLOR_ATTACHMENT ? GL_UNSIGNED_BYTE : GL_UNSIGNED_INT_24_8;
+    const GLuint usage = create_info->usage != MGFX_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT ? GL_UNSIGNED_BYTE : GL_UNSIGNED_INT_24_8;
+
     if (image->texture_target == GL_TEXTURE_2D)
         glTexImage2D(GL_TEXTURE_2D, 0, internal_format,
                         create_info->width, create_info->height, 0, image->format, usage, create_info->data);
@@ -4999,129 +5127,37 @@ static void mgfx_d3d11_bind_pipeline(mgfx_d3d11_pipeline *pipeline)
 
 #endif // MGFX_D3D11
 
-typedef void (*mgfx_init_fn)(const mgfx_init_info *init_info);
-typedef void (*mgfx_shutdown_fn)(void);
-typedef void (*mgfx_begin_fn)(void);
-typedef void (*mgfx_end_fn)(void);
-typedef void (*mgfx_present_frame_fn)(void);
-
-typedef void (*mgfx_resize_fn)(uint32_t width, uint32_t height);
-typedef void (*mgfx_vsync_fn)(bool vsync);
-
-typedef void (*mgfx_viewport_fn)(int32_t x, int32_t y, uint32_t width, uint32_t height);
-typedef void (*mgfx_scissor_fn)(int32_t x, int32_t y, uint32_t width, uint32_t height);
-
-typedef void (*mgfx_bind_pass_fn)(const mgfx_pass_info *pass_info);
-
-typedef void *(*mgfx_create_pipeline_fn)(const mgfx_pipeline_create_info *create_info);
-typedef void (*mgfx_destroy_pipeline_fn)(void *pipeline);
-typedef void (*mgfx_bind_pipeline_fn)(void *pipeline);
-
-typedef void *(*mgfx_create_image_fn)(const mgfx_image_create_info *create_info);
-typedef void (*mgfx_destroy_image_fn)(void *image);
-typedef void (*mgfx_update_image_fn)(void *image, size_t size, void *data);
-typedef void (*mgfx_bind_image_fn)(void *image, void *sampler, uint32_t binding);
-
-typedef void *(*mgfx_create_sampler_fn)(const mgfx_sampler_create_info *create_info);
-typedef void (*mgfx_destroy_sampler_fn)(void *sampler);
-
-typedef void *(*mgfx_create_buffer_fn)(const mgfx_buffer_create_info *create_info);
-typedef void (*mgfx_destroy_buffer_fn)(void *buffer);
-typedef void (*mgfx_update_buffer_fn)(void *buffer, size_t offset, size_t size, void *data);
-
-typedef void (*mgfx_bind_vertex_buffer_fn)(void *buffer);
-typedef void (*mgfx_bind_index_buffer_fn)(void *buffer, mgfx_index_type index_type);
-
-typedef void (*mgfx_bind_uniforms_fn)(uint32_t binding, size_t size, void *data);
-
-typedef void (*mgfx_draw_fn)(uint32_t vertex_count, uint32_t first_vertex);
-typedef void (*mgfx_draw_indexed_fn)(uint32_t index_count, uint32_t first_index, int32_t vertex_offset);
-typedef void (*mgfx_draw_instanced_fn)(uint32_t vertex_count, uint32_t first_vertex, uint32_t instance_count, uint32_t first_instance);
-typedef void (*mgfx_draw_indexed_instanced_fn)(uint32_t index_count, uint32_t first_index, int32_t vertex_offset, uint32_t instance_count, uint32_t first_instance);
-typedef void (*mgfx_dispatch_fn)(uint32_t group_count_x, uint32_t group_count_y, uint32_t group_count_z);
-
-typedef struct mgfx_pipe
-{
-    mgfx_init_fn                    init;
-    mgfx_shutdown_fn                shutdown;
-    
-    mgfx_begin_fn                   begin;
-    mgfx_end_fn                     end;
-    mgfx_present_frame_fn           present_frame;
-    
-    mgfx_resize_fn                  resize;
-    mgfx_vsync_fn                   vsync;
-    
-    mgfx_viewport_fn                viewport;
-    mgfx_scissor_fn                 scissor;
-    
-    mgfx_bind_pass_fn               bind_pass;
-    
-    mgfx_create_pipeline_fn         create_pipeline;
-    mgfx_destroy_pipeline_fn        destroy_pipeline;
-    mgfx_bind_pipeline_fn           bind_pipeline;
-    
-    mgfx_create_image_fn            create_image;
-    mgfx_destroy_image_fn           destroy_image;
-    mgfx_update_image_fn            update_image;
-    mgfx_bind_image_fn              bind_image;
-    
-    mgfx_create_sampler_fn          create_sampler;
-    mgfx_destroy_sampler_fn         destroy_sampler;
-    
-    mgfx_create_buffer_fn           create_buffer;
-    mgfx_destroy_buffer_fn          destroy_buffer;
-    mgfx_update_buffer_fn           update_buffer;
-    
-    mgfx_bind_vertex_buffer_fn      bind_vertex_buffer;
-    mgfx_bind_index_buffer_fn       bind_index_buffer;
-    
-    mgfx_bind_uniforms_fn           bind_uniforms;
-    
-    mgfx_draw_fn                    draw;
-    mgfx_draw_indexed_fn            draw_indexed;
-    mgfx_draw_instanced_fn          draw_instanced;
-    mgfx_draw_indexed_instanced_fn  draw_indexed_instanced;
-    mgfx_dispatch_fn                dispatch;
-    
-    mgfx_renderer_type type;
-    mgfx_shader_lang shader_lang;
-}
-mgfx_pipe;
-
-static mgfx_pipe mg_pipe;
-
 #define MGFX_PIPELINE_BIND(backend) \
 do { \
-mg_pipe.init = mgfx_##backend##_init; \
-mg_pipe.shutdown   = mgfx_##backend##_shutdown; \
-mg_pipe.begin      = mgfx_##backend##_begin; \
-mg_pipe.end        = mgfx_##backend##_end; \
-mg_pipe.viewport   = mgfx_##backend##_viewport; \
-mg_pipe.scissor    = mgfx_##backend##_scissor; \
-mg_pipe.resize     = mgfx_##backend##_resize; \
-mg_pipe.vsync      = mgfx_##backend##_vsync; \
-mg_pipe.bind_uniforms  = mgfx_##backend##_bind_uniforms; \
-mg_pipe.bind_pass      = (mgfx_bind_pass_fn) mgfx_##backend##_bind_pass; \
-mg_pipe.create_pipeline = (mgfx_create_pipeline_fn) mgfx_##backend##_create_pipeline; \
-mg_pipe.destroy_pipeline= (mgfx_destroy_pipeline_fn)mgfx_##backend##_destroy_pipeline; \
-mg_pipe.bind_pipeline   = (mgfx_bind_pipeline_fn)   mgfx_##backend##_bind_pipeline; \
-mg_pipe.create_buffer  = (mgfx_create_buffer_fn)  mgfx_##backend##_create_buffer; \
-mg_pipe.destroy_buffer = (mgfx_destroy_buffer_fn) mgfx_##backend##_destroy_buffer; \
-mg_pipe.update_buffer  = (mgfx_update_buffer_fn)  mgfx_##backend##_update_buffer; \
-mg_pipe.bind_vertex_buffer = (mgfx_bind_vertex_buffer_fn) mgfx_##backend##_bind_vertex_buffer; \
-mg_pipe.bind_index_buffer  = (mgfx_bind_index_buffer_fn)  mgfx_##backend##_bind_index_buffer; \
-mg_pipe.create_image  = (mgfx_create_image_fn)  mgfx_##backend##_create_image; \
-mg_pipe.destroy_image = (mgfx_destroy_image_fn) mgfx_##backend##_destroy_image; \
-mg_pipe.update_image  = (mgfx_update_image_fn)  mgfx_##backend##_update_image; \
-mg_pipe.bind_image    = (mgfx_bind_image_fn)    mgfx_##backend##_bind_image; \
-mg_pipe.create_sampler = (mgfx_create_sampler_fn)  mgfx_##backend##_create_sampler; \
-mg_pipe.destroy_sampler  = (mgfx_destroy_sampler_fn) mgfx_##backend##_destroy_sampler; \
-mg_pipe.draw                     = mgfx_##backend##_draw; \
-mg_pipe.draw_indexed             = mgfx_##backend##_draw_indexed; \
-mg_pipe.draw_instanced           = mgfx_##backend##_draw_instanced; \
-mg_pipe.draw_indexed_instanced   = mgfx_##backend##_draw_indexed_instanced; \
-mg_pipe.dispatch                 = mgfx_##backend##_dispatch; \
+ctx.init = mgfx_##backend##_init; \
+ctx.shutdown   = mgfx_##backend##_shutdown; \
+ctx.begin      = mgfx_##backend##_begin; \
+ctx.end        = mgfx_##backend##_end; \
+ctx.viewport   = mgfx_##backend##_viewport; \
+ctx.scissor    = mgfx_##backend##_scissor; \
+ctx.resize     = mgfx_##backend##_resize; \
+ctx.vsync      = mgfx_##backend##_vsync; \
+ctx.bind_uniforms  = mgfx_##backend##_bind_uniforms; \
+ctx.bind_pass      = (mgfx_bind_pass_fn) mgfx_##backend##_bind_pass; \
+ctx.create_pipeline = (mgfx_create_pipeline_fn) mgfx_##backend##_create_pipeline; \
+ctx.destroy_pipeline= (mgfx_destroy_pipeline_fn)mgfx_##backend##_destroy_pipeline; \
+ctx.bind_pipeline   = (mgfx_bind_pipeline_fn)   mgfx_##backend##_bind_pipeline; \
+ctx.create_buffer  = (mgfx_create_buffer_fn)  mgfx_##backend##_create_buffer; \
+ctx.destroy_buffer = (mgfx_destroy_buffer_fn) mgfx_##backend##_destroy_buffer; \
+ctx.update_buffer  = (mgfx_update_buffer_fn)  mgfx_##backend##_update_buffer; \
+ctx.bind_vertex_buffer = (mgfx_bind_vertex_buffer_fn) mgfx_##backend##_bind_vertex_buffer; \
+ctx.bind_index_buffer  = (mgfx_bind_index_buffer_fn)  mgfx_##backend##_bind_index_buffer; \
+ctx.create_image  = (mgfx_create_image_fn)  mgfx_##backend##_create_image; \
+ctx.destroy_image = (mgfx_destroy_image_fn) mgfx_##backend##_destroy_image; \
+ctx.update_image  = (mgfx_update_image_fn)  mgfx_##backend##_update_image; \
+ctx.bind_image    = (mgfx_bind_image_fn)    mgfx_##backend##_bind_image; \
+ctx.create_sampler = (mgfx_create_sampler_fn)  mgfx_##backend##_create_sampler; \
+ctx.destroy_sampler  = (mgfx_destroy_sampler_fn) mgfx_##backend##_destroy_sampler; \
+ctx.draw                     = mgfx_##backend##_draw; \
+ctx.draw_indexed             = mgfx_##backend##_draw_indexed; \
+ctx.draw_instanced           = mgfx_##backend##_draw_instanced; \
+ctx.draw_indexed_instanced   = mgfx_##backend##_draw_indexed_instanced; \
+ctx.dispatch                 = mgfx_##backend##_dispatch; \
 } while (0)
 
 void mgfx_init(const mgfx_init_info *init_info)
@@ -5132,191 +5168,191 @@ void mgfx_init(const mgfx_init_info *init_info)
     {
 #if defined(MGFX_VULKAN)
         case MGFX_RENDERER_VULKAN:
-        mg_pipe.shader_lang = MGFX_SHADER_LANG_SPIRV;
+        ctx.shader_lang = MGFX_SHADER_LANG_SPIRV;
         MGFX_PIPELINE_BIND(vk);
         break;
 #endif
 #if defined(MGFX_OPENGL)
 #if !defined(__EMSCRIPTEN__)
         case MGFX_RENDERER_OPENGL:
-        mg_pipe.shader_lang = MGFX_SHADER_LANG_GLSL;
+        ctx.shader_lang = MGFX_SHADER_LANG_GLSL;
         MGFX_PIPELINE_BIND(gl);
         break;
 #else
         case MGFX_RENDERER_OPENGLES:
-        mg_pipe.shader_lang = MGFX_SHADER_LANG_GLSLES;
+        ctx.shader_lang = MGFX_SHADER_LANG_GLSLES;
         MGFX_PIPELINE_BIND(gl);
         break;
 #endif
 #endif
 #if defined(MGFX_D3D11)
         case MGFX_RENDERER_D3D11:
-        mg_pipe.shader_lang = MGFX_SHADER_LANG_HLSL;
+        ctx.shader_lang = MGFX_SHADER_LANG_HLSL;
         MGFX_PIPELINE_BIND(d3d11);
         break;
 #endif
     }
     
-    mg_pipe.type = type;
-    mg_pipe.init(init_info);
+    ctx.type = type;
+    ctx.init(init_info);
 }
 
 void mgfx_shutdown(void)
 {
-    mg_pipe.shutdown();
+    ctx.shutdown();
 }
 
 void mgfx_begin(void)
 {
-    mg_pipe.begin();
+    ctx.begin();
 }
 
 void mgfx_end(void)
 {
-    mg_pipe.end();
+    ctx.end();
 }
 
 void mgfx_viewport(int32_t x, int32_t y, uint32_t width, uint32_t height)
 {
-    mg_pipe.viewport(x, y, width, height);
+    ctx.viewport(x, y, width, height);
 }
 
 void mgfx_scissor(int32_t x, int32_t y, uint32_t width, uint32_t height)
 {
-    mg_pipe.scissor(x, y, width, height);
+    ctx.scissor(x, y, width, height);
 }
 
 void mgfx_resize(uint32_t width, uint32_t height)
 {
-    mg_pipe.resize(width, height);
+    ctx.resize(width, height);
 }
 
 void mgfx_vsync(bool vsync)
 {
-    mg_pipe.vsync(vsync);
+    ctx.vsync(vsync);
 }
 
 void mgfx_bind_pass(const mgfx_pass_info *pass_info)
 {
-    mg_pipe.bind_pass(pass_info);
+    ctx.bind_pass(pass_info);
 }
 
 void mgfx_draw(uint32_t vertex_count, uint32_t first_vertex)
 {
-    mg_pipe.draw(vertex_count, first_vertex);
+    ctx.draw(vertex_count, first_vertex);
 }
 
 void mgfx_draw_indexed(uint32_t index_count, uint32_t first_index, int32_t vertex_offset)
 {
-    mg_pipe.draw_indexed(index_count, first_index, vertex_offset);
+    ctx.draw_indexed(index_count, first_index, vertex_offset);
 }
 
 void mgfx_draw_instanced(uint32_t vertex_count, uint32_t first_vertex, uint32_t instance_count, uint32_t first_instance)
 {
-    mg_pipe.draw_instanced(vertex_count, first_vertex, instance_count, first_instance);
+    ctx.draw_instanced(vertex_count, first_vertex, instance_count, first_instance);
 }
 
 void mgfx_draw_indexed_instanced(uint32_t index_count, uint32_t first_index, int32_t first_vertex, uint32_t instance_count, uint32_t first_instance)
 {
-    mg_pipe.draw_indexed_instanced(index_count, first_index, first_vertex, instance_count, first_instance);
+    ctx.draw_indexed_instanced(index_count, first_index, first_vertex, instance_count, first_instance);
 }
 
 void mgfx_dispatch(uint32_t group_count_x, uint32_t group_count_y, uint32_t group_count_z)
 {
-    mg_pipe.dispatch(group_count_x, group_count_y, group_count_z);
+    ctx.dispatch(group_count_x, group_count_y, group_count_z);
 }
 
 mgfx_pipeline mgfx_create_pipeline(const mgfx_pipeline_create_info *create_info)
 {
     mgfx_pipeline pipeline;
-    pipeline = mg_pipe.create_pipeline(create_info);
+    pipeline = ctx.create_pipeline(create_info);
     return pipeline;
 }
 
 void mgfx_destroy_pipeline(mgfx_pipeline pipeline)
 {
-    mg_pipe.destroy_pipeline(pipeline);
+    ctx.destroy_pipeline(pipeline);
 }
 
 void mgfx_bind_pipeline(mgfx_pipeline pipeline)
 {
-    mg_pipe.bind_pipeline(pipeline);
+    ctx.bind_pipeline(pipeline);
 }
 
 mgfx_buffer mgfx_create_buffer(const mgfx_buffer_create_info *create_info)
 {
     mgfx_buffer buffer;
-    buffer = mg_pipe.create_buffer(create_info);
+    buffer = ctx.create_buffer(create_info);
     return buffer;
 }
 
 void mgfx_destroy_buffer(mgfx_buffer buffer)
 {
-    mg_pipe.destroy_buffer(buffer);
+    ctx.destroy_buffer(buffer);
 }
 
 void mgfx_update_buffer(mgfx_buffer buffer, size_t offset, size_t size, void *data)
 {
-    mg_pipe.update_buffer(buffer, offset, size, data);
+    ctx.update_buffer(buffer, offset, size, data);
 }
 
 void mgfx_bind_vertex_buffer(mgfx_buffer buffer)
 {
-    mg_pipe.bind_vertex_buffer(buffer);
+    ctx.bind_vertex_buffer(buffer);
 }
 
 void mgfx_bind_index_buffer(mgfx_buffer buffer, mgfx_index_type index_type)
 {
-    mg_pipe.bind_index_buffer(buffer, index_type);
+    ctx.bind_index_buffer(buffer, index_type);
 }
 
 void mgfx_bind_uniforms(uint32_t binding, size_t size, void *data)
 {
-    mg_pipe.bind_uniforms(binding, size, data);
+    ctx.bind_uniforms(binding, size, data);
 }
 
 mgfx_image mgfx_create_image(const mgfx_image_create_info *create_info)
 {
     mgfx_image image;
-    image = mg_pipe.create_image(create_info);
+    image = ctx.create_image(create_info);
     return image;
 }
 
 void mgfx_destroy_image(mgfx_image image)
 {
-    mg_pipe.destroy_image(image);
+    ctx.destroy_image(image);
 }
 
 void mgfx_update_image(mgfx_image image, size_t size, void *data)
 {
-    mg_pipe.update_image(image, size, data);
+    ctx.update_image(image, size, data);
 }
 
 void mgfx_bind_image(mgfx_image image, mgfx_sampler sampler, uint32_t binding)
 {
-    mg_pipe.bind_image(image, sampler, binding);
+    ctx.bind_image(image, sampler, binding);
 }
 
 mgfx_sampler mgfx_create_sampler(const mgfx_sampler_create_info *create_info)
 {
     mgfx_sampler sampler;
-    sampler = mg_pipe.create_sampler(create_info);
+    sampler = ctx.create_sampler(create_info);
     return sampler;
 }
 
 void mgfx_destroy_sampler(mgfx_sampler sampler)
 {
-    mg_pipe.destroy_sampler(sampler);
+    ctx.destroy_sampler(sampler);
 }
 
 mgfx_renderer_type mgfx_get_renderer_type(void)
 {
-    return mg_pipe.type;
+    return ctx.type;
 }
 
 mgfx_shader_lang mgfx_get_shader_lang(void)
 {
-    return mg_pipe.shader_lang;
+    return ctx.shader_lang;
 }
 
 #endif // MGFX_IMPL
