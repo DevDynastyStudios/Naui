@@ -84,7 +84,7 @@ void* naui_arena_alloc(Naui_Arena* arena, size_t size)
 		return ptr;
 	}
 
-	Naui_ArenaBlock* new_block = arena_alloc_block(arena, size);
+	Naui_ArenaBlock* new_block = (Naui_ArenaBlock*)arena_alloc_block(arena, size);
 	if(!new_block)
 		return NULL;
 

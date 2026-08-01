@@ -182,7 +182,8 @@ static void naui_panel_bring_to_front_immediate(Naui_PanelNodeWrapper *wrapper)
 
 static void naui_panel_bring_to_front(Naui_PanelNode *node)
 {
-    naui_defer((Naui_DeferredEvent)naui_panel_bring_to_front_immediate, &(Naui_PanelNodeWrapper){node}, sizeof(Naui_PanelNodeWrapper));
+    Naui_PanelNodeWrapper node_wrapper = { node };
+    naui_defer((Naui_DeferredEvent)naui_panel_bring_to_front_immediate, &node_wrapper, sizeof(Naui_PanelNodeWrapper));
 }
 
 static void naui_set_root_recursive(Naui_PanelNode *node, Naui_PanelNode *new_root)
@@ -424,7 +425,8 @@ static void naui_undock_panel_immediate(Naui_PanelNodeWrapper *wrapper)
 
 void naui_undock_panel(Naui_PanelID id)
 {
-    naui_defer((Naui_DeferredEvent)naui_undock_panel_immediate, &(Naui_PanelNodeWrapper){(Naui_PanelNode*)id}, sizeof(Naui_PanelNodeWrapper));
+    Naui_PanelNodeWrapper node_wrapper = { (Naui_PanelNode*)id };
+    naui_defer((Naui_DeferredEvent)naui_undock_panel_immediate, &node_wrapper, sizeof(Naui_PanelNodeWrapper));
 }
 
 static void naui_detach_panel_immediate(Naui_PanelNodeWrapper *wrapper)
@@ -447,7 +449,8 @@ static void naui_detach_panel_immediate(Naui_PanelNodeWrapper *wrapper)
 
 void naui_detach_panel(Naui_PanelID id)
 {
-    naui_defer((Naui_DeferredEvent)naui_detach_panel_immediate, &(Naui_PanelNodeWrapper){(Naui_PanelNode*)id}, sizeof(Naui_PanelNodeWrapper));
+    Naui_PanelNodeWrapper node_wrapper = { (Naui_PanelNode*)id };
+    naui_defer((Naui_DeferredEvent)naui_detach_panel_immediate, &node_wrapper, sizeof(Naui_PanelNodeWrapper));
 }
 
 static bool naui_range_occludes_point(float mx, float my, uint32_t from, Naui_PanelNode *skip)

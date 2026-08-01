@@ -48,7 +48,7 @@ void naui_asset_manager_load_images(const char *const images_path)
                 Naui_FileHandle file_handle;
                 naui_file_open(&file_handle, NAUI_PATH(path), NAUI_FILE_READ);
                 const size_t file_len = naui_file_size(NAUI_PATH(path));
-                uint8_t *file_data = naui_arena_alloc(&temp_arena, file_len);
+                uint8_t *file_data = (uint8_t*)naui_arena_alloc(&temp_arena, file_len);
                 naui_file_read(&file_handle, file_data, file_len);
                 naui_file_close(&file_handle);
 
@@ -57,7 +57,7 @@ void naui_asset_manager_load_images(const char *const images_path)
                 if (!image.pixels) naui_log(NAUI_LOG_FUCKED, "failed to load image: %s\n", path);
             }
 
-            const Naui_Image sprite = (Naui_Image){ .width = image.width, .height = image.height };
+            const Naui_Image sprite = (Naui_Image){ .width = (uint32_t)image.width, .height = (uint32_t)image.height };
             naui_strmap_put(image_hm, strdup(image_name), sprite);
             naui_list_push(images, image);
         }
@@ -75,9 +75,9 @@ void naui_asset_manager_load_images(const char *const images_path)
                      image_count = naui_list_len(images);
 
         stbrp_context ctx;
-        stbrp_node *nodes = naui_arena_alloc(&temp_arena, sizeof(*nodes) * node_count);
-        stbrp_rect *rects = naui_arena_alloc(&temp_arena, sizeof(*rects) * image_count);
-        uint8_t *pixels =   naui_arena_alloc(&temp_arena, atlas_size);
+        stbrp_node *nodes = (stbrp_node*)naui_arena_alloc(&temp_arena, sizeof(*nodes) * node_count);
+        stbrp_rect *rects = (stbrp_rect*)naui_arena_alloc(&temp_arena, sizeof(*rects) * image_count);
+        uint8_t *pixels =      (uint8_t*)naui_arena_alloc(&temp_arena, atlas_size);
 
         stbrp_init_target(&ctx, NAUI_IMAGE_ATLAS_SIZE, NAUI_IMAGE_ATLAS_SIZE, nodes, node_count);
         for (int i=0; i < image_count; ++i)

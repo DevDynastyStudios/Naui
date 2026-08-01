@@ -130,7 +130,7 @@ void naui_sb_destroy(Naui_StringBuilder sb) {
 }
 
 Naui_String naui_sb_to_string(Naui_StringBuilder sb) {
-    return (Naui_String){ sb, naui_list_len(sb) };
+    return (Naui_String){ sb, (size_t)naui_list_len(sb) };
 }
 
 void naui_sb_append_string(Naui_StringBuilder sb, Naui_String string) {

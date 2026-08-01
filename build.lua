@@ -65,7 +65,7 @@ local function ran_ok(status)
 end
 
 local function compiler()
-    return "clang"
+    return "clang++"
 end
 
 local function defines(release)

@@ -249,7 +249,7 @@ void naui_app_run(
     state.events.end = end;
     state.events.update = update;
     
-    mg_app_run(&(mg_app_init_info){
+    mg_app_run({
         .title = title,
         .flags = MG_APP_FLAG_NO_TITLEBAR | MG_APP_FLAG_HIDDEN,
         .events = {

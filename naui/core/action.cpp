@@ -25,7 +25,7 @@ void __naui_register_action(const char* name, Naui_Action action)
 	if(s_registered_count == s_registered_capacity)
 	{
 		s_registered_capacity = s_registered_capacity ? s_registered_capacity * 2 : 16;
-		s_registered = realloc(s_registered, s_registered_capacity * sizeof(Naui_RegisteredAction));
+		s_registered = (Naui_RegisteredAction*)realloc(s_registered, s_registered_capacity * sizeof(Naui_RegisteredAction));
 	}
 
 	s_registered[s_registered_count++] = (Naui_RegisteredAction){ name, action };
@@ -59,7 +59,7 @@ static void destroy_entry(Naui_ActionEntry* entry)
 
 static bool group_undo(void* data)
 {
-	Naui_GroupData* group = data;
+	Naui_GroupData* group = (Naui_GroupData*)data;
 	for(size_t i = group->count; i > 0; i--)
 	{
 		Naui_ActionEntry* entry = &group->actions[i - 1];
@@ -71,7 +71,7 @@ static bool group_undo(void* data)
 
 static bool group_redo(void* data)
 {
-	Naui_GroupData* group = data;
+	Naui_GroupData* group = (Naui_GroupData*)data;
 	for(size_t i = 0; i < group->count; i++)
 	{
 		Naui_ActionEntry* entry = &group->actions[i];
@@ -85,7 +85,7 @@ static bool group_redo(void* data)
 
 static void group_destroy(void* data)
 {
-	Naui_GroupData* group = data;
+	Naui_GroupData* group = (Naui_GroupData*)data;
 	for(size_t i = 0; i < group->count; i++)
 	{
 		destroy_entry(&group->actions[i]);
@@ -141,19 +141,19 @@ void naui_action_set_history_capacity(size_t capacity)
 
 	size_t old_undo_count = s_undo_count;
 	size_t old_redo_count = s_redo_count;
-	Naui_ActionEntry* undo_tmp = old_undo_count ? malloc(old_undo_count * sizeof(Naui_ActionEntry)) : NULL;
+	Naui_ActionEntry* undo_tmp = old_undo_count ? (Naui_ActionEntry*)malloc(old_undo_count * sizeof(Naui_ActionEntry)) : NULL;
 	for(size_t i = 0; i < old_undo_count; i++)
 	{
 		undo_tmp[i] = s_undo_entries[undo_physical_index(i)];
 	}
 
-	Naui_ActionEntry* redo_tmp = old_redo_count ? malloc(old_redo_count * sizeof(Naui_ActionEntry)) : NULL;
+	Naui_ActionEntry* redo_tmp = old_redo_count ? (Naui_ActionEntry*)malloc(old_redo_count * sizeof(Naui_ActionEntry)) : NULL;
 	if(redo_tmp)
 		memcpy(redo_tmp, s_redo_entries, old_redo_count * sizeof(Naui_ActionEntry));
 
 	naui_arena_reset(&s_ring_arena);
-	s_undo_entries = naui_arena_alloc(&s_ring_arena, capacity * sizeof(Naui_ActionEntry));
-	s_redo_entries = naui_arena_alloc(&s_ring_arena, capacity * sizeof(Naui_ActionEntry));
+	s_undo_entries = (Naui_ActionEntry*)naui_arena_alloc(&s_ring_arena, capacity * sizeof(Naui_ActionEntry));
+	s_redo_entries = (Naui_ActionEntry*)naui_arena_alloc(&s_ring_arena, capacity * sizeof(Naui_ActionEntry));
 
 	if(undo_tmp)
 	{
@@ -234,7 +234,7 @@ bool naui_action_group_end(void)
 		return false;
 	}
 
-	Naui_ActionEntry* actions = malloc(s_group_count * sizeof(Naui_ActionEntry));
+	Naui_ActionEntry* actions = (Naui_ActionEntry*)malloc(s_group_count * sizeof(Naui_ActionEntry));
 	size_t i = 0;
 	for(Naui_ActionStageNode* node = s_group_head; node; node = node->next)
 	{
@@ -242,7 +242,7 @@ bool naui_action_group_end(void)
 	}
 
 	naui_arena_reset(&s_group_arena);
-	Naui_GroupData* group_data = malloc(sizeof(Naui_GroupData));
+	Naui_GroupData* group_data = (Naui_GroupData*)malloc(sizeof(Naui_GroupData));
 	*group_data = (Naui_GroupData){ .actions = actions, .count = i };
 	history_push((Naui_ActionEntry){ .name = s_group_name, .action = &s_group_action, .data = group_data });
 	return true;
@@ -258,7 +258,7 @@ bool naui_action_execute(const char* name, void* data)
 	Naui_ActionEntry entry = { .name = name, .action = action, .data = data };
 	if(s_group_active)
 	{
-		Naui_ActionStageNode* node = naui_arena_alloc(&s_group_arena, sizeof(Naui_ActionStageNode));
+		Naui_ActionStageNode* node = (Naui_ActionStageNode*)naui_arena_alloc(&s_group_arena, sizeof(Naui_ActionStageNode));
 		node->entry = entry;
 		node->next = NULL;
 

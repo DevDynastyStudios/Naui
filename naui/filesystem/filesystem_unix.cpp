@@ -224,7 +224,7 @@ bool naui_file_open(Naui_FileHandle* handle, const Naui_Path path, Naui_FileMode
 	return fi->fp != NULL;
 }
 
-size_t naui_file_read(const Naui_FileHandle* handle, void* restrict buffer, size_t size)
+size_t naui_file_read(const Naui_FileHandle* handle, void* buffer, size_t size)
 {
 	if (!handle || !buffer)
 		return 0;
@@ -236,7 +236,7 @@ size_t naui_file_read(const Naui_FileHandle* handle, void* restrict buffer, size
 	return fread(buffer, 1, size, fi->fp);
 }
 
-size_t naui_file_write(const Naui_FileHandle* handle, const void* restrict buffer, size_t size)
+size_t naui_file_write(const Naui_FileHandle* handle, const void* buffer, size_t size)
 {
 	if (!handle || !buffer)
 		return 0;

@@ -692,7 +692,7 @@ __leaf_text(text, (Leaf_TextConfigWrapper){ __VA_ARGS__ }.wrapped)
     
     static const char *leaf_cache_str(const char *src, uint32_t size)
     {
-        char *dst = leaf_arena_alloc(&leaf_ctx->arena, size + 1);
+        char *dst = (char*)leaf_arena_alloc(&leaf_ctx->arena, size + 1);
         memcpy(dst, src, size);
         dst[size] = '\0';
         return dst;
@@ -717,7 +717,7 @@ __leaf_text(text, (Leaf_TextConfigWrapper){ __VA_ARGS__ }.wrapped)
     
     static inline Leaf_Node *leaf_alloc_node(void)
     {
-        Leaf_Node *node = leaf_arena_alloc(&leaf_ctx->arena, sizeof(Leaf_Node));
+        Leaf_Node *node = (Leaf_Node*)leaf_arena_alloc(&leaf_ctx->arena, sizeof(Leaf_Node));
         memset(node, 0, sizeof(Leaf_Node));
         return node;
     }
@@ -911,7 +911,7 @@ for (Leaf_Node *x = _parent->first_child; x != NULL; x = x->next_sibling)
     
     static inline void leaf_push_render_cmd(Leaf_RenderCmd cmd)
     {
-        Leaf_RenderCmdNode *node = leaf_arena_alloc(&leaf_ctx->arena, sizeof(Leaf_RenderCmdNode));
+        Leaf_RenderCmdNode *node = (Leaf_RenderCmdNode*)leaf_arena_alloc(&leaf_ctx->arena, sizeof(Leaf_RenderCmdNode));
         if (!node)
             return;
         node->cmd = cmd;

@@ -56,7 +56,7 @@ void naui_load_theme(const char *file_name)
 
     NAUI_JSON_FOREACH(json.root, key, val)
     {
-        char *key_str = naui_arena_alloc(&tm.key_arena, 64);
+        char *key_str = (char*)naui_arena_alloc(&tm.key_arena, 64);
         naui_json_copy_string(key, key_str, 64);
 
         if (val->type == NAUI_JSON_STRING)

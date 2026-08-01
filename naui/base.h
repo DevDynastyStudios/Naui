@@ -24,6 +24,9 @@
 #	define NAUI_NODISCARD
 #endif
 
-#if defined(__clang__) && defined(_WIN32)
+#if defined(__clang__)
+#if defined(_WIN32)
 #pragma clang diagnostic ignored "-Wdeprecated"
-#endif
+#endif // _WIN32
+#pragma clang diagnostic ignored "-Wc99-designator"
+#endif // __clang__

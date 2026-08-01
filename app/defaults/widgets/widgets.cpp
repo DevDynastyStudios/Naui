@@ -265,7 +265,7 @@ static void naui_widget_toggle_render(Leaf_ID id, const char *label, bool *value
 		leaf({
 			.size = { LEAF_SIZE_FIXED(34), LEAF_SIZE_FIXED(16) },
 			.padding = LEAF_PADDING_ALL(2),
-			.child_alignment = { *value ? LEAF_ALIGN_X_RIGHT : LEAF_ALIGN_X_LEFT, LEAF_ALIGN_Y_CENTER },
+			.child_alignment = { (Leaf_LayoutAlignmentX)(*value ? LEAF_ALIGN_X_RIGHT : LEAF_ALIGN_X_LEFT), LEAF_ALIGN_Y_CENTER },
 			.color = { .color1 = track },
 			.rounding = { 8, LEAF_CORNER_ALL },
 		})
