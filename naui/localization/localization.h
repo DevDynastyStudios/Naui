@@ -43,7 +43,7 @@ void naui_localization_reload_meta_cache(void);
 
 /* Return the cached list of available languages.
  * Valid until the next naui_localization_reload_meta_cache() call. */
-Naui_List<Naui_LanguageMeta> naui_localization_get_languages(void);
+Naui_List(Naui_LanguageMeta) naui_localization_get_languages(void);
 
 /* Load a language by code into out_language.
  * Returns false if the file cannot be found or parsed. */

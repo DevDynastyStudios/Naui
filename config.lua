@@ -1,6 +1,6 @@
 return {
     app_name = "NauiApp",
-    src = "app/build.cpp",
+    src = "app/build.c",
 
     include_dirs = {
         ".",

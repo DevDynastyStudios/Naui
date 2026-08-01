@@ -182,7 +182,7 @@ static const wchar_t* prepare_os_path(const Naui_Path path)
 	return prepare_os_path_slot(path, 0);
 }
 
-static void filter_recursive_impl_w(const char* path, const char* filter, const char** extensions, int ext_count, Naui_List<Naui_DirEntry>* list>
+static void filter_recursive_impl_w(const char* path, const char* filter, const char** extensions, int ext_count, Naui_List(Naui_DirEntry)* list)
 {
 	const wchar_t* wprepared = prepare_os_path(naui_path_from_cstr(path));
 	if (!wprepared)
@@ -715,9 +715,9 @@ Naui_Path naui_directory_get(Naui_Dir directory)
 	return naui_path_empty();
 }
 
-Naui_List<Naui_DirEntry> naui_directory_filter(const Naui_Path path, const char* filter, const char** extensions, int ext_count>
+Naui_List(Naui_DirEntry) naui_directory_filter(const Naui_Path path, const char* filter, const char** extensions, int ext_count)
 {
-	Naui_List<Naui_DirEntry> list = NULL;
+	Naui_List(Naui_DirEntry) list = NULL;
 
 	if (path.length == 0)
 		return list;
@@ -774,9 +774,9 @@ Naui_List<Naui_DirEntry> naui_directory_filter(const Naui_Path path, const char*
 	return list;
 }
 
-Naui_List<Naui_DirEntry> naui_directory_filter_recursive(const Naui_Path path, const char* filter, const char** extensions, int ext_count>
+Naui_List(Naui_DirEntry) naui_directory_filter_recursive(const Naui_Path path, const char* filter, const char** extensions, int ext_count)
 {
-	Naui_List<Naui_DirEntry> list = NULL;
+	Naui_List(Naui_DirEntry) list = NULL;
 	if (path.length == 0)
 		return list;
 
@@ -784,7 +784,7 @@ Naui_List<Naui_DirEntry> naui_directory_filter_recursive(const Naui_Path path, c
 	return list;
 }
 
-void naui_directory_filter_free(Naui_List<Naui_DirEntry> list)
+void naui_directory_filter_free(Naui_List(Naui_DirEntry) list)
 {
 	if (!list)
 		return;

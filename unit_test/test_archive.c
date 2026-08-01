@@ -185,7 +185,7 @@ static void test_archive_list_entries(void)
 		naui_archive_open(&r, tp("list.zip"), NAUI_ARCHIVE_READ);
 		ASSERT(naui_archive_is_valid(&r));
 
-		Naui_List<Naui_ArchiveEntry> entries = naui_archive_list_entries(&r);
+		Naui_List(Naui_ArchiveEntry) entries = naui_archive_list_entries(&r);
 		naui_archive_close(&r);
 
 		ASSERT_NOT_NULL(entries);
@@ -263,7 +263,7 @@ static void test_archive_mode_guard(void)
 		Naui_Archive wg = NAUI_ARCHIVE_INIT;
 		naui_archive_open(&wg, tp("guard_write.zip"), NAUI_ARCHIVE_WRITE);
 		ASSERT(naui_archive_is_valid(&wg));
-		Naui_List<Naui_ArchiveEntry> list = naui_archive_list_entries(&wg);
+		Naui_List(Naui_ArchiveEntry) list = naui_archive_list_entries(&wg);
 		ASSERT_NULL(list);
 		naui_archive_close(&wg);
 	}

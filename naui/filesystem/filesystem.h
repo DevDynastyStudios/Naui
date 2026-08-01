@@ -122,14 +122,14 @@ NAUI_NODISCARD Naui_Path naui_directory_get(const Naui_Dir directory);
 
 /* List directory entries.
  * Returns a Naui_List(Naui_DirEntry). Call naui_directory_filter_free() when done. */
-Naui_List<Naui_DirEntry> naui_directory_filter(const Naui_Path path, const char* filter, const char** extensions, int ext_count);
+Naui_List(Naui_DirEntry) naui_directory_filter(const Naui_Path path, const char* filter, const char** extensions, int ext_count);
 
 /* List directory and sub-directory entries.
  * Returns a Naui_List(Naui_DirEntry). Call naui_directory_filter_free() when done. */
-Naui_List<Naui_DirEntry> naui_directory_filter_recursive(const Naui_Path path, const char* filter, const char** extensions, int ext_count);
+Naui_List(Naui_DirEntry) naui_directory_filter_recursive(const Naui_Path path, const char* filter, const char** extensions, int ext_count);
 
 /* Frees the list returned by naui_directory_filter. */
-void naui_directory_filter_free(Naui_List<Naui_DirEntry> list);
+void naui_directory_filter_free(Naui_List(Naui_DirEntry) list);
 
 bool naui_path_set_current(const Naui_Path current_directory);
 

@@ -545,7 +545,7 @@ static void naui_push_corner_ring(Naui_Vec2 center, float inner_r, float outer_r
 
 void naui_renderer_build_atlas(uint32_t width, uint32_t height, void *data)
 {
-    rdata->image_atlas = mgfx_create_image({
+    rdata->image_atlas = mgfx_create_image(&(mgfx_image_create_info){
         .type = MGFX_IMAGE_TYPE_2D,
         .format = MGFX_FORMAT_RGBA8_UNORM,
         .usage = MGFX_IMAGE_USAGE_COLOR_ATTACHMENT,
@@ -557,9 +557,9 @@ void naui_renderer_build_atlas(uint32_t width, uint32_t height, void *data)
 
 void naui_renderer_initialize(void)
 {
-    rdata = (Naui_RendererData*)calloc(1, sizeof(Naui_RendererData));
+    rdata = calloc(1, sizeof(Naui_RendererData));
 
-    mgfx_init({
+    mgfx_init(&(mgfx_init_info){
         .handle = mg_app_handle(),
         .width = mg_app_width(),
         .height = mg_app_height(),
@@ -573,19 +573,19 @@ void naui_renderer_initialize(void)
         s_sin[i] = sinf(a);
     }
 
-    rdata->batch_vb = mgfx_create_buffer({
+    rdata->batch_vb = mgfx_create_buffer(&(mgfx_buffer_create_info){
         .usage  = MGFX_BUFFER_USAGE_VERTEX,
         .access = MGFX_ACCESS_CPU,
         .size   = sizeof(rdata->vertices)
     });
 
-    rdata->batch_ib = mgfx_create_buffer({
+    rdata->batch_ib = mgfx_create_buffer(&(mgfx_buffer_create_info){
         .usage  = MGFX_BUFFER_USAGE_INDEX,
         .access = MGFX_ACCESS_CPU,
         .size   = sizeof(rdata->indices)
     });
 
-    rdata->base_pipeline = mgfx_create_pipeline({
+    rdata->base_pipeline = mgfx_create_pipeline(&(mgfx_pipeline_create_info){
         .shader = get_base_shader(mgfx_get_shader_lang()),
         .vertex_attributes = {
             MGFX_VERTEX_FORMAT_FLOAT2,
@@ -604,7 +604,7 @@ void naui_renderer_initialize(void)
         }
     });
 
-    rdata->linear_sampler = mgfx_create_sampler({
+    rdata->linear_sampler = mgfx_create_sampler(&(mgfx_sampler_create_info){
         .min_filter     = MGFX_SAMPLER_FILTER_LINEAR,
         .mag_filter     = MGFX_SAMPLER_FILTER_LINEAR,
         .address_mode_u = MGFX_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
@@ -612,7 +612,7 @@ void naui_renderer_initialize(void)
         .address_mode_w = MGFX_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE
     });
 
-    rdata->nearest_sampler = mgfx_create_sampler({
+    rdata->nearest_sampler = mgfx_create_sampler(&(mgfx_sampler_create_info){
         .min_filter     = MGFX_SAMPLER_FILTER_NEAREST,
         .mag_filter     = MGFX_SAMPLER_FILTER_NEAREST,
         .address_mode_u = MGFX_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
@@ -671,7 +671,7 @@ void naui_renderer_begin(void)
     rdata->font_current_index = -1;
 
     mgfx_begin();
-    mgfx_bind_pass(mgfx_pass_info{});
+    mgfx_bind_pass(&(mgfx_pass_info){ 0 });
     mgfx_bind_pipeline(rdata->base_pipeline);
     mgfx_bind_vertex_buffer(rdata->batch_vb);
     mgfx_bind_index_buffer(rdata->batch_ib, MGFX_INDEX_TYPE_UINT32);
@@ -738,7 +738,7 @@ static int naui_bake_font_size(
         total_codepoints += k_unicode_blocks[b].count;
 
     typedef struct { int first_codepoint; int num_chars; } RangeMeta;
-    RangeMeta *meta = (RangeMeta*)malloc(total_codepoints * sizeof(RangeMeta));
+    RangeMeta *meta = malloc(total_codepoints * sizeof(RangeMeta));
     if (!meta) return 0;
 
     int range_count  = 0;
@@ -776,7 +776,7 @@ static int naui_bake_font_size(
         return 0;
     }
 
-    stbtt_pack_range *tmp_ranges = (stbtt_pack_range*)malloc(range_count * sizeof(stbtt_pack_range));
+    stbtt_pack_range *tmp_ranges = malloc(range_count * sizeof(stbtt_pack_range));
     if (!tmp_ranges)
     {
         free(meta);
@@ -785,7 +785,7 @@ static int naui_bake_font_size(
 
     for (int i = 0; i < range_count; i++)
     {
-        stbtt_packedchar *chars = (stbtt_packedchar*)malloc(meta[i].num_chars * sizeof(stbtt_packedchar));
+        stbtt_packedchar *chars = malloc(meta[i].num_chars * sizeof(stbtt_packedchar));
         if (!chars)
         {
             for (int j = 0; j < i; j++) free(tmp_ranges[j].chardata_for_range);
@@ -810,7 +810,7 @@ static int naui_bake_font_size(
         if (k_atlas_size_candidates[ci] < initial) continue;
 
         int sz = k_atlas_size_candidates[ci];
-        uint8_t *buf = (uint8_t*)calloc(sz * sz, 1);
+        uint8_t *buf = calloc(sz * sz, 1);
         if (!buf) continue;
 
         stbtt_pack_context pc;
@@ -835,7 +835,7 @@ static int naui_bake_font_size(
         return 0;
     }
 
-    bake->atlas = mgfx_create_image({
+    bake->atlas = mgfx_create_image(&(mgfx_image_create_info){
         .type   = MGFX_IMAGE_TYPE_2D,
         .format = MGFX_FORMAT_R8_UNORM,
         .usage  = MGFX_IMAGE_USAGE_COLOR_ATTACHMENT,
@@ -846,7 +846,7 @@ static int naui_bake_font_size(
 
     free(alpha);
 
-    bake->ranges = (Naui_FontRange*)malloc(range_count * sizeof(Naui_FontRange));
+    bake->ranges = malloc(range_count * sizeof(Naui_FontRange));
     if (!bake->ranges)
     {
         for (int i = 0; i < range_count; i++) free(tmp_ranges[i].chardata_for_range);
@@ -885,7 +885,7 @@ void naui_load_font(uint8_t index, const char *file_name)
     fseek(f, 0, SEEK_END);
     long size = ftell(f);
     fseek(f, 0, SEEK_SET);
-    uint8_t *ttf_buf = (uint8_t*)malloc(size);
+    uint8_t *ttf_buf = malloc(size);
     if (!ttf_buf) { fclose(f); return; }
     fread(ttf_buf, 1, size, f);
     fclose(f);

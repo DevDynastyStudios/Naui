@@ -1,7 +1,7 @@
 #define NAUI_LOCALIZATION_NAME_SIZE 128
 
 static Naui_Language g_current_language;
-static Naui_List<Naui_LanguageMeta> g_meta_cache = {};
+static Naui_List(Naui_LanguageMeta) g_meta_cache = NULL;
 static bool g_current_loaded = false;
 static bool g_meta_cache_init = false;
 
@@ -274,12 +274,13 @@ void naui_localization_reload_meta_cache(void)
 {
 	if (g_meta_cache_init)
 	{
-		for (ptrdiff_t i = 0; i < g_meta_cache.length; ++i)
+		for (ptrdiff_t i = 0; i < naui_list_len(g_meta_cache); ++i)
 		{
 			naui_meta_free_(&g_meta_cache[i]);
 		}
 
-		naui_list_free(&g_meta_cache);
+		naui_list_free(g_meta_cache);
+		g_meta_cache = NULL;
 	}
 
 	g_meta_cache_init = true;
@@ -293,9 +294,9 @@ void naui_localization_reload_meta_cache(void)
 	}
 
 	const char* extensions[] = { ".lang", NULL };
-	Naui_List<Naui_DirEntry> entries = naui_directory_filter(lang_dir, NULL, extensions, 1);
+	Naui_List(Naui_DirEntry) entries = naui_directory_filter(lang_dir, NULL, extensions, 1);
 	NAUI_PATH_FREE(lang_dir);
-	for (ptrdiff_t i = 0; i < entries.length; ++i)
+	for (ptrdiff_t i = 0; i < naui_list_len(entries); ++i)
 	{
 		if (entries[i].is_directory)
 			continue;
@@ -310,14 +311,14 @@ void naui_localization_reload_meta_cache(void)
 		naui_meta_copy_(&meta, &lang.meta);
 		free(meta.filename);
 		meta.filename = naui_strdup_(full_path);
-		naui_list_push(&g_meta_cache, meta);
+		naui_list_push(g_meta_cache, meta);
 		naui_localization_free(&lang);
 	}
 
 	naui_directory_filter_free(entries);
 }
 
-Naui_List<Naui_LanguageMeta> naui_localization_get_languages(void)
+Naui_List(Naui_LanguageMeta) naui_localization_get_languages(void)
 {
 	if (!g_meta_cache_init)
 		naui_localization_reload_meta_cache();
