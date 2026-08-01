@@ -23,16 +23,16 @@ local COLOR = {
     cyan   = "\27[36m",
 }
 
-local function log(level, color, out, fmt, ...)
-    out:write(("%s%s[%s]%s " .. fmt .. "\n"):format(
-        COLOR.bold, color, level, COLOR.reset, ...
+local function log(level, color, fmt, ...)
+    io.stderr:write(("%s%s[%s]%s " .. fmt .. "\n"):format(
+        COLOR.bold, color, level, COLOR.reset, ..., COLOR.reset
     ))
 end
 
-local function info(fmt, ...)    log("INFO", COLOR.cyan, io.stdout, fmt, ...) end
-local function success(fmt, ...) log("SUCCESS", COLOR.green, io.stdout, fmt, ...) end
-local function warn(fmt, ...)    log("WARN", COLOR.yellow, io.stdout, fmt, ...) end
-local function fail(fmt, ...)    log("ERROR", COLOR.red, io.stderr, fmt, ...) end
+local function info(fmt, ...)    log("INFO", COLOR.cyan, fmt, ...) end
+local function success(fmt, ...) log("SUCCESS", COLOR.green, fmt, ...) end
+local function warn(fmt, ...)    log("WARN", COLOR.yellow, fmt, ...) end
+local function fail(fmt, ...)    log("ERROR", COLOR.red, fmt, ...) end
 
 local function exists(path)
     local f = io.open(path, "rb")
@@ -131,7 +131,7 @@ local function output_path(release)
 end
 
 local function opt_flags(release)
-    return release and { "-O2" } or {}
+    return release and { "-O2 -s" } or { "-O0 -g" }
 end
 
 local function compile(release)
@@ -175,7 +175,7 @@ local function run(release)
         return 1
     end
 
-    info("Running '%s'...", out)
+    info("Running '%s'...\n", out)
 
     local ok
     if IS_WINDOWS then
@@ -184,6 +184,7 @@ local function run(release)
         ok = os.execute("./" .. out)
     end
 
+    io.stderr:write("\n")
     if ran_ok(ok) then
         success("Program exited successfully")
     else
