@@ -153,6 +153,7 @@ int main(int argc, char **argv) {
                         "  release: enables release mode (by default, build uses debug mode)\n");
                 return 0;
             }
+            else if (naui_cstr_strcmp(argv[i], "compile", true) == 0) return_code = cmd_compile(&arena, cmd, COMPILE_MODE_DEBUG);
             else if (naui_cstr_strcmp(argv[i], "run", true) == 0) return_code = cmd_run_target(&arena, cmd);
             else if (naui_cstr_strcmp(argv[i], "clean", true) == 0) return_code = cmd_clean(&arena, cmd);
             else if (naui_cstr_strcmp(argv[i], "release", true) == 0) {
