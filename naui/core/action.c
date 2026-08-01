@@ -1,10 +1,3 @@
-#include "action.h"
-#include "utils/arena.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
 #define NAUI_ACTION_DEFAULT_CAPACITY 64
 #define NAUI_ACTION_FATAL(cond, msg) do { if(cond) { fprintf(stderr, "[naui action] %s\n", msg); abort(); } } while(0)
 

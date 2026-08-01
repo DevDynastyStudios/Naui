@@ -1,7 +1,3 @@
-#pragma once
-
-#include <stb/stb_ds.h>
-
 #define Naui_Map(type)                      type*
 
 #define naui_strmap_get(map, key)           shget(map, key)

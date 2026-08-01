@@ -1,14 +1,3 @@
-#include "localization.h"
-#include "utils/hash.h"
-#include "utils/string.h"
-#include "filesystem/filesystem.h"
-#include "filesystem/iterator.h"
-#include "serialization/json.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
 #define NAUI_LOCALIZATION_NAME_SIZE 128
 
 static Naui_Language g_current_language;

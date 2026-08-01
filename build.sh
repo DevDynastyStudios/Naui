@@ -1,4 +1,6 @@
-#!/bin/sh
+cc_flags="-DMGFX_OPENGL -I. -Inaui/vendor -Iapp"
+ld_flags="-lX11 -lEGL -lm"
 
-premake5 gmake
-make -j4
+profile="Debug"
+
+clang $cc_flags app/main.c -o build/$profile/NauiApp $ld_flags

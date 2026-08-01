@@ -1,11 +1,3 @@
-#include "log.h"
-
-#include <assert.h>
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-
 #define NAUI_LOG_COLOR_WHT "\033[0;97m"
 #define NAUI_LOG_COLOR_GRN "\033[0;92m"
 #define NAUI_LOG_COLOR_YEL "\033[0;93m"

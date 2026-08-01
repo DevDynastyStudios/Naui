@@ -1,6 +1,3 @@
-#include "time.h"
-#include <magma/mgapp.h>
-
 float naui_time(void)
 {
     return mg_app_time();

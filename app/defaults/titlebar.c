@@ -1,7 +1,3 @@
-#include "titlebar.h"
-#include "widgets/widgets.h"
-#include <naui/naui.h>
-
 static void naui_render_titlebar_icon_button(Naui_Image *image, Leaf_ID id, Leaf_Color fg_color, Leaf_Color bg_color, void (*event)(void))
 {
 	const float dpi_scale = naui_app_dpi_scale();

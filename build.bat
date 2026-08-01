@@ -1,15 +1,8 @@
 @echo off
 
-set PROJECT=NauiApp
+set cc_flags="-DMGFX_D3D11 -I. -Inaui/vendor -Iapp"
+set ld_flags="-luser32 -ldxgi -ld3d11 -ld3dcompiler -ldxguid"
 
-set CONFIG=Debug
-if /I "%~1"=="-release" (
-    set CONFIG=Release
-    shift
-) else if /I "%~1"=="-r" (
-    set CONFIG=Release
-    shift
-)
+set profile="Debug"
 
-premake5 vs2022
-msbuild "%PROJECT%.sln" /p:Configuration=%CONFIG%
+x86_64-w64-mingw32-gcc %cc_flags% app/main.c -o build/%profile%/NauiApp.exe %ld_flags%

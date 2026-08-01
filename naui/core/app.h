@@ -1,7 +1,3 @@
-#pragma once
-
-#include "base.h"
-
 #define NAUI_DPI(x) (x * naui_app_dpi_scale())
 
 typedef void (*Naui_AppEvent)(void);

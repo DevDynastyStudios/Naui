@@ -1,11 +1,7 @@
 #if !defined(_WIN32) || !defined(_WIN64)
-#include "uuid.h"
-#include <stddef.h>
-#include <string.h>
 
 #if defined(__linux__)
 #	include <sys/random.h>
-#	include <stdio.h>
 
 static uint64_t platform_random64(void)
 {

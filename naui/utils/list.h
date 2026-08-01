@@ -1,7 +1,3 @@
-#pragma once
-
-#include <stb/stb_ds.h>
-
 #define Naui_List(type) type *
 #define naui_list_len(arr)              arrlen(arr)
 #define naui_list_push(arr, data)       arrput(arr, data)

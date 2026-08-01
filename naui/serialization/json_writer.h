@@ -1,9 +1,3 @@
-#pragma once
-
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-
 #define NAUI_JSON_WRITER_MAX_DEPTH 64
 
 typedef struct

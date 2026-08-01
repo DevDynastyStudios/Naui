@@ -1,20 +1,3 @@
-#include "base.h"
-#include "asset_manager.h"
-#include "core/log.h"
-#include "utils/list.h"
-#include "utils/arena.h"
-#include "filesystem/filesystem.h"
-
-#include <stdio.h>
-#if NAUI_WINDOWS
-#include <dirent/dirent.h>
-#else
-#include <dirent.h>
-#include <unistd.h>
-#endif
-#include <stb/stb_image.h>
-#include <stb/stb_rect_pack.h>
-
 #define NAUI_IMAGE_ATLAS_SIZE 4096
 
 static Naui_ImageHashEntry *image_hm = NULL;

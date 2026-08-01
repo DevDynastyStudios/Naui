@@ -1,6 +1,3 @@
-#include "input.h"
-#include <magma/mgapp.h>
-
 bool naui_key_down(Naui_Key key)
 {
     return mg_app_key_down((mg_key)key);

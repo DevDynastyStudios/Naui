@@ -1,11 +1,3 @@
-#pragma once
-
-#include "utils/list.h"
-#include "filesystem.h"
-
-#include <stdbool.h>
-#include <miniz/miniz.h>
-
 #define NAUI_ARCHIVE_MAGIC "NauiPak"
 #define NAUI_ARCHIVE_MAGIC_SIZE (sizeof(NAUI_ARCHIVE_MAGIC) - 1)
 #define NAUI_ARCHIVE_VERSION 1

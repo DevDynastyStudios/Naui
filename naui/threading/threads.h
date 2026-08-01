@@ -1,9 +1,3 @@
-#pragma once
-
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-
 typedef struct Naui_ThreadImpl* Naui_Thread;
 typedef struct Naui_MutexImpl* Naui_Mutex;
 typedef struct Naui_CondImpl* Naui_Cond;

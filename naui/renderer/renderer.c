@@ -1,18 +1,3 @@
-#include "renderer.h"
-
-#include "core/app.h"
-#include "math/math.h"
-
-#include <stb/stb_truetype.h>
-#include <magma/mgapp.h>
-#include <magma/mgfx.h>
-
-#include "shaders/base.glsl.h"
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <math.h>
-
 #define NAUI_RENDERER_MAX_VERTICES (1 << 18)
 #define NAUI_RENDERER_MAX_INDICES (NAUI_RENDERER_MAX_VERTICES * 6 / 4)
 #define NAUI_RENDERER_CORNER_SEGMENTS 8
@@ -883,8 +868,6 @@ static int naui_bake_font_size(
     bake->loaded     = true;
     return 1;
 }
-
-#include <filesystem/filesystem.h>
 
 void naui_load_font(uint8_t index, const char *file_name)
 {

@@ -1,11 +1,3 @@
-#include "shortcut.h"
-#include "time.h"
-#include "utils/list.h"
-#include "utils/string.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-
 #define NAUI_SHORTCUT_FATAL_IF(cond, msg) do { if(cond) { fprintf(stderr, "[naui shortcut] %s\n", msg); abort(); } } while(0)
 
 typedef struct

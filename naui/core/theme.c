@@ -1,10 +1,3 @@
-#include "theme.h"
-#include "utils/map.h"
-#include "utils/arena.h"
-#include "serialization/json.h"
-
-#include <stdio.h>
-
 #define NAUI_THEME_KEY_SCRATCH_SIZE (1 << 13)
 
 typedef struct { char *key; float value; } Naui_ThemeFloatEntry;
@@ -49,13 +42,14 @@ static Naui_Color naui_color_from_hex(const char *hex)
 void naui_themes_initialize(void) { naui_arena_init(&tm.key_arena, NAUI_THEME_KEY_SCRATCH_SIZE); }
 void naui_themes_shutdown(void) { naui_arena_free(&tm.key_arena); }
 
+// TODO(doomguy): move this into asset_manager
 void naui_load_theme(const char *file_name)
 {
     naui_arena_reset(&tm.key_arena);
 
     char final_file_name[64];
     strncpy(final_file_name, file_name, strlen(file_name) + 1);
-    strncat(final_file_name, ".json", sizeof(final_file_name));
+    strncat(final_file_name, ".json", sizeof(final_file_name) - 1);
 	Naui_Path json_path = NAUI_PATH("Assets/Themes", final_file_name);
     Naui_Json json = naui_json_parse_file(json_path);
 	NAUI_PATH_FREE(json_path);

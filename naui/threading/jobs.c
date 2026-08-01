@@ -1,10 +1,3 @@
-#include "jobs.h"
-#include "threads.h"
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-
 #define NAUI_JOB_ERR_BUF_SIZE 128
 
 typedef uint8_t Naui_JobSlotState;

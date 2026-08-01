@@ -1,9 +1,3 @@
-#pragma once
-
-#include "base.h"
-#include "utils/list.h"
-#include "utils/string.h"
-
 #ifndef NAUI_PATH_MAX
 #	if defined(_WIN32) || defined(_WIN64)
 #		define NAUI_PATH_MAX 32768

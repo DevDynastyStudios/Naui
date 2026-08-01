@@ -1,13 +1,3 @@
-#include "widgets.h"
-#include "core/panel.h"
-#include "core/input.h"
-#include "core/theme.h"
-#include "math/math.h"
-
-#include <stdio.h>
-#include <string.h>
-#include <math.h>
-
 typedef struct
 {
 	float fraction;

@@ -1,7 +1,3 @@
-#pragma once
-#include "base.h"
-#include "math/vec2.h"
-
 #ifndef NAUI_PANEL_BORDER_COLOR_TAG
     #define NAUI_PANEL_BORDER_COLOR_TAG "naui_panel_border_color"
 #endif

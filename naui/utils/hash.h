@@ -1,8 +1,3 @@
-#pragma once
-
-#include <stddef.h>
-#include <stdint.h>
-
 #define NAUI_FNV_OFFSET 14695981039346656037ull
 #define NAUI_FNV_PRIME 1099511628211ull
 

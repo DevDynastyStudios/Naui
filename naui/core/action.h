@@ -1,6 +1,6 @@
 /*
 
-NOTE(chimpchi): one quick i should mention.
+NOTE(chimpchi): one quick thing i should mention.
 
 if an action fails, it will return false, and when that happens it doesn't push
 the data onto the undo stack. so you have to manually free data if you expect
@@ -10,11 +10,6 @@ also if you don't handle the undo case properly if the execute failed, then you 
 some fucky behaviour...
 
 */
-
-#pragma once
-
-#include <stdbool.h>
-#include <stddef.h>
 
 typedef bool (*Naui_ActionFn)(void* data);
 typedef void (*Naui_ActionDestroyFn)(void* data);

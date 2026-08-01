@@ -1,5 +1,4 @@
 #if defined(_WIN32) || defined(_WIN64)
-#include "uuid.h"
 
 #ifndef WIN32_LEAN_AND_MEAN
 #	define WIN32_LEAN_AND_MEAN

@@ -1,17 +1,3 @@
-#include "panel.h"
-#include "app.h"
-#include "theme.h"
-#include "input.h"
-#include "renderer/asset_manager.h"
-
-#include "math/math.h"
-
-#include "utils/map.h"
-#include "utils/list.h"
-
-#include <leaf/leaf.h>
-#include <stdio.h>
-
 #define NAUI_PANEL_DEFAULT_WIDTH 1280
 #define NAUI_PANEL_DEFAULT_HEIGHT 720
 
@@ -1348,8 +1334,6 @@ void naui_render_panels_and_viewport(void)
 }
 
 #pragma region Serialization
-#include <serialization/json.h>
-
 static inline const char *naui_get_panel_type(Naui_PanelNode *node)
 {
     return node->type.type_name;

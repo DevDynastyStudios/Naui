@@ -1,5 +1,4 @@
 #pragma once
-#include <leaf/leaf.h>
 
 #define NAUI_TOOLTIP(anchor_id) \
     for (bool naui__tt_ = naui_tooltip_begin((anchor_id)); \

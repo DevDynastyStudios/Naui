@@ -1,9 +1,3 @@
-#pragma once
-
-#include <stdint.h>
-#include <stdbool.h>
-#include <stdio.h>
-
 typedef uint64_t Naui_UUID;
 
 #define NAUI_UUID_NULL ((Naui_UUID)0)

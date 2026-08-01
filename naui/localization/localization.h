@@ -1,10 +1,3 @@
-#pragma once
-
-#include "utils/map.h"
-#include "utils/list.h"
-#include <stdint.h>
-#include <stdbool.h>
-
 #define NAUI_TR(key) naui_localization_get(naui_localization_get_current(), key)
 
 typedef uint8_t Naui_TextDirection;

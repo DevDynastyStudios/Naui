@@ -1,10 +1,3 @@
-#pragma once
-
-#include "base.h"
-#include "math/vec2.h"
-#include "math/vec4.h"
-#include <leaf/leaf.h>
-
 typedef Leaf_Color Naui_Color;
 
 typedef struct

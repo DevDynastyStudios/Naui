@@ -1,7 +1,3 @@
-#include "arena.h"
-#include <stdlib.h>
-#include <string.h>
-
 #define NAUI_ARENA_BLOCK_SIZE (32 * 1024)
 
 typedef struct Naui_ArenaBlock

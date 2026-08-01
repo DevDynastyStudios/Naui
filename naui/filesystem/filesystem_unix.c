@@ -4,19 +4,11 @@
 #define _GNU_SOURCE
 #endif
 
-#include "filesystem.h"
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include <errno.h>
-#include <unistd.h>
-#include <dirent.h>
 #include <sys/stat.h>
 #include <sys/file.h>
 #include <fcntl.h>
 #include <limits.h>
-#include <stdarg.h>
 
 #ifdef __APPLE__
 #include <mach-o/dyld.h>

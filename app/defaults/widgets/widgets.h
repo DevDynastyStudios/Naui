@@ -1,10 +1,5 @@
 #pragma once
 
-#include <stdint.h>
-#include <stdbool.h>
-
-#include "utils/list.h"
-
 void naui_widgets_reset(void);
 
 void naui_text(const char* text);

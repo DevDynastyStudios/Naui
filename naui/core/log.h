@@ -1,7 +1,3 @@
-#pragma once
-
-#include "base.h"
-
 enum
 {
     NAUI_LOG_DEBUG,

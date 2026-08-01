@@ -4,14 +4,7 @@
 #define _GNU_SOURCE
 #endif
 
-#include "iterator.h"
-#include "utils/string.h"
-
-#include <stdlib.h>
-#include <string.h>
-#include <dirent.h>
 #include <sys/stat.h>
-#include <stdio.h>
 
 typedef struct
 {

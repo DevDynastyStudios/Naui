@@ -1,11 +1,3 @@
-#pragma once
-
-#include <stdbool.h>
-#include <stddef.h>
-
-#include "core/input.h"
-#include "utils/string.h"
-
 typedef uint32_t Naui_ShortcutCtx;
 typedef void (*Naui_ShortcutFn)(void *user_data);
 

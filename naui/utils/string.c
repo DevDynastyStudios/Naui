@@ -1,9 +1,3 @@
-#include "string.h"
-
-#include <string.h>
-#include <assert.h>
-#include <ctype.h>
-
 bool naui_sv_valid(Naui_StringView s) {
     return (s.len == 0 || !s.data) ? false : true;
 }
@@ -131,6 +125,7 @@ Naui_StringView naui_sv_substring(Naui_StringView src, size_t start, size_t leng
 
 Naui_StringView naui_sv_replace(Naui_StringView src, Naui_StringView find, Naui_StringView replace) {
     // TODO(doomguy)
+    return (Naui_StringView){0};
 }
 
 bool naui_sv_split_by_delim(Naui_StringView src, Naui_StringView *s1, Naui_StringView *s2, char delim) {
@@ -143,6 +138,8 @@ bool naui_sv_split_by_delim(Naui_StringView src, Naui_StringView *s1, Naui_Strin
         *s1 = (Naui_StringView){ .data = src.data, .len = i };
         *s2 = (Naui_StringView){ .data = src.data + i + 1, .len = src.len - i - 1 };
     } else return false;
+
+    return false;
 }
 
 // functions needed by iterator_win32 and iterator_unix

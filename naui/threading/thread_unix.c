@@ -1,9 +1,6 @@
 #if !defined(_WIN32) && !defined(_WIN64)
-#include "threads.h"
 
 #include <pthread.h>
-#include <stdlib.h>
-#include <stdint.h>
 #include <time.h>
 #include <errno.h>
 

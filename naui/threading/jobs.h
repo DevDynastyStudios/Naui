@@ -1,9 +1,3 @@
-#pragma once
-
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-
 #define NAUI_JOB_INVALID ((Naui_JobHandle){ 0 })
 
 typedef struct { uint32_t _id; } Naui_JobHandle;

@@ -1,8 +1,3 @@
-#include "json_reader.h"
-
-#include <string.h>
-#include <stdlib.h>
-
 #pragma region Static Functions
 static bool is_whitespace(char c)
 {
@@ -167,7 +162,7 @@ static Naui_JsonToken parse_literal(Naui_JsonReader* r, const char* word, size_t
 	return token_type;
 }
 
-static void push_scope(Naui_JsonReader* r, bool is_object)
+static void reader_push_scope(Naui_JsonReader* r, bool is_object)
 {
 	if (r->_depth < NAUI_JSON_READER_MAX_DEPTH)
 	{
@@ -177,7 +172,7 @@ static void push_scope(Naui_JsonReader* r, bool is_object)
 	}
 }
 
-static void pop_scope(Naui_JsonReader* r)
+static void reader_pop_scope(Naui_JsonReader* r)
 {
 	if (r->_depth > 0)
 		--r->_depth;
@@ -372,7 +367,7 @@ Naui_JsonToken naui_json_reader_next(Naui_JsonReader* reader)
 			return set_error(r, "unexpected '}'");
 
 		advance(r);
-		pop_scope(r);
+		reader_pop_scope(r);
 		r->_expect_key = r->_depth > 0 && r->_in_object[r->_depth - 1];
 		r->token = NAUI_JSON_TOKEN_OBJECT_END;
 		return NAUI_JSON_TOKEN_OBJECT_END;
@@ -384,7 +379,7 @@ Naui_JsonToken naui_json_reader_next(Naui_JsonReader* reader)
 			return set_error(r, "unexpected ']'");
 
 		advance(r);
-		pop_scope(r);
+		reader_pop_scope(r);
 		r->_expect_key = r->_depth > 0 && r->_in_object[r->_depth - 1];
 		r->token = NAUI_JSON_TOKEN_ARRAY_END;
 		return NAUI_JSON_TOKEN_ARRAY_END;
@@ -433,7 +428,7 @@ Naui_JsonToken naui_json_reader_next(Naui_JsonReader* reader)
 		case '{':
 		{
 			advance(r);
-			push_scope(r, true);
+			reader_push_scope(r, true);
 			r->_needs_comma[r->_depth - 1] = false;
 			r->_expect_key = true;
 			r->token = NAUI_JSON_TOKEN_OBJECT_BEGIN;
@@ -442,7 +437,7 @@ Naui_JsonToken naui_json_reader_next(Naui_JsonReader* reader)
 		case '[':
 		{
 			advance(r);
-			push_scope(r, false);
+			reader_push_scope(r, false);
 			r->_needs_comma[r->_depth - 1] = false;
 			r->_expect_key = false;
 			r->token = NAUI_JSON_TOKEN_ARRAY_BEGIN;

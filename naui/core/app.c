@@ -1,15 +1,3 @@
-#include "app.h"
-#include "theme.h"
-#include "shortcut.h"
-#include "renderer/asset_manager.h"
-#include "utils/list.h"
-#include "utils/arena.h"
-
-#include <stddef.h>
-
-#include <leaf/leaf.h>
-#include <magma/mgapp.h>
-
 #define NAUI_BASE_DEFERRED_ARG_ARENA_SIZE (1 << 8)
 
 typedef struct
@@ -69,11 +57,13 @@ static void render_leaf_cmd_list(const Leaf_RenderCmdList *list)
                 break;
             }
             case LEAF_RENDER_CMD_RECT_LINES:
-            Naui_Vec2 position = (Naui_Vec2){cmd.bounding_box.x, cmd.bounding_box.y};
-            Naui_Vec2 size = (Naui_Vec2){cmd.bounding_box.width, cmd.bounding_box.height};
-            if (cmd.color.type == LEAF_GRADIENT_LINEAR_COLOR_FILL)
-                naui_draw_gradient_rect(position, size, (Naui_Gradient){ cmd.color.color1, cmd.color.color2, cmd.color.percent1, cmd.color.percent2, cmd.color.angle }, cmd.rect.line_width, cmd.rect.rounding, (Naui_CornerFlags)cmd.rect.rounding_corners, (Naui_SideFlags)cmd.rect.sides);
-            else naui_draw_rect(position, size, cmd.color.color1, cmd.rect.line_width, cmd.rect.rounding, (Naui_CornerFlags)cmd.rect.rounding_corners, (Naui_SideFlags)cmd.rect.sides);
+            {
+                Naui_Vec2 position = (Naui_Vec2){cmd.bounding_box.x, cmd.bounding_box.y};
+                Naui_Vec2 size = (Naui_Vec2){cmd.bounding_box.width, cmd.bounding_box.height};
+                if (cmd.color.type == LEAF_GRADIENT_LINEAR_COLOR_FILL)
+                    naui_draw_gradient_rect(position, size, (Naui_Gradient){ cmd.color.color1, cmd.color.color2, cmd.color.percent1, cmd.color.percent2, cmd.color.angle }, cmd.rect.line_width, cmd.rect.rounding, (Naui_CornerFlags)cmd.rect.rounding_corners, (Naui_SideFlags)cmd.rect.sides);
+                else naui_draw_rect(position, size, cmd.color.color1, cmd.rect.line_width, cmd.rect.rounding, (Naui_CornerFlags)cmd.rect.rounding_corners, (Naui_SideFlags)cmd.rect.sides);
+            }
             break;
             case LEAF_RENDER_CMD_IMAGE:
             {

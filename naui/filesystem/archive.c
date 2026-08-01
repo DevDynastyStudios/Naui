@@ -1,9 +1,3 @@
-#include "archive.h"
-
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-
 #define NAUI_ARCHIVE_NAME_MAX 512
 
 typedef struct

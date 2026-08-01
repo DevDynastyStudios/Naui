@@ -1,5 +1,3 @@
-#pragma once
-
 #include <stdint.h>
 
 static const uint32_t base_spirv_vert[] = {

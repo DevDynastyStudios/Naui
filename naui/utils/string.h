@@ -1,11 +1,6 @@
 // TODO(doomguy): implement sving builders
 // TODO(doomguy): make allocators so you don't have to rely on arenas
 
-#pragma once
-
-#include "base.h"
-#include "utils/arena.h"
-
 // this is convenient for normal C sving literals
 #define NAUI_STR(cstr) (Naui_StringView){ .data = (cstr), .len = sizeof((cstr)) - 1 }
 

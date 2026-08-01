@@ -1,9 +1,3 @@
-#pragma once
-
-#include "base.h"
-#include <stddef.h>
-#include <stdint.h>
-
 typedef struct Naui_ArenaBlock Naui_ArenaBlock;
 
 typedef struct Naui_Arena

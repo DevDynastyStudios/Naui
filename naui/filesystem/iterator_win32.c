@@ -10,13 +10,7 @@
 #	define _UNICODE
 #endif
 
-#include "iterator.h"
-#include "utils/string.h"
-
 #include <windows.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
 
 #define NAUI_WIN32_NAME_MAX MAX_PATH
 

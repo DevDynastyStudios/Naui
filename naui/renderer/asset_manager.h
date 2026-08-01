@@ -1,9 +1,3 @@
-#pragma once
-
-#include "base.h"
-#include "utils/map.h"
-#include "renderer/renderer.h"
-
 typedef struct
 {
     char *key;

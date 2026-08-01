@@ -1,9 +1,3 @@
-#include <naui.h>
-#include "defaults/widgets/widgets.h"
-#include "defaults/widgets/tooltip.h"
-
-#include <stdio.h>
-
 static void on_attach(void)
 {
     Naui_PanelID this = naui_current_panel();

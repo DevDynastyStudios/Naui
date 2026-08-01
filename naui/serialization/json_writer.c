@@ -1,10 +1,3 @@
-#include "json_writer.h"
-
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <math.h>
-
 #pragma region Static Functions
 static void writer_putc(Naui_JsonWriter* writer, char c)
 {
@@ -132,7 +125,7 @@ static void writer_string_escaped(Naui_JsonWriter* writer, const char* str, size
 	writer_putc(writer, '"');
 }
 
-static void push_scope(Naui_JsonWriter* writer, bool is_object)
+static void writer_push_scope(Naui_JsonWriter* writer, bool is_object)
 {
 	if (writer->_depth < NAUI_JSON_WRITER_MAX_DEPTH)
 	{
@@ -144,7 +137,7 @@ static void push_scope(Naui_JsonWriter* writer, bool is_object)
 		writer->has_error = true;
 }
 
-static void pop_scope(Naui_JsonWriter* writer)
+static void writer_pop_scope(Naui_JsonWriter* writer)
 {
 	if (writer->_depth > 0)
 		--writer->_depth;
@@ -172,13 +165,13 @@ void naui_json_writer_object_begin(Naui_JsonWriter* writer)
 {
 	writer_comma_and_indent(writer);
 	writer_putc(writer, '{');
-	push_scope(writer, true);
+	writer_push_scope(writer, true);
 }
 
 void naui_json_writer_object_end(Naui_JsonWriter* writer)
 {
 	bool had_content = writer->_depth > 0 && writer->_needs_comma[writer->_depth - 1];
-	pop_scope(writer);
+	writer_pop_scope(writer);
 	if (had_content && writer->is_pretty)
 		writer_indent(writer);
 
@@ -189,13 +182,13 @@ void naui_json_writer_array_begin(Naui_JsonWriter* writer)
 {
 	writer_comma_and_indent(writer);
 	writer_putc(writer, '[');
-	push_scope(writer, false);
+	writer_push_scope(writer, false);
 }
 
 void naui_json_writer_array_end(Naui_JsonWriter* writer)
 {
 	bool had_content = writer->_depth > 0 && writer->_needs_comma[writer->_depth - 1];
-	pop_scope(writer);
+	writer_pop_scope(writer);
 	if (had_content && writer->is_pretty)
 		writer_indent(writer);
 

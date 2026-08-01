@@ -1,6 +1,3 @@
-#pragma once
-#include <math.h>
-
 static inline float naui_lerp(float a, float b, float t)
 {
 	return a + t * (b - a);
