@@ -521,7 +521,7 @@ Naui_StringView naui_file_filename(const Naui_Path path)
 
 	const char* start = last ? last + 1 : path.data;
 	size_t len = path.length - (size_t)(start - path.data);
-	return (Naui_StringView){ start, len };
+	return (Naui_StringView){ (char*)start, len };
 }
 
 Naui_StringView naui_file_stem(const Naui_Path path)
@@ -544,7 +544,7 @@ Naui_StringView naui_file_extension(const Naui_Path path)
 	if (!filename.data)
 		return (Naui_StringView){ NULL, 0 };
 
-	const char* dot = strrchr(filename.data, '.');
+	char* dot = strrchr(filename.data, '.');
 	if (!dot || dot == filename.data)
 		return (Naui_StringView){ NULL, 0 };
 

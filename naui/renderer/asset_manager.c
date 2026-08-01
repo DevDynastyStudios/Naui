@@ -32,7 +32,7 @@ void naui_asset_manager_load_images(const char *const images_path)
         getcwd(cwd, sizeof(cwd));
 #endif
 
-        while (dp = readdir(dir))
+        while ((dp = readdir(dir)))
         {
             if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0) continue;
 
@@ -48,7 +48,7 @@ void naui_asset_manager_load_images(const char *const images_path)
                 Naui_FileHandle file_handle;
                 naui_file_open(&file_handle, NAUI_PATH(path), NAUI_FILE_READ);
                 const size_t file_len = naui_file_size(NAUI_PATH(path));
-                char *file_data = naui_arena_alloc(&temp_arena, file_len);
+                uint8_t *file_data = naui_arena_alloc(&temp_arena, file_len);
                 naui_file_read(&file_handle, file_data, file_len);
                 naui_file_close(&file_handle);
 

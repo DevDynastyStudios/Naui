@@ -1421,6 +1421,7 @@ bool naui_serialize_viewport(const char *file_path)
     naui_serialize_panel_node(&json, root, pm.main_viewport);
     naui_json_write_file(root, NAUI_PATH(file_path), true);
     naui_json_free(&json);
+    return true;
 }
 
 static Naui_PanelNode *naui_deserialize_panel_node(Naui_JsonValue *json_parent)
@@ -1494,6 +1495,7 @@ bool naui_deserialize_viewport(const char *file_path)
         naui_set_main_viewport((Naui_PanelID)root_node);
 
     naui_json_free(&json);
+    return true;
 }
 
 #pragma endregion Serialization
