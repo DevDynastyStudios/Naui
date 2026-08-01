@@ -5,7 +5,7 @@ typedef struct {
 
 typedef char* Naui_StringBuilder;
 
-#define naui_string_lit(cstr) (naui_string){ (char*)(cstr), sizeof(cstr) - 1 } // Pretty damn convenient
+#define naui_string_lit(cstr) (Naui_String){ (char*)(cstr), sizeof(cstr) - 1 } // Pretty damn convenient
 #define naui_string_spread(s) (int)(s).len, (s).data
 #define naui_string_fmt "%.*s"
 NAUI_API bool naui_string_is_valid(Naui_String string);
