@@ -1,4 +1,6 @@
 // header files
+#include "base.h"
+
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,12 +12,11 @@
 #include <math.h>
 #if NAUI_WINDOWS
 #include "vendor/dirent/dirent.h"
+#include <direct.h>
 #else
 #include <unistd.h>
 #include <dirent.h>
 #endif
-
-#include "base.h"
 
 #include "vendor/stb/stb.c"
 #include "vendor/miniz/miniz.c"

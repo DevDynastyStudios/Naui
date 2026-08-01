@@ -25,7 +25,12 @@ void naui_asset_manager_load_images(const char *const images_path)
         }
 
         char path[256] = {0};
-        char cwd[512]; getcwd(cwd, sizeof(cwd));
+        char cwd[512];
+#if NAUI_WINDOWS
+        _getcwd(cwd, sizeof(cwd));
+#else
+        getcwd(cwd, sizeof(cwd));
+#endif
 
         while (dp = readdir(dir))
         {

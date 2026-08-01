@@ -6,23 +6,7 @@
 #	define NAUI_MACOS 1
 #endif
 
-#ifdef NAUI_DLL
-#	ifdef NAUI_EXPORT
-#		ifdef _MSC_VER
-#			define NAUI_API __declspec(dllexport)
-#		else
-#			define NAUI_API __attribute__((visibility("default")))
-#		endif
-#	else
-#		ifdef _MSC_VER
-#			define NAUI_API __declspec(dllimport)
-#		else
-#			define NAUI_API
-#		endif
-#	endif
-#else
-#	define NAUI_API
-#endif
+#define NAUI_API
 
 #if defined(_MSC_VER)
 #	define NAUI_THREAD_LOCAL __declspec(thread)
@@ -38,4 +22,8 @@
 #	define NAUI_NODISCARD __attribute__((warn_unused_result))
 #else
 #	define NAUI_NODISCARD
+#endif
+
+#if defined(__clang__) && defined(_WIN32)
+#pragma clang diagnostic ignored "-Wdeprecated"
 #endif
