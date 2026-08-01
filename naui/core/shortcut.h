@@ -36,8 +36,8 @@ typedef struct
 typedef struct { Naui_Shortcut wrapped; } Naui_ShortcutWrapper;
 #define naui_register_shortcut(name, ...) __naui_register_shortcut((name), (Naui_ShortcutWrapper){ __VA_ARGS__ }.wrapped)
 
-void __naui_register_shortcut(Naui_StringView name, Naui_Shortcut shortcut);
-void naui_unregister_shortcut(Naui_StringView name);
+void __naui_register_shortcut(Naui_String name, Naui_Shortcut shortcut);
+void naui_unregister_shortcut(Naui_String name);
 
 void naui_shortcut_init(Naui_ShortcutKind kind);
 

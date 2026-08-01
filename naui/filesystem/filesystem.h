@@ -100,16 +100,16 @@ bool naui_file_rename(const Naui_Path old_path, const Naui_Path new_path);
 NAUI_NODISCARD Naui_Path naui_file_hide(const Naui_Path path, bool hidden);
 bool naui_file_is_hidden(const Naui_Path path);
 
-/* Returns a Naui_StringView into path.data. */
-NAUI_NODISCARD Naui_StringView naui_file_filename(const Naui_Path path);
+/* Returns a Naui_String into path.data. */
+NAUI_NODISCARD Naui_String naui_file_filename(const Naui_Path path);
 
-/* Returns the filename without its extension, as a Naui_StringView.
- * Returns an empty Naui_StringView if there is no stem. */
-NAUI_NODISCARD Naui_StringView naui_file_stem(const Naui_Path path);
+/* Returns the filename without its extension, as a Naui_String.
+ * Returns an empty Naui_String if there is no stem. */
+NAUI_NODISCARD Naui_String naui_file_stem(const Naui_Path path);
 
-/* Returns the extension including the dot, as a Naui_StringView.
- * Returns an empty Naui_StringView if there is no extension. */
-NAUI_NODISCARD Naui_StringView naui_file_extension(const Naui_Path path);
+/* Returns the extension including the dot, as a Naui_String.
+ * Returns an empty Naui_String if there is no extension. */
+NAUI_NODISCARD Naui_String naui_file_extension(const Naui_Path path);
 
 bool naui_directory_create(const Naui_Path path);
 bool naui_directory_remove(const Naui_Path path);
