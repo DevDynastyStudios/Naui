@@ -1749,6 +1749,7 @@ bool mg_app_maximized(void)
         if (horz && vert)
             return true;
     }
+    return false;
 }
 
 uint32_t mg_app_dpi(void)
