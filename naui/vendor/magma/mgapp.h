@@ -697,7 +697,7 @@ static LRESULT CALLBACK mg_win32_process_message(HWND hwnd, uint32_t msg, WPARAM
             mg_app_input_process_key(key, pressed);
             mg_app_event event = {
                 .key = key,
-                .type = pressed ? MG_APP_EVENT_KEY_DOWN : MG_APP_EVENT_KEY_UP
+                .type = (mg_app_event_type)(pressed ? MG_APP_EVENT_KEY_DOWN : MG_APP_EVENT_KEY_UP)
             };
             mg_app_call_event(&event);
             break;
@@ -710,6 +710,7 @@ static LRESULT CALLBACK mg_win32_process_message(HWND hwnd, uint32_t msg, WPARAM
             };
             mg_app_call_event(&event);
         break;
+        }
         case WM_MOUSEMOVE:
         {
             int32_t x = GET_X_LPARAM(l_param);
@@ -721,7 +722,7 @@ static LRESULT CALLBACK mg_win32_process_message(HWND hwnd, uint32_t msg, WPARAM
                 .mouse_y = y,
                 .type = MG_APP_EVENT_MOUSE_MOVE
             };
-            mg_app_call_event(&event );
+            mg_app_call_event(&event);
             break;
         }
         case WM_MOUSEWHEEL:
@@ -730,9 +731,9 @@ static LRESULT CALLBACK mg_win32_process_message(HWND hwnd, uint32_t msg, WPARAM
             if (delta != 0)
             {
                 delta = (delta < 0) ? -1 : 1;
-                input_state.mouse.delta = (uint8_t)delta;
+                input_state.mouse.delta = (int8_t)delta;
                 mg_app_event event = {
-                    .scroll_delta = (uint8_t)delta,
+                    .scroll_delta = (int8_t)delta,
                     .type = MG_APP_EVENT_MOUSE_SCROLL
                 };
                 mg_app_call_event(&event);
@@ -767,7 +768,7 @@ static LRESULT CALLBACK mg_win32_process_message(HWND hwnd, uint32_t msg, WPARAM
             mg_app_input_process_mouse_button(mouse_button, pressed, platform.time);
             mg_app_event event = {
                 .mouse_button = mouse_button,
-                .type = pressed ? MG_APP_EVENT_MOUSE_DOWN : MG_APP_EVENT_MOUSE_UP
+                .type = (mg_app_event_type)(pressed ? MG_APP_EVENT_MOUSE_DOWN : MG_APP_EVENT_MOUSE_UP)
             };
             mg_app_call_event(&event);
             break;

@@ -85,7 +85,7 @@ end
 
 local function subsystem_flags(release)
     -- Only meaningful on Windows; makes a windowed (GUI) app instead of a console app
-    if not IS_WINDOWS then
+    if not IS_WINDOWS or not release then
         return {}
     end
 
