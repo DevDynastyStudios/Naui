@@ -24,12 +24,14 @@ lua build.lua debug run_debug   # build and runs project in debug mode
 ## Windows:
 You need to install the following:
 - [clang](https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.8/clang+llvm-22.1.8-x86_64-pc-windows-msvc.tar.xz)
+- [lua](https://sourceforge.net/projects/luabinaries/files/5.5.0/)
 - [Visual Studio](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=Community&channel=Stable&version=VS18&source=VSLandingPage&cid=2500&passive=false) (eww)
 ![vsstudio](https://raw.githubusercontent.com/DevDynastyStudios/Naui/refs/heads/main/screenshots/vs.png)
 
 ## Linux:
 You need to install the following:
 - clang
+- lua
 - libx11-dev
 - libegl-dev
 - xorg-xwayland (if on Wayland)
