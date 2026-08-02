@@ -4089,11 +4089,8 @@ static void mgfx_gl_resize(uint32_t width, uint32_t height)
 
 static void mgfx_gl_vsync(bool vsync)
 {
-    if (ctx.gl.vsync != vsync)
-    {
-        _mgfx_gl_set_swap_interval(vsync);
-        ctx.gl.vsync = vsync;
-    }
+    _mgfx_gl_set_swap_interval(vsync);
+    ctx.gl.vsync = vsync;
 }
 
 static void mgfx_gl_init_backbuffer(void)

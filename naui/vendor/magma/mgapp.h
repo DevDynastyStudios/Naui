@@ -1483,9 +1483,6 @@ int32_t mg_app_run(const mg_app_init_info *info)
                         platform.delta_time = resize_time - platform.time;
                         platform.time = resize_time;
 
-                        if (info->events.update)
-                            info->events.update();
-
                         mg_app_input_frame();
                     }
                 }
