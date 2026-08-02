@@ -5,8 +5,8 @@ typedef struct {
 
 typedef Naui_List(char) Naui_StringBuilder;
 
-#define naui_string_lit(cstr) (Naui_String){ (char*)(cstr), sizeof(cstr) - 1 } // Pretty damn convenient
-#define naui_string_spread(s) (int)(s).len, (s).data
+#define naui_string(cstr) (Naui_String){ (char*)(cstr), sizeof(cstr) - 1 } // Pretty damn convenient
+#define naui_string_spread(s) (int)(s).length, (s).data
 #define naui_string_fmt "%.*s"
 NAUI_API bool naui_string_is_valid(Naui_String string);
 NAUI_API Naui_String naui_string_from_cstring(char *s);
@@ -38,8 +38,9 @@ NAUI_API naui_string_slice naui_string_split_char(Naui_Arena *arena, Naui_String
 NAUI_API Naui_StringBuilder naui_sb_create(void);
 NAUI_API void naui_sb_destroy(Naui_StringBuilder sb);
 NAUI_API Naui_String naui_sb_to_string(Naui_StringBuilder sb);
-NAUI_API void naui_sb_append_string(Naui_StringBuilder sb, Naui_String string);
-// TODO(doomguy): use variadic arguments for sb append functions
+
+#define naui_sb_append_string(sb, ...) naui_sb_append_string_null(sb, __VA_ARGS__, (Naui_String){0});
+NAUI_API void naui_sb_append_string_null(Naui_StringBuilder sb, ...);
 
 // functions needed by iterator_win32 and iterator_unix
 int naui_cstr_strcmp(const char *str1, const char *str2, bool case_sensitive);

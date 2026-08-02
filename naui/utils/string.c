@@ -130,12 +130,21 @@ void naui_sb_destroy(Naui_StringBuilder sb) {
 }
 
 Naui_String naui_sb_to_string(Naui_StringBuilder sb) {
-    return (Naui_String){ sb, (size_t)naui_list_len(sb) };
+    return (Naui_String){ sb, naui_list_len(sb) };
 }
 
-void naui_sb_append_string(Naui_StringBuilder sb, Naui_String string) {
-    for (size_t i = 0; i < string.length; i++)
-        naui_list_push(sb, string.data[i]);
+void naui_sb_append_string_null(Naui_StringBuilder sb, ...) {
+    va_list args;
+    va_start(args, sb);
+
+    Naui_String string = va_arg(args, Naui_String);
+    while (string.data != NULL) {
+        for (size_t i = 0; i < string.length; i++)
+            naui_list_push(sb, string.data[i]);
+        string = va_arg(args, Naui_String);
+    }
+
+    va_end(args);
 }
 
 // functions needed by iterator_win32 and iterator_unix
