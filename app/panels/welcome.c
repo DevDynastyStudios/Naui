@@ -1,4 +1,6 @@
-static void on_attach(void)
+NAUI_PANEL(welcome)
+
+static void panel_on_attach(void)
 {
     Naui_PanelID self = naui_current_panel();
     naui_panel_set_title(self, "Welcome");
@@ -6,12 +8,12 @@ static void on_attach(void)
     naui_panel_enable_flags(self, NAUI_PANEL_FLAG_SERIALIZABLE);
 }
 
-static void on_detach(void)
+static void panel_on_detach(void)
 {
     
 }
 
-static void on_update(void)
+static void panel_on_update(void)
 {
     leaf({
         .size = {LEAF_SIZE_FULL, LEAF_SIZE_FULL},
@@ -33,5 +35,3 @@ static void on_update(void)
         });
     }
 }
-
-NAUI_DEFINE_PANEL_TYPE_NO_DATA(welcome);
