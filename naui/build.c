@@ -25,8 +25,8 @@
 	#include "vendor/dirent/dirent.h"
 	#include <direct.h>
 #else
-	#ifndef _GNU_SOURCE
-		#define _GNU_SOURCE
+	#ifndef _DEFAULT_SOURCE
+		#define _DEFAULT_SOURCE
 	#endif
 
 	#ifdef __APPLE__
@@ -35,6 +35,8 @@
 
 	#include <unistd.h>
 	#include <dirent.h>
+	#include <fcntl.h>
+	#include <sys/file.h>
 #endif
 
 #include "vendor/stb/stb.c"
