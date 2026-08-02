@@ -83,7 +83,6 @@ static Naui_Path naui_localization_build_path_(const char* code)
 	snprintf(filename, sizeof(filename), "%s.lang", code);
 
 	Naui_Path result = naui_path_join(lang_dir, naui_path_from_cstr(filename));
-	NAUI_PATH_FREE(lang_dir);
 	return result;
 }
 
@@ -227,7 +226,6 @@ bool naui_localization_load(const char* language_code, Naui_Language* out_langua
 
 	Naui_Path path = naui_localization_build_path_(language_code);
 	bool ok = naui_localization_load_file(path.data, out_language);
-	NAUI_PATH_FREE(path);
 	return ok;
 }
 
@@ -288,14 +286,10 @@ void naui_localization_reload_meta_cache(void)
 	Naui_Path lang_dir = naui_path_join(bin_dir, naui_path_from_cstr("Language"));
 
 	if (!naui_path_exists(lang_dir))
-	{
-		NAUI_PATH_FREE(lang_dir);
 		return;
-	}
 
 	const char* extensions[] = { ".lang", NULL };
 	Naui_List(Naui_DirEntry) entries = naui_directory_filter(lang_dir, NULL, extensions, 1);
-	NAUI_PATH_FREE(lang_dir);
 	for (ptrdiff_t i = 0; i < naui_list_len(entries); ++i)
 	{
 		if (entries[i].is_directory)

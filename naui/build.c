@@ -11,11 +11,30 @@
 #include <ctype.h>
 #include <math.h>
 #if NAUI_WINDOWS
-#include "vendor/dirent/dirent.h"
-#include <direct.h>
+	#ifndef WIN32_LEAN_AND_MEAN
+		#define WIN32_LEAN_AND_MEAN
+	#endif
+		#ifndef UNICODE
+			#define UNICODE
+		#endif
+	#ifndef _UNICODE
+		#define _UNICODE
+	#endif
+	#include <windows.h>
+	#include <shlobj.h>
+	#include "vendor/dirent/dirent.h"
+	#include <direct.h>
 #else
-#include <unistd.h>
-#include <dirent.h>
+	#ifndef _GNU_SOURCE
+		#define _GNU_SOURCE
+	#endif
+
+	#ifdef __APPLE__
+		#include <mach-o/dyld.h>
+	#endif
+
+	#include <unistd.h>
+	#include <dirent.h>
 #endif
 
 #include "vendor/stb/stb.c"

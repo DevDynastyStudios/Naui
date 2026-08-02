@@ -1,3 +1,5 @@
+#pragma once
+
 #define NAUI_ARCHIVE_MAGIC "NauiPak"
 #define NAUI_ARCHIVE_MAGIC_SIZE (sizeof(NAUI_ARCHIVE_MAGIC) - 1)
 #define NAUI_ARCHIVE_VERSION 1

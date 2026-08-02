@@ -878,7 +878,6 @@ void naui_load_font(uint8_t index, const char *file_name)
 
 	Naui_Path font_path = NAUI_PATH("Assets/Fonts", final_file_name);
     FILE *f = fopen(font_path.data, "rb");
-	NAUI_PATH_FREE(font_path);
 	
     if (!f) return;
 

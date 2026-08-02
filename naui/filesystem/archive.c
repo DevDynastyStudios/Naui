@@ -1,18 +1,9 @@
-#define NAUI_ARCHIVE_NAME_MAX 512
-
 typedef struct
 {
-	char name[NAUI_ARCHIVE_NAME_MAX];
+	char name[NAUI_PATH_MAX];
 	uint64_t size;
 	bool is_directory;
 } Zip_EntryStat;
-
-typedef struct
-{
-	char name[NAUI_ARCHIVE_NAME_MAX];
-	uint64_t offset;
-	uint64_t size;
-} Naui_ArchiveIndexEntry;
 
 static bool zip_open_read(mz_zip_archive* zip, const char* path)
 {
@@ -51,7 +42,7 @@ static bool zip_entry_stat(mz_zip_archive* zip, int index, Zip_EntryStat* out)
 	if (!mz_zip_reader_file_stat(zip, index, &st))
 		return false;
 
-	snprintf(out->name, NAUI_ARCHIVE_NAME_MAX, "%s", st.m_filename);
+	snprintf(out->name, NAUI_PATH_MAX, "%s", st.m_filename);
 	out->size = (uint64_t)st.m_uncomp_size;
 	out->is_directory = mz_zip_reader_is_file_a_directory(zip, index) != 0;
 	return true;
@@ -72,9 +63,6 @@ bool naui_archive_open(Naui_Archive* archive, const Naui_Path path, Naui_Archive
 	memset(&archive->zip, 0, sizeof(archive->zip));
 	archive->mode = mode;
 	archive->is_valid = false;
-
-	if (!path.data)
-		return false;
 
 	if (mode == NAUI_ARCHIVE_READ)
 		archive->is_valid = zip_open_read(&archive->zip, path.data);
@@ -118,18 +106,12 @@ bool naui_archive_add_file(Naui_Archive* archive, const Naui_Path source, const 
 	if (!archive->is_valid || archive->mode != NAUI_ARCHIVE_WRITE)
 		return false;
 
-	if (!source.data || !dest_in_archive.data)
-		return false;
-
 	return zip_add_file(&archive->zip, dest_in_archive.data, source.data);
 }
 
 bool naui_archive_add_folder(Naui_Archive* archive, const Naui_Path folder, const Naui_Path root_in_archive)
 {
 	if (!archive->is_valid || archive->mode != NAUI_ARCHIVE_WRITE)
-		return false;
-
-	if (!folder.data)
 		return false;
 
 	Naui_List(Naui_DirEntry) entries = naui_directory_filter_recursive(folder, NULL, NULL, 0);
@@ -143,17 +125,15 @@ bool naui_archive_add_folder(Naui_Archive* archive, const Naui_Path folder, cons
 			continue;
 
 		const char* full = entries[i].path.data;
-		const char* rel = full + folder.length;
+		const char* rel = full + strlen(folder.data);
 		if (*rel == '/' || *rel == '\\')
 			++rel;
 
-		char dest_buf[NAUI_ARCHIVE_NAME_MAX];
-		if (root_in_archive.length > 0)
-			snprintf(dest_buf, sizeof(dest_buf), "%s/%s", root_in_archive.data, rel);
+		Naui_Path dest;
+		if (root_in_archive.data[0] != '\0')
+			snprintf(dest.data, NAUI_PATH_MAX, "%s/%s", root_in_archive.data, rel);
 		else
-			snprintf(dest_buf, sizeof(dest_buf), "%s", rel);
-
-		Naui_Path dest = naui_path_from_cstr(dest_buf);
+			snprintf(dest.data, NAUI_PATH_MAX, "%s", rel);
 
 		if (!naui_archive_add_file(archive, entries[i].path, dest))
 		{
@@ -171,9 +151,6 @@ bool naui_archive_extract_to(Naui_Archive* archive, const Naui_Path output_folde
 	if (!archive->is_valid || archive->mode != NAUI_ARCHIVE_READ)
 		return false;
 
-	if (!output_folder.data)
-		return false;
-
 	int count = zip_entry_count(&archive->zip);
 	for (int i = 0; i < count; ++i)
 	{
@@ -181,28 +158,17 @@ bool naui_archive_extract_to(Naui_Archive* archive, const Naui_Path output_folde
 		if (!zip_entry_stat(&archive->zip, i, &st))
 			continue;
 
-		size_t out_cap = output_folder.length + 1 + strlen(st.name) + 1;
-		char* out_buf = (char*)malloc(out_cap);
-		if (!out_buf)
-			return false;
-
-		snprintf(out_buf, out_cap, "%s/%s", output_folder.data, st.name);
-		Naui_Path out = naui_path_from_cstr(out_buf);
-
+		Naui_Path out;
+		snprintf(out.data, NAUI_PATH_MAX, "%s/%s", output_folder.data, st.name);
 		if (st.is_directory)
 		{
 			naui_directory_create(out);
-			free(out_buf);
 			continue;
 		}
 
 		Naui_Path parent = naui_path_parent(out);
 		naui_directory_create(parent);
-		NAUI_PATH_FREE(parent);
-		bool extracted = zip_extract_to_file(&archive->zip, i, out.data);
-		free(out_buf);
-
-		if (!extracted)
+		if (!zip_extract_to_file(&archive->zip, i, out.data))
 			return false;
 	}
 
@@ -214,15 +180,13 @@ bool naui_archive_extract_file(Naui_Archive* archive, const Naui_Path entry, con
 	if (!archive->is_valid || archive->mode != NAUI_ARCHIVE_READ)
 		return false;
 
-	if (!entry.data || !dest.data)
-		return false;
-
 	return zip_extract_entry_to_file(&archive->zip, entry.data, dest.data);
 }
 
 Naui_List(Naui_ArchiveEntry) naui_archive_list_entries(Naui_Archive* archive)
 {
 	Naui_List(Naui_ArchiveEntry) list = NULL;
+
 	if (!archive->is_valid || archive->mode != NAUI_ARCHIVE_READ)
 		return list;
 
@@ -234,7 +198,7 @@ Naui_List(Naui_ArchiveEntry) naui_archive_list_entries(Naui_Archive* archive)
 			continue;
 
 		Naui_ArchiveEntry entry;
-		entry.path = naui_path_copy(naui_path_from_cstr(st.name));
+		snprintf(entry.path.data, NAUI_PATH_MAX, "%s", st.name);
 		entry.size = st.size;
 		entry.is_directory = st.is_directory;
 		naui_list_push(list, entry);
@@ -245,23 +209,14 @@ Naui_List(Naui_ArchiveEntry) naui_archive_list_entries(Naui_Archive* archive)
 
 void naui_archive_list_free(Naui_List(Naui_ArchiveEntry) list)
 {
-	if (!list)
-		return;
-
-	for (ptrdiff_t i = 0; i < naui_list_len(list); ++i)
-	{
-		NAUI_PATH_FREE(list[i].path);
-	}
-
-	naui_list_free(list);
+	if (list)
+		naui_list_free(list);
 }
 
 bool naui_archive_create_custom(const Naui_Path folder, const Naui_Path archive_path)
 {
-	if (!folder.data || !archive_path.data)
-		return false;
-
 	Naui_List(Naui_DirEntry) entries = naui_directory_filter_recursive(folder, NULL, NULL, 0);
+
 	size_t blob_cap = 1024 * 1024;
 	size_t blob_len = 0;
 	uint8_t* blob = (uint8_t*)malloc(blob_cap);
@@ -271,9 +226,16 @@ bool naui_archive_create_custom(const Naui_Path folder, const Naui_Path archive_
 		return false;
 	}
 
+	typedef struct
+	{
+		char name[NAUI_PATH_MAX];
+		uint64_t offset;
+		uint64_t size;
+	} IndexEntry;
+
 	size_t idx_cap = 64;
 	size_t idx_len = 0;
-	Naui_ArchiveIndexEntry* index = (Naui_ArchiveIndexEntry*)malloc(idx_cap * sizeof(Naui_ArchiveIndexEntry));
+	IndexEntry* index = (IndexEntry*)malloc(idx_cap * sizeof(IndexEntry));
 	if (!index)
 	{
 		free(blob);
@@ -282,7 +244,7 @@ bool naui_archive_create_custom(const Naui_Path folder, const Naui_Path archive_
 	}
 
 	bool ok = true;
-	size_t n = entries ? (size_t)naui_list_len(entries) : 0;
+	size_t n = entries ? naui_list_len(entries) : 0;
 	for (size_t i = 0; i < n && ok; ++i)
 	{
 		if (entries[i].is_directory)
@@ -317,15 +279,16 @@ bool naui_archive_create_custom(const Naui_Path folder, const Naui_Path archive_
 
 		memcpy(blob + blob_len, file_data, file_size);
 		free(file_data);
+
 		const char* full = entries[i].path.data;
-		const char* rel = full + folder.length;
+		const char* rel = full + strlen(folder.data);
 		if (*rel == '/' || *rel == '\\')
 			++rel;
 
 		if (idx_len >= idx_cap)
 		{
 			idx_cap *= 2;
-			Naui_ArchiveIndexEntry* tmp = (Naui_ArchiveIndexEntry*)realloc(index, idx_cap * sizeof(Naui_ArchiveIndexEntry));
+			IndexEntry* tmp = (IndexEntry*)realloc(index, idx_cap * sizeof(IndexEntry));
 			if (!tmp)
 			{
 				ok = false;
@@ -335,7 +298,7 @@ bool naui_archive_create_custom(const Naui_Path folder, const Naui_Path archive_
 			index = tmp;
 		}
 
-		snprintf(index[idx_len].name, NAUI_ARCHIVE_NAME_MAX, "%s", rel);
+		snprintf(index[idx_len].name, NAUI_PATH_MAX, "%s", rel);
 		index[idx_len].offset = (uint64_t)blob_len;
 		index[idx_len].size = (uint64_t)file_size;
 		++idx_len;
@@ -361,6 +324,7 @@ bool naui_archive_create_custom(const Naui_Path folder, const Naui_Path archive_
 
 	uint32_t version = NAUI_ARCHIVE_VERSION;
 	uint64_t count = (uint64_t)idx_len;
+
 	naui_file_write(&fh, NAUI_ARCHIVE_MAGIC, NAUI_ARCHIVE_MAGIC_SIZE);
 	naui_file_write(&fh, &version, sizeof(version));
 	naui_file_write(&fh, &count, sizeof(count));
@@ -383,9 +347,6 @@ bool naui_archive_create_custom(const Naui_Path folder, const Naui_Path archive_
 
 bool naui_archive_extract_custom(const Naui_Path archive_path, const Naui_Path output_folder)
 {
-	if (!archive_path.data || !output_folder.data)
-		return false;
-
 	size_t total_size;
 	char* blob = naui_file_read_all(archive_path, &total_size);
 	if (!blob)
@@ -407,7 +368,14 @@ bool naui_archive_extract_custom(const Naui_Path archive_path, const Naui_Path o
 	memcpy(&count, cursor, sizeof(count));
 	cursor += sizeof(count);
 
-	Naui_ArchiveIndexEntry* index = (Naui_ArchiveIndexEntry*)malloc((size_t)count * sizeof(Naui_ArchiveIndexEntry));
+	typedef struct
+	{
+		char name[NAUI_PATH_MAX];
+		uint64_t offset;
+		uint64_t size;
+	} IndexEntry;
+
+	IndexEntry* index = (IndexEntry*)malloc((size_t)count * sizeof(IndexEntry));
 	if (!index)
 	{
 		free(blob);
@@ -424,6 +392,7 @@ bool naui_archive_extract_custom(const Naui_Path archive_path, const Naui_Path o
 		cursor += len;
 
 		index[i].name[len] = '\0';
+
 		memcpy(&index[i].offset, cursor, sizeof(index[i].offset));
 		cursor += sizeof(index[i].offset);
 
@@ -436,21 +405,12 @@ bool naui_archive_extract_custom(const Naui_Path archive_path, const Naui_Path o
 
 	for (uint64_t i = 0; i < count && ok; ++i)
 	{
-		size_t out_cap = output_folder.length + 1 + strlen(index[i].name) + 1;
-		char* out_buf = (char*)malloc(out_cap);
-		if (!out_buf)
-		{
-			ok = false;
-			break;
-		}
+		Naui_Path out;
+		snprintf(out.data, NAUI_PATH_MAX, "%s/%s", output_folder.data, index[i].name);
 
-		snprintf(out_buf, out_cap, "%s/%s", output_folder.data, index[i].name);
-		Naui_Path out = naui_path_from_cstr(out_buf);
 		Naui_Path parent = naui_path_parent(out);
 		naui_directory_create(parent);
-		NAUI_PATH_FREE(parent);
 		ok = naui_file_write_all(out, data_start + index[i].offset, (size_t)index[i].size);
-		free(out_buf);
 	}
 
 	free(index);
