@@ -25,7 +25,7 @@ static Naui_AppState state;
 extern void naui_renderer_initialize(void);
 extern void naui_renderer_shutdown(void);
 extern void naui_renderer_resize(int32_t width, int32_t height);
-extern void naui_renderer_begin(void);
+extern bool naui_renderer_begin(void);
 extern void naui_renderer_end(void);
 
 extern void naui_input_update(void);
@@ -112,7 +112,8 @@ static void render_leaf_cmd_list(const Leaf_RenderCmdList *list)
 
 static void render(void)
 {
-    naui_renderer_begin();
+    if (!naui_renderer_begin())
+        return;
     leaf_begin_frame(mg_app_width(), mg_app_height());
     leaf_set_pointer_pos((float)mg_app_mouse_x(), (float)mg_app_mouse_y());
     state.events.update();

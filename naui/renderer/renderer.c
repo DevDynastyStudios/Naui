@@ -661,8 +661,11 @@ void naui_renderer_resize(int32_t width, int32_t height)
     rdata->height = height;
 }
 
-void naui_renderer_begin(void)
+bool naui_renderer_begin(void)
 {
+    if (mgfx_begin() != MGFX_RESULT_SUCCESS)
+        return false;
+
     rdata->vertex_count = 0;
     rdata->vertex_offset = 0;
     rdata->index_count = 0;
@@ -670,7 +673,6 @@ void naui_renderer_begin(void)
     rdata->clip_stack_depth = 0;
     rdata->font_current_index = -1;
 
-    mgfx_begin();
     mgfx_bind_pass(&(mgfx_pass_info){ 0 });
     mgfx_bind_pipeline(rdata->base_pipeline);
     mgfx_bind_vertex_buffer(rdata->batch_vb);
@@ -680,6 +682,8 @@ void naui_renderer_begin(void)
     struct { Naui_Vec2 u_resolution; } ub_data;
     ub_data.u_resolution = (Naui_Vec2){(float)rdata->width, (float)rdata->height};
     mgfx_bind_uniforms(0, sizeof(ub_data), &ub_data);
+    
+    return true;
 }
 
 void naui_renderer_end(void)
