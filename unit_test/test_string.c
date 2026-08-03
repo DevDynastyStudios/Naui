@@ -6,7 +6,7 @@ void test_to_lower() {
     TEST_BEGIN("to_lower");
 
     ASSERT_SV_EQ(naui_sv_to_lower_temp(NAUI_STR("HeLLo")), NAUI_STR("hello"));
-    ASSERT_SV_EQ(naui_sv_to_lower_temp(NAUI_STR("")), (Naui_String){0});
+    ASSERT_SV_EQ(naui_sv_to_lower_temp(NAUI_STR("")), (Naui_StringView){0});
 
     TEST_END();
 }
@@ -15,7 +15,7 @@ void test_to_upper() {
     TEST_BEGIN("to_upper");
 
     ASSERT_SV_EQ(naui_sv_to_upper_temp(NAUI_STR("HeLLo")), NAUI_STR("HELLO"));
-    ASSERT_SV_EQ(naui_sv_to_upper_temp(NAUI_STR("")), (Naui_String){0});
+    ASSERT_SV_EQ(naui_sv_to_upper_temp(NAUI_STR("")), (Naui_StringView){0});
 
     TEST_END();
 }
@@ -25,7 +25,7 @@ void test_starts_with() {
 
     ASSERT(naui_sv_starts_with(NAUI_STR("hello"), NAUI_STR("he")));
     ASSERT(!naui_sv_starts_with(NAUI_STR("hello"), NAUI_STR("hi")));
-    ASSERT(!naui_sv_starts_with(NAUI_STR("hello"), (Naui_String){0}));
+    ASSERT(!naui_sv_starts_with(NAUI_STR("hello"), (Naui_StringView){0}));
 
     TEST_END();
 }
@@ -35,7 +35,7 @@ void test_ends_with() {
 
     ASSERT(naui_sv_ends_with(NAUI_STR("hello"), NAUI_STR("lo")));
     ASSERT(!naui_sv_ends_with(NAUI_STR("hello"), NAUI_STR("oo")));
-    ASSERT(!naui_sv_ends_with(NAUI_STR("hello"), (Naui_String){0}));
+    ASSERT(!naui_sv_ends_with(NAUI_STR("hello"), (Naui_StringView){0}));
 
     TEST_END();
 }
@@ -43,9 +43,9 @@ void test_ends_with() {
 void test_find() {
     TEST_BEGIN("find");
 
-    const Naui_String s = NAUI_STR("hello world");
+    const Naui_StringView s = NAUI_STR("hello world");
     ASSERT_SV_EQ(naui_sv_find(s, NAUI_STR("world")), NAUI_STR("world"));
-    ASSERT_SV_EQ(naui_sv_find(s, NAUI_STR("nope")), (Naui_String){0});
+    ASSERT_SV_EQ(naui_sv_find(s, NAUI_STR("nope")), (Naui_StringView){0});
 
     TEST_END();
 }
@@ -103,7 +103,7 @@ void test_substring() {
     TEST_BEGIN("substring");
 
     ASSERT_SV_EQ(naui_sv_substring(NAUI_STR("hello"), 1, 3), NAUI_STR("ell"));
-    ASSERT_SV_EQ(naui_sv_substring(NAUI_STR("hi"), 5, 2), (Naui_String){0});
+    ASSERT_SV_EQ(naui_sv_substring(NAUI_STR("hi"), 5, 2), (Naui_StringView){0});
 
     TEST_END();
 }
@@ -128,7 +128,7 @@ void test_replace() {
 void test_split() {
     TEST_BEGIN("split");
 
-    Naui_String left, right;
+    Naui_StringView left, right;
     ASSERT(naui_sv_split_by_delim(NAUI_STR("a=b"), &left, &right, '='));
     ASSERT_SV_EQ(left, NAUI_STR("a"));
     ASSERT_SV_EQ(right, NAUI_STR("b"));

@@ -32,7 +32,7 @@ void test_dir_iterator_basic()
 	bool saw_c = false;
 
 	while (naui_dir_iterator_valid(&it)) {
-		Naui_String name = naui_file_filename(it.entry.path);
+		Naui_StringView name = naui_file_filename(it.entry.path);
 		if (naui_sv_cmp(name, NAUI_STR("a.txt"), true)) saw_a = true;
 		if (naui_sv_cmp(name, NAUI_STR("b.txt"), true)) saw_b = true;
 		if (naui_sv_cmp(name, NAUI_STR("c.bin"), true)) saw_c = true;
@@ -80,7 +80,7 @@ void test_dir_iterator_filter()
 	bool saw_banana = false;
 
 	while (naui_dir_iterator_valid(&it)) {
-		Naui_String name = naui_file_filename(it.entry.path);
+		Naui_StringView name = naui_file_filename(it.entry.path);
 		if (naui_sv_cmp(name, NAUI_STR("apple.txt"), true)) saw_apple = true;
 		if (naui_sv_cmp(name, NAUI_STR("apricot.txt"), true)) saw_apricot = true;
 		if (naui_sv_cmp(name, NAUI_STR("banana.txt"), true)) saw_banana = true;
@@ -125,7 +125,7 @@ void test_dir_iterator_extensions()
 	bool saw_c = false;
 
 	while (naui_dir_iterator_valid(&it)) {
-		Naui_String name = naui_file_filename(it.entry.path);
+		Naui_StringView name = naui_file_filename(it.entry.path);
 		if (naui_sv_cmp(name, NAUI_STR("a.txt"), true)) saw_a = true;
 		if (naui_sv_cmp(name, NAUI_STR("b.bin"), true)) saw_b = true;
 		if (naui_sv_cmp(name, NAUI_STR("c.txt"), true)) saw_c = true;
@@ -172,7 +172,7 @@ void test_dir_iterator_mixed()
 	bool saw_folder = false;
 
 	while (naui_dir_iterator_valid(&it)) {
-		Naui_String name = naui_file_filename(it.entry.path);
+		Naui_StringView name = naui_file_filename(it.entry.path);
 		if (naui_sv_cmp(name, NAUI_STR("a.txt"), true)) saw_a = true;
 		if (naui_sv_cmp(name, NAUI_STR("b.txt"), true)) saw_b = true;
 		if (naui_sv_cmp(name, NAUI_STR("folder"), true) && it.entry.is_directory)
@@ -247,7 +247,7 @@ void test_dir_iterator_hidden_files()
 	Naui_Path hidden = naui_file_hide(hidden_orig, true);
 	ASSERT(naui_file_is_hidden(hidden));
 
-	Naui_String expected_hidden_name = naui_file_filename(hidden);
+	Naui_StringView expected_hidden_name = naui_file_filename(hidden);
 
 	Naui_DirIterator it = naui_dir_iterator_open(root, NULL, NULL, false);
 
@@ -255,7 +255,7 @@ void test_dir_iterator_hidden_files()
 	bool saw_hidden = false;
 
 	while (naui_dir_iterator_valid(&it)) {
-		Naui_String name = naui_file_filename(it.entry.path);
+		Naui_StringView name = naui_file_filename(it.entry.path);
 		if (naui_sv_cmp(name, NAUI_STR("visible.txt"), true)) saw_visible = true;
 		if (naui_sv_cmp(name, expected_hidden_name, true) && naui_file_is_hidden(it.entry.path))
 			saw_hidden = true;
@@ -306,7 +306,7 @@ void test_dir_iterator_filter_and_ext()
 	bool saw_apricot = false;
 
 	while (naui_dir_iterator_valid(&it)) {
-		Naui_String name = naui_file_filename(it.entry.path);
+		Naui_StringView name = naui_file_filename(it.entry.path);
 		if (naui_sv_cmp(name, NAUI_STR("apple.txt"), true)) saw_apple = true;
 		if (naui_sv_cmp(name, NAUI_STR("banana.txt"), true)) saw_banana = true;
 		if (naui_sv_cmp(name, NAUI_STR("apricot.bin"), true)) saw_apricot = true;
@@ -366,7 +366,7 @@ void test_dir_iterator_no_parent_entries()
 	Naui_DirIterator it = naui_dir_iterator_open(root, NULL, NULL, false);
 
 	while (naui_dir_iterator_valid(&it)) {
-		Naui_String name = naui_file_filename(it.entry.path);
+		Naui_StringView name = naui_file_filename(it.entry.path);
 		ASSERT(!naui_sv_cmp(name, NAUI_STR("."), true));
 		ASSERT(!naui_sv_cmp(name, NAUI_STR(".."), true));
 		naui_dir_iterator_next(&it);
