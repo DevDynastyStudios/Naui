@@ -14,7 +14,7 @@ void naui_app_start(void)
     naui_log(NAUI_LOG_WARNING, "im thinking miku");
     naui_log(NAUI_LOG_ERROR, "teto teto teeeto");
 
-    Naui_StringBuilder sb = naui_sb_create();
+    Naui_String sb = naui_sb_create();
     naui_sb_append_string(sb, naui_string("urmom"), naui_string(" so "), naui_string("fat"));
     naui_log(NAUI_LOG_INFO, naui_string_fmt, naui_string_spread(naui_sb_to_string(sb)));
     naui_sb_destroy(sb);

@@ -298,17 +298,17 @@ static void test_file_filename(void)
         /* naui_file_filename returns a VIEW into its input - it must be
          * read before the input is freed, and must never be freed itself. */
         Naui_Path p1 = tp("foo/bar/baz.txt");
-        Naui_String f1 = naui_file_filename(p1);
+        Naui_StringView f1 = naui_file_filename(p1);
         ASSERT_STR_EQ(f1.data, "baz.txt");
         NAUI_PATH_FREE(p1);
 
         Naui_Path p2 = tp("baz.txt");
-        Naui_String f2 = naui_file_filename(p2);
+        Naui_StringView f2 = naui_file_filename(p2);
         ASSERT_STR_EQ(f2.data, "baz.txt");
         NAUI_PATH_FREE(p2);
 
         Naui_Path p3 = NAUI_PATH("");
-        Naui_String f3 = naui_file_filename(p3);
+        Naui_StringView f3 = naui_file_filename(p3);
         ASSERT(f3.len == 0);
         NAUI_PATH_FREE(p3);
     }
@@ -325,24 +325,24 @@ static void test_file_stem(void)
          * so it can't safely be a view (the byte after it is '.', not
          * a null terminator) - it's always an owned allocation. */
         Naui_Path file = tp("dir/file.txt");
-        Naui_String s1 = naui_file_stem(file);
+        Naui_StringView s1 = naui_file_stem(file);
         ASSERT(naui_sv_cmp(s1, NAUI_STR("file"), true));
         NAUI_PATH_FREE(file);
 
         Naui_Path archive = tp("dir/archive.tar.gz");
-        Naui_String s2 = naui_file_stem(archive);
+        Naui_StringView s2 = naui_file_stem(archive);
         ASSERT(naui_sv_cmp(s2, NAUI_STR("archive.tar"), true));
         NAUI_PATH_FREE(archive);
 
         /* No extension - full filename is the stem */
         Naui_Path noext = tp("dir/noext");
-        Naui_String s3 = naui_file_stem(noext);
+        Naui_StringView s3 = naui_file_stem(noext);
         ASSERT_STR_EQ(s3.data, "noext");
         NAUI_PATH_FREE(noext);
 
         /* Dotfile - the whole name is the stem */
         Naui_Path hidden = tp("dir/.hidden");
-        Naui_String s4 = naui_file_stem(hidden);
+        Naui_StringView s4 = naui_file_stem(hidden);
         ASSERT_STR_EQ(s4.data, ".hidden");
         NAUI_PATH_FREE(hidden);
     }
@@ -358,24 +358,24 @@ static void test_file_extension(void)
         /* extension IS a suffix, so (unlike stem) it's a view - use it
          * before freeing the path it came from. */
         Naui_Path file = tp("file.txt");
-        Naui_String e1 = naui_file_extension(file);
+        Naui_StringView e1 = naui_file_extension(file);
         ASSERT_STR_EQ(e1.data, ".txt");
         NAUI_PATH_FREE(file);
 
         Naui_Path archive = tp("archive.tar.gz");
-        Naui_String e2 = naui_file_extension(archive);
+        Naui_StringView e2 = naui_file_extension(archive);
         ASSERT_STR_EQ(e2.data, ".gz");
         NAUI_PATH_FREE(archive);
 
         /* No extension - empty result */
         Naui_Path noext = tp("noext");
-        Naui_String e3 = naui_file_extension(noext);
+        Naui_StringView e3 = naui_file_extension(noext);
         ASSERT(e3.len == 0);
         NAUI_PATH_FREE(noext);
 
         /* Dotfile has no extension */
         Naui_Path hidden = tp(".hidden");
-        Naui_String e4 = naui_file_extension(hidden);
+        Naui_StringView e4 = naui_file_extension(hidden);
         ASSERT(e4.len == 0);
         NAUI_PATH_FREE(hidden);
     }

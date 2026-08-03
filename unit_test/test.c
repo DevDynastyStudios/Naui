@@ -84,7 +84,7 @@ void test_assert_str_eq(const char* a, const char* b, const char* file, int line
 	}
 }
 
-void test_assert_sv_eq(Naui_String a, Naui_String b, const char* file, int line)
+void test_assert_sv_eq(Naui_StringView a, Naui_StringView b, const char* file, int line)
 {
 	ensure_suite_active(file, line);
 

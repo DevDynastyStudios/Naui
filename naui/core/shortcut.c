@@ -2,7 +2,7 @@
 
 typedef struct
 {
-	Naui_String name;
+	Naui_StringView name;
 	Naui_List(Naui_Key) keys;
 	Naui_List(Naui_ShortcutCtx) contexts;
 
@@ -87,7 +87,7 @@ void naui_shortcut_init(Naui_ShortcutKind kind)
 	s_initialized = true;
 }
 
-void __naui_register_shortcut(Naui_String name, Naui_Shortcut shortcut)
+void __naui_register_shortcut(Naui_StringView name, Naui_Shortcut shortcut)
 {
 	NAUI_SHORTCUT_FATAL_IF(!s_initialized, "naui_register_shortcut called before naui_shortcut_init -- the system doesn't know which mode to validate against.");
 	NAUI_SHORTCUT_FATAL_IF(shortcut.keys.count == 0, "No keys were registered. A shortcut needs at least one key.");
@@ -127,7 +127,7 @@ void __naui_register_shortcut(Naui_String name, Naui_Shortcut shortcut)
 	naui_list_push(s_shortcuts, entry);
 }
 
-void naui_unregister_shortcut(Naui_String name)
+void naui_unregister_shortcut(Naui_StringView name)
 {
 	for(size_t i = 0; i < naui_list_len(s_shortcuts); i++)
 	{
