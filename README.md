@@ -34,7 +34,7 @@ Install the following:
 * [Lua](https://sourceforge.net/projects/luabinaries/files/5.5.0/)
 * [Visual Studio](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=Community&channel=Stable&version=VS18&source=VSLandingPage&cid=2500&passive=false) (eww)
 
-![vsstudio](https://raw.githubusercontent.com/DevDynastyStudios/Naui/refs/heads/main/screenshots/vs.png)
+![vsstudio](https://raw.githubusercontent.com/DevDynastyStudios/Naui/refs/heads/main/content/screenshots/vs.png)
 
 ---
 
