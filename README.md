@@ -1,4 +1,7 @@
-# Naui
+<p align="center">
+  <img src="https://raw.githubusercontent.com/DevDynastyStudios/Naui/refs/heads/main/content/logo-large.svg" alt="Naui" width="100%">
+</p>
+
 
 Naui is an application engine written in C for [our software](https://github.com/DevDynastyStudios).
 
