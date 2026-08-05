@@ -125,12 +125,7 @@ static void render(void)
 static void __naui_app_event(const mg_app_event* event)
 {
     if (event->type == MG_APP_EVENT_RESIZE)
-    {
         naui_renderer_resize(event->window_width, event->window_height);
-#if defined(NAUI_WINDOWS)
-        render();
-#endif
-    }
 }
 
 static void __naui_app_start(void)
